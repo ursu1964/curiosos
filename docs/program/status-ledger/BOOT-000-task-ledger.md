@@ -57,3 +57,4 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | --- | --- | --- |
 | TASK-BOOT-001 | VALIDATED, FROZEN | Independent review accepted the Enterprise Build Pack foundation. |
 | TASK-BOOT-002 | VALIDATED, FROZEN | Independent review accepted the repository metadata and convention updates. |
+| TASK-BOOT-004 | IMPLEMENTED, TESTED | Root Node 24 LTS, pnpm workspace, strict TypeScript, ESLint, Prettier, and lockfile foundation created with checks recorded in `docs/tasks/TASK-BOOT-004-evidence.md`. |
