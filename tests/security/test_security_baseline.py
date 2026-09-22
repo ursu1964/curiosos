@@ -138,6 +138,7 @@ LATER_TASK_PATHS = (
 )
 AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
     {
+        "tests/integration/test_api_integration.py",
         "tests/integration/test_postgres_provider_integration.py",
     }
 )

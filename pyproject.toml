@@ -8,6 +8,7 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+  "httpx>=0.28.0",
   "mypy>=1.19.0",
   "pytest>=9.0.0",
   "ruff>=0.14.0",
@@ -44,7 +45,7 @@ warn_unused_configs = true
 minversion = "9.0"
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 markers = [
-  "integration: Docker-backed integration tests.",
+  "integration: Cross-package integration tests; some cases use Docker-backed services.",
 ]
 pythonpath = [
   "apps/api/src",

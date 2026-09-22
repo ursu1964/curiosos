@@ -77,6 +77,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-020 | VALIDATED, FROZEN | Independent PG-08C validation accepted the deterministic Ollama provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
 | TASK-BOOT-021 | VALIDATED, FROZEN | Independent PG-08C validation accepted the telemetry provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
 | TASK-BOOT-022 | VALIDATED, FROZEN | Independent validation accepted the FastAPI service-composition boundary at commit `fff9156475dbfb792e8908fcabda91922fe36650`; see `docs/tasks/TASK-BOOT-022-evidence.md`. |
+| TASK-BOOT-023 | IMPLEMENTED, TESTED | API integration-test foundation implemented and verified; see `docs/tasks/TASK-BOOT-023-evidence.md`. |
 
 ## Outstanding BOOT Acceptance Verification Items
 
