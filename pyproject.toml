@@ -39,4 +39,5 @@ warn_unused_configs = true
 [tool.pytest.ini_options]
 minversion = "9.0"
 addopts = ["-ra", "--strict-config", "--strict-markers"]
+pythonpath = ["packages/python/curios_contracts/src", "tests/fixtures"]
 testpaths = []
