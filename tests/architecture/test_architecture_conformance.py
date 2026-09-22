@@ -22,6 +22,8 @@ WEB_PACKAGE = REPO_ROOT / "apps/web"
 WEB_SOURCE = WEB_PACKAGE / "src"
 POLICY_PACKAGE = REPO_ROOT / "packages/python/curios_policy"
 POLICY_SOURCE = POLICY_PACKAGE / "src/curios_policy"
+RUNTIME_PACKAGE = REPO_ROOT / "packages/python/curios_runtime"
+RUNTIME_SOURCE = RUNTIME_PACKAGE / "src/curios_runtime"
 
 ARCHITECTURE_FAILURE = "ARCHITECTURE_FAILURE"
 
@@ -101,6 +103,19 @@ POLICY_FORBIDDEN_IMPORTS = frozenset(
         "curios_core",
         "curios_persistence",
         "curios_runtime",
+        *FASTAPI_IMPORTS,
+        *SQLALCHEMY_IMPORTS,
+        *POSTGRES_IMPORTS,
+        *OLLAMA_PROVIDER_SDK_IMPORTS,
+        *OTEL_IMPLEMENTATION_IMPORTS,
+        *DOCKER_TOOLING_IMPORTS,
+        *REPOSITORY_TOOLING_IMPORTS,
+    }
+)
+RUNTIME_FORBIDDEN_IMPORTS = frozenset(
+    {
+        "curios_core",
+        "curios_policy",
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -534,6 +549,23 @@ def test_minimal_policy_evaluator_remains_outer_and_contract_backed() -> None:
             rule=M0_INWARD_DEPENDENCY_RULE,
             pyproject_path=POLICY_PACKAGE / "pyproject.toml",
             forbidden_dependencies=POLICY_FORBIDDEN_IMPORTS | {"curios-core"},
+        ),
+    )
+
+    _assert_no_violations(violations)
+
+
+def test_m0_event_evidence_runtime_store_remains_outer_and_persistence_backed() -> None:
+    violations = (
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=RUNTIME_SOURCE,
+            forbidden_imports=RUNTIME_FORBIDDEN_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=RUNTIME_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=RUNTIME_FORBIDDEN_IMPORTS | {"curios-core"},
         ),
     )
 

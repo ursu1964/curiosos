@@ -24,13 +24,16 @@ become dependencies of `curios_contracts` or `curios_core`.
 
 The initial M0 implementation package roots are planned but not currently
 authorized as tracked package roots, except TASK-M0-002's persistence package
-after the TASK-M0-002 transition:
+after the TASK-M0-002 transition, TASK-M0-003's policy package after the
+TASK-M0-003 transition, and TASK-M0-004's event/evidence runtime store package
+after the TASK-M0-004 transition:
 
 | Task | Planned Surface |
 | --- | --- |
 | TASK-M0-002 | `packages/python/curios_persistence/**` (authorized by TASK-M0-002) |
-| TASK-M0-003 | `packages/python/curios_policy/**` |
-| TASK-M0-004 through TASK-M0-007 | `packages/python/curios_runtime/**` |
+| TASK-M0-003 | `packages/python/curios_policy/**` (authorized by TASK-M0-003) |
+| TASK-M0-004 | `packages/python/curios_runtime/**` event/evidence modules only (authorized by TASK-M0-004) |
+| TASK-M0-005 through TASK-M0-007 | `packages/python/curios_runtime/**` downstream modules blocked until their owning tasks |
 
 TASK-M0-001 establishes architecture tests that already block inward imports or
 metadata dependencies from contracts/core to those implementation packages.

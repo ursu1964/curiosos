@@ -29,6 +29,7 @@ members = [
   "packages/python/curios_persistence",
   "packages/python/curios_policy",
   "packages/python/curios_postgres_provider",
+  "packages/python/curios_runtime",
 ]
 
 [tool.ruff]
@@ -57,6 +58,7 @@ pythonpath = [
   "packages/python/curios_observability/src",
   "packages/python/curios_persistence/src",
   "packages/python/curios_policy/src",
+  "packages/python/curios_runtime/src",
   "tests/fixtures",
 ]
 testpaths = []

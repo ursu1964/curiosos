@@ -13,6 +13,7 @@ members = [
     "curios-persistence",
     "curios-policy",
     "curios-postgres-provider",
+    "curios-runtime",
     "curiosos",
 ]
 
@@ -271,6 +272,21 @@ requires-dist = [
     { name = "curios-core", editable = "packages/python/curios_core" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
+]
+
+[[package]]
+name = "curios-runtime"
+version = "0.0.0"
+source = { editable = "packages/python/curios_runtime" }
+dependencies = [
+    { name = "curios-contracts" },
+    { name = "curios-persistence" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "curios-contracts", editable = "packages/python/curios_contracts" },
+    { name = "curios-persistence", editable = "packages/python/curios_persistence" },
 ]
 
 [[package]]

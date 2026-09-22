@@ -147,6 +147,7 @@ M0_PLANNED_PACKAGE_ROOTS_BY_TASK = {
 M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK = {
     "TASK-M0-002": frozenset({"packages/python/curios_persistence"}),
     "TASK-M0-003": frozenset({"packages/python/curios_policy"}),
+    "TASK-M0-004": frozenset({"packages/python/curios_runtime"}),
 }
 M0_PLANNED_APP_ROOTS_BY_TASK = {
     "TASK-M0-008": frozenset({"apps/api"}),
@@ -225,6 +226,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
         "packages/python/curios_persistence",
         "packages/python/curios_policy",
         "packages/python/curios_postgres_provider",
+        "packages/python/curios_runtime",
         "packages/typescript/curios-contracts",
     }
 )
@@ -272,6 +274,8 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_observability/src",
     "packages/python/curios_policy/src",
     "packages/python/curios_policy/tests",
+    "packages/python/curios_runtime/src",
+    "packages/python/curios_runtime/tests",
     "packages/python/curios_ollama/src",
     "packages/python/curios_persistence/src",
     "packages/python/curios_postgres_provider/src",
@@ -1091,6 +1095,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
             "packages/python/curios_persistence",
             "packages/python/curios_policy",
             "packages/python/curios_postgres_provider",
+            "packages/python/curios_runtime",
         },
         f"unexpected Python workspace member(s): {sorted(python_workspace_members)}",
     )

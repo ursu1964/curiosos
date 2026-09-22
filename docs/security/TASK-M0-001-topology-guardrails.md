@@ -26,6 +26,9 @@ Current tracked roots remain the frozen BOOT roots:
 
 - existing BOOT Python packages;
 - `packages/python/curios_persistence/**` for TASK-M0-002 only;
+- `packages/python/curios_policy/**` for TASK-M0-003 only;
+- `packages/python/curios_runtime/**` event/evidence modules for TASK-M0-004
+  only;
 - existing BOOT TypeScript package;
 - `apps/api`;
 - `apps/web`;
@@ -35,8 +38,11 @@ Current tracked roots remain the frozen BOOT roots:
 TASK-M0-001 does not add new runtime package roots, app roots, broad test roots,
 service roots, provider roots, or `.github` surfaces.
 
-TASK-M0-002 narrowly authorizes the planned `curios_persistence` package root
-and keeps policy/runtime package roots blocked until their owning tasks.
+TASK-M0-002 narrowly authorizes the planned `curios_persistence` package root.
+TASK-M0-003 narrowly authorizes the planned `curios_policy` package root.
+TASK-M0-004 narrowly authorizes event/evidence runtime store modules under the
+planned `curios_runtime` package root. Work repositories, runtime services, and
+executor/API/web downstream surfaces remain blocked until their owning tasks.
 
 ## Planned But Not Yet Authorized M0 Surfaces
 
@@ -45,8 +51,7 @@ authorize them narrowly:
 
 | Task | Planned Surface |
 | --- | --- |
-| TASK-M0-003 | `packages/python/curios_policy/**` |
-| TASK-M0-004 through TASK-M0-007 | `packages/python/curios_runtime/**` |
+| TASK-M0-005 through TASK-M0-007 | `packages/python/curios_runtime/**` downstream modules beyond TASK-M0-004 event/evidence store |
 | TASK-M0-010 | `tests/integration/**` additions beyond frozen BOOT integration tests |
 | TASK-M0-012 | `tests/acceptance/**` additions beyond frozen BOOT acceptance tests |
 
