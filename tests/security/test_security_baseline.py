@@ -1017,9 +1017,7 @@ def test_m0_app_topology_does_not_broaden_beyond_authorized_boot_apps() -> None:
 def test_m0_planned_surface_registry_is_task_scoped_and_not_currently_authorized() -> None:
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {"packages/python/curios_policy"}
-    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {
-        "packages/python/curios_policy"
-    }
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {"packages/python/curios_policy"}
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
