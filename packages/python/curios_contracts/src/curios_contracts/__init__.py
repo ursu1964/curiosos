@@ -1,5 +1,6 @@
 """Curios-owned canonical contract package boundary."""
 
+from curios_contracts.events import RUNTIME_EVENT_TYPES, EventEnvelope, EventType, RuntimeEventType
 from curios_contracts.identifiers import (
     ID_PREFIXES,
     ID_TYPES,
@@ -8,6 +9,7 @@ from curios_contracts.identifiers import (
     ApplicationId,
     ArtifactId,
     CapabilityId,
+    CorrelationId,
     CuriosId,
     EventId,
     EvidenceId,
@@ -22,6 +24,8 @@ from curios_contracts.identifiers import (
     ensure_id_type,
 )
 from curios_contracts.lifecycle import ENGINEERING_LIFECYCLE_VALUES, EngineeringLifecycle
+from curios_contracts.observability import ObservabilityContext
+from curios_contracts.references import Reference
 from curios_contracts.schema_version import SchemaVersion
 from curios_contracts.serialization import to_json_compatible
 from curios_contracts.temporal import DurationMilliseconds, UtcTimestamp
@@ -37,15 +41,22 @@ __all__ = (
     "ApplicationId",
     "ArtifactId",
     "CapabilityId",
+    "CorrelationId",
     "CuriosId",
     "DurationMilliseconds",
     "EngineeringLifecycle",
+    "EventEnvelope",
     "EventId",
+    "EventType",
     "EvidenceId",
     "ExecutionId",
     "MilestoneId",
+    "ObservabilityContext",
     "ProjectId",
     "ProviderId",
+    "RUNTIME_EVENT_TYPES",
+    "Reference",
+    "RuntimeEventType",
     "SchemaVersion",
     "TraceId",
     "UtcTimestamp",
