@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-025-EVIDENCE
 title: TASK-BOOT-025 CI Quality Gates Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-BOOT-025
@@ -18,8 +18,12 @@ date: 2026-09-22
 | 2 | IMPLEMENTED | GitHub Actions quality-gate workflow, narrow security topology transition, and ledger/evidence documentation were added. |
 | 3 | TESTED | Required local/static workflow checks and repository verification passed; see verification evidence below. |
 | 4 | CORRECTED | After PG-11 validation identified a `.github` topology false negative, security topology tests were strengthened to authorize only `.github/workflows/quality-gates.yml`. |
+| 5 | VALIDATED | Independent PG-11 revalidation accepted the corrected TASK-BOOT-025 implementation at commit `1aebc56e89de20ab7cbf6193ac6977c2f73ecfc0`; see `docs/tasks/PG-11-validation-evidence.md`. |
+| 6 | FROZEN | The BOOT task ledger records TASK-BOOT-025 as `VALIDATED, FROZEN`. |
 
-TASK-BOOT-025 is not self-declared `VALIDATED` or `FROZEN`.
+TASK-BOOT-025 was not self-declared `VALIDATED` or `FROZEN` by the
+implementation agent. Independent PG-11 revalidation made that lifecycle
+decision.
 
 ## Scope
 
@@ -186,5 +190,4 @@ introduced.
 
 ## Final Implementation Status
 
-`TASK-BOOT-025` is `IMPLEMENTED, TESTED`. Independent validation must decide
-whether it can become `VALIDATED, FROZEN`.
+`TASK-BOOT-025` is `VALIDATED, FROZEN` after independent PG-11 revalidation.
