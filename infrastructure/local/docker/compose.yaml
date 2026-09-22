@@ -1,0 +1,25 @@
+name: curios-local-docker
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CURIOS_POSTGRES_DB:-curios_dev}
+      POSTGRES_USER: ${CURIOS_POSTGRES_USER:-curios_dev}
+      POSTGRES_PASSWORD: ${CURIOS_POSTGRES_PASSWORD:-curios_local_dev_password}
+    ports:
+      - "${CURIOS_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -h 127.0.0.1 -p 5432 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres_data:
