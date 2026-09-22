@@ -57,3 +57,4 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | --- | --- | --- |
 | TASK-BOOT-001 | VALIDATED, FROZEN | Independent review accepted the Enterprise Build Pack foundation. |
 | TASK-BOOT-002 | VALIDATED, FROZEN | Independent review accepted the repository metadata and convention updates. |
+| TASK-BOOT-005 | TESTED | Developer command surface implemented at `tooling/curios`; evidence recorded in `docs/tasks/TASK-BOOT-005-status.md`. |
