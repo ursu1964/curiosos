@@ -4,6 +4,13 @@ import ast
 from pathlib import Path
 
 SOURCE_ROOT = Path(__file__).parents[1] / "src" / "curios_contracts"
+TASK_011_MODULES = (
+    "agents.py",
+    "capabilities.py",
+    "executions.py",
+    "providers.py",
+    "work.py",
+)
 
 FORBIDDEN_TASK_013_CLASSES = {
     "Approval",
@@ -46,9 +53,16 @@ def _module_trees() -> list[ast.AST]:
     ]
 
 
+def _task_011_module_trees() -> list[ast.AST]:
+    return [
+        ast.parse((SOURCE_ROOT / source_name).read_text(encoding="utf-8"))
+        for source_name in TASK_011_MODULES
+    ]
+
+
 def test_task_boot_011_does_not_implement_task_013_contracts() -> None:
     class_names: set[str] = set()
-    for tree in _module_trees():
+    for tree in _task_011_module_trees():
         class_names.update(node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef))
 
     assert class_names.isdisjoint(FORBIDDEN_TASK_013_CLASSES)

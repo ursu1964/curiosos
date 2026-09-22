@@ -1,7 +1,7 @@
 ---
 id: CONTRACT-BOOT-013-SECURITY-POLICY
 title: Configuration, Security, Effect, and Policy Canonical Curios Contracts
-lifecycle: IMPLEMENTED
+lifecycle: FROZEN
 artifact_type: contract
 authority: authoritative
 task: TASK-BOOT-013

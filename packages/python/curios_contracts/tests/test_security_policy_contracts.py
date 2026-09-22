@@ -391,7 +391,10 @@ def test_security_serialization_rejects_credential_bearing_urls() -> None:
 
 
 def test_no_task_011_models_or_duplicate_generic_references_are_implemented() -> None:
-    source = "\n".join(path.read_text(encoding="utf-8") for path in SOURCE_ROOT.glob("*.py"))
+    security_source = (SOURCE_ROOT / "security.py").read_text(encoding="utf-8")
+    package_source = "\n".join(
+        path.read_text(encoding="utf-8") for path in SOURCE_ROOT.glob("*.py")
+    )
 
     forbidden_contracts = (
         "class WorkItem:",
@@ -408,7 +411,7 @@ def test_no_task_011_models_or_duplicate_generic_references_are_implemented() ->
         "class AgentInstance(",
     )
     for contract in forbidden_contracts:
-        assert contract not in source
+        assert contract not in security_source
 
-    assert source.count("class ObjectReference") == 1
-    assert "class Reference:" not in source
+    assert package_source.count("class ObjectReference") == 1
+    assert "class Reference:" not in package_source

@@ -1,7 +1,7 @@
 ---
 id: CONTRACT-BOOT-011-WORK-AGENT
 title: Work, Execution, Capability, Provider, and Agent Canonical Curios Contracts
-lifecycle: TESTED
+lifecycle: FROZEN
 artifact_type: contract
 authority: authoritative
 task: TASK-BOOT-011
@@ -207,7 +207,12 @@ security/policy concepts must be referenced:
 - `principal_ref`;
 - `configuration_requirement_refs`.
 
-Typed TASK-BOOT-013 integration will be reconciled later if appropriate.
+The integrated M0 baseline preserves these as `ObjectReference` fields. A
+principal or authority reference is runtime attribution or authorization
+provenance; it is not an embedded security record. `policy_constraint_refs`
+remain generic because a policy constraint/rule contract is distinct from
+`PolicyDecision`. `configuration_requirement_refs` remain generic because a
+configuration requirement is distinct from `ConfigurationProfile`.
 
 ## CONTRACT-BOOT-011-SER-001 Serialization
 

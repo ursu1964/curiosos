@@ -65,9 +65,9 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-008 | VALIDATED, FROZEN | Independent review accepted the TypeScript package skeletons in commit `45b1e7f0e2b99f2e19edb86e7cf02214c90b6097`. |
 | TASK-BOOT-009 | VALIDATED, FROZEN | Independent review accepted the primitive canonical contracts in commit `fccfbe35c337f7c1c7107e10fc6e8f221eb74df0`. |
 | TASK-BOOT-010 | VALIDATED, FROZEN | Independent review accepted the result, error, artifact, evidence, verification, and `ObjectReference` contracts in commit `118688dfb8bc03387ea0a6b3e423bf252bb02f36`. `ObjectReference(kind, ref_id)` is the canonical generic Curios object/reference contract for the M0 baseline. |
-| TASK-BOOT-011 | TESTED | Implemented and tested the M0 work, execution, capability, provider descriptor, and agent contracts. This task does not self-declare `VALIDATED` or `FROZEN`. |
+| TASK-BOOT-011 | VALIDATED, FROZEN | Independent review accepted the work, execution, capability, provider descriptor, and agent contracts in commit `b6368444ca4e9498bf8c569c11a605055ded40d1`; integration preserves `ObjectReference` for security/governance references across aggregate boundaries. |
 | TASK-BOOT-012 | VALIDATED, FROZEN | Independent review accepted the reconciled event and observability contracts in commit `d9c5edfa98997dc98a428ebc0a72747442117738`; TASK-BOOT-012 uses the frozen `ObjectReference(kind, ref_id)` contract and does not define a second generic reference abstraction. |
-| TASK-BOOT-013 | TESTED | Implementation evidence recorded in `docs/tasks/TASK-BOOT-013-evidence.md`; validation and freeze remain deferred to independent review. |
+| TASK-BOOT-013 | VALIDATED, FROZEN | Independent review accepted the configuration, security, effect, and policy contracts in commit `6679224e6684a8b7be885a6685020308ff0313e3`; integrated with TASK-BOOT-011 without embedding governance records into work or agent runtime contracts. |
 
 ## Outstanding BOOT Acceptance Verification Items
 
