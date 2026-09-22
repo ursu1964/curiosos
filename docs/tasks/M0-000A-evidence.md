@@ -43,12 +43,19 @@ M0 implementation authority.
 
 ## Readiness Decision
 
-M0 planning defines one first executable unit:
+M0 planning proposes one first executable unit:
 
 `TASK-M0-001 — M0 Topology and Guardrail Transition`
 
-No other M0 implementation task is ready until TASK-M0-001 is validated,
-frozen, and integrated.
+After the initial M0 readiness validation, execution is not yet authorized.
+The validation identified planning defects in DAG parallelization, task
+decomposition completeness, and premature authorization language. This
+corrective update resolves those defects and leaves M0 awaiting independent
+readiness revalidation.
+
+If readiness revalidation passes, TASK-M0-001 becomes the first authorized
+execution unit. No other M0 implementation task is ready until TASK-M0-001 is
+validated, frozen, and integrated.
 
 ## Scope Protection
 
@@ -60,3 +67,14 @@ behavior, infrastructure, or `1.txt`.
 
 M0-000A validation consists of internal task/DAG/status consistency checks,
 deferred-scope review, and `git diff --check`.
+
+The corrective validation checks additionally cover:
+
+- all TASK-M0-001 through TASK-M0-014 identifiers are present;
+- all dependencies point to existing tasks or BOOT/M0 readiness authority;
+- the dependency graph is acyclic;
+- every task has explicit objective, scope, prohibited scope, acceptance,
+  verification, lifecycle, integration, gate, and downstream-consumer entries;
+- every vertical slice maps to concrete tasks and gates;
+- readiness/status artifacts do not authorize implementation before independent
+  revalidation.

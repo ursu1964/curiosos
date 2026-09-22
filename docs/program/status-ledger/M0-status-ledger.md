@@ -14,21 +14,21 @@ date: 2026-09-22
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | PLANNED | M0 executable program is defined by M0-000A artifacts. No M0 implementation task has started. |
+| M0 | CORRECTED / AWAITING REVALIDATION | M0 executable program has been corrected after failed readiness validation. No M0 implementation task has started. |
 
 ## Task Status
 
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A | PG-M0-01 | READY | Frozen BOOT baseline and M0 planning authority satisfy prerequisites. |
-| TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02 | BLOCKED | Requires TASK-M0-001 topology authorization. |
-| TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02 | BLOCKED | Requires TASK-M0-001 topology authorization. |
-| TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02 | BLOCKED | Requires topology authorization and persistence foundation. |
-| TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-03 | BLOCKED | Requires persistence foundation. |
+| TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | PLANNED | First proposed execution unit; blocked until independent M0 readiness revalidation passes. |
+| TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | BLOCKED | Requires TASK-M0-001 topology authorization. |
+| TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | BLOCKED | Requires TASK-M0-001 topology authorization. |
+| TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | BLOCKED | Requires topology authorization and persistence foundation. |
+| TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | BLOCKED | Requires persistence foundation. |
 | TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | BLOCKED | Requires policy, event/evidence, and work repository foundations. |
 | TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | BLOCKED | Requires runtime service. |
-| TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05 | BLOCKED | Requires provider-inventory executor. |
-| TASK-M0-009 | M0 Web Work Console | TASK-M0-007 | PG-M0-05 | BLOCKED | Requires provider-inventory executor and stable API contract plan. |
+| TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05A | BLOCKED | Requires provider-inventory executor. |
+| TASK-M0-009 | M0 Web Work Console | TASK-M0-008 | PG-M0-05B | BLOCKED | Requires M0 API endpoint contract. |
 | TASK-M0-010 | M0 Integration Test Foundation | TASK-M0-008, TASK-M0-009 | PG-M0-06 | BLOCKED | Requires API and web surfaces. |
 | TASK-M0-011 | M0 CI Quality Gate Update | TASK-M0-010 | PG-M0-07 | BLOCKED | Requires M0 integration tests. |
 | TASK-M0-012 | M0 Acceptance Suite | TASK-M0-011 | PG-M0-08 | BLOCKED | Requires CI gate update. |
@@ -39,6 +39,9 @@ date: 2026-09-22
 
 - `PLANNED`: task or milestone exists in approved planning but is not yet
   executable.
+- `CORRECTED / AWAITING REVALIDATION`: planning artifacts were corrected after
+  failed readiness validation and require independent revalidation before any
+  implementation task becomes ready.
 - `READY`: all prerequisites are satisfied and implementation may begin after
   explicit task authorization.
 - `BLOCKED`: the task depends on incomplete upstream M0 work.

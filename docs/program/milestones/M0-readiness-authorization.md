@@ -10,15 +10,24 @@ date: 2026-09-22
 
 # M0 Readiness and First Execution Authorization
 
-## Readiness Decision
+## Readiness State
 
-M0 EXECUTION AUTHORIZED:
+M0 EXECUTION IS NOT YET AUTHORIZED.
+
+The first M0 readiness validation failed because the initial task pack and DAG
+were internally inconsistent. This artifact now records the corrected proposed
+first execution unit and the transition required before implementation may
+begin.
+
+If independent M0 readiness revalidation passes, the first authorized execution
+unit is:
 
 `TASK-M0-001 — M0 Topology and Guardrail Transition`
 
-Only this task is ready from the frozen BOOT baseline plus M0 planning
-authority. No other M0 implementation task may start until TASK-M0-001 is
-implemented, tested, independently validated, frozen, and integrated.
+No M0 implementation task may start until M0 readiness validation passes.
+After that, only TASK-M0-001 may start. No later M0 implementation task may
+start until TASK-M0-001 is implemented, tested, independently validated,
+frozen, and integrated.
 
 ## Prerequisites
 
@@ -31,8 +40,9 @@ implemented, tested, independently validated, frozen, and integrated.
 | M0 DAG exists | SATISFIED by `docs/program/milestones/M0-implementation-dag.md` |
 | M0 status ledger exists | SATISFIED by `docs/program/status-ledger/M0-status-ledger.md` |
 | P1-P6 traceability limits documented | SATISFIED by `docs/program/milestones/M0-p1-p6-traceability.md` |
+| Independent M0 readiness revalidation | REQUIRED BEFORE EXECUTION |
 
-## First Task Scope
+## Conditional First Task Scope
 
 TASK-M0-001 may create or modify only the surfaces needed to authorize M0
 topology and guardrails:
@@ -55,7 +65,7 @@ features.
 ```text
 branch:   task/m0-001-topology-guardrails
 worktree: /home/user/projects/curiosos-wt-m0-001
-base:     current main after committing M0-000A
+base:     current main after M0 readiness validation passes
 ```
 
 ## Parallelism
@@ -66,10 +76,45 @@ After TASK-M0-001 is validated/frozen, the DAG allows parallel preparation of
 TASK-M0-002 and TASK-M0-003. TASK-M0-004 depends on TASK-M0-002 in addition to
 TASK-M0-001.
 
+The corrected early execution structure is:
+
+```text
+TASK-M0-001
+    |
+    +------------------+
+    |                  |
+    v                  v
+TASK-M0-002       TASK-M0-003
+    |
+    +------------------+
+    |                  |
+    v                  v
+TASK-M0-004       TASK-M0-005
+    \                  /
+     +-------> TASK-M0-006
+```
+
+TASK-M0-004 is not parallel with TASK-M0-002 because it consumes the
+persistence foundation produced by TASK-M0-002.
+
+## Readiness Transition
+
+```text
+M0-000A draft/corrected planning
+  -> independent M0 readiness validation
+  -> PASS
+  -> M0 program authority established
+  -> TASK-M0-001 READY/AUTHORIZED
+```
+
+Until that transition passes, TASK-M0-001 remains `PLANNED` and TASK-M0-002
+through TASK-M0-014 remain `BLOCKED`.
+
 ## Authorization Limits
 
 This record does not authorize:
 
+- TASK-M0-001 before independent M0 readiness revalidation passes.
 - TASK-M0-002 or later.
 - post-M0 or M1 work.
 - runtime/product implementation outside TASK-M0-001 scope.
