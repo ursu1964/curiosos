@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import json
 import re
+import subprocess
+import tomllib
 from dataclasses import fields
 from pathlib import Path
 from typing import get_type_hints
@@ -45,22 +47,48 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_SOURCE = REPO_ROOT / "packages/python/curios_contracts/src/curios_contracts"
 CORE_SOURCE = REPO_ROOT / "packages/python/curios_core/src/curios_core"
 LOCAL_DOCKER_ENV_EXAMPLE = REPO_ROOT / "infrastructure/local/docker/.env.example"
+ROOT_PACKAGE_FILES = (
+    REPO_ROOT / "package.json",
+    REPO_ROOT / "pnpm-workspace.yaml",
+    REPO_ROOT / "pyproject.toml",
+)
 
 SECURITY_FAILURE = "SECURITY_FAILURE"
 
 SECRET_SHAPED_VALUE_RE = re.compile(
-    r"(?i)(api[_-]?key|authorization|credential|password|secret|token)\s*[:=]"
+    r"(?i)(api[_-]?key|authorization|client[_-]?secret|credential|password|private[_-]?key|secret|token|access[_-]?token)\s*[:=]"
+)
+SENSITIVE_ASSIGNMENT_RE = re.compile(
+    r"""(?ix)
+    (?P<key>
+        [A-Za-z0-9_.-]*
+        (?:api[_-]?key|authorization|client[_-]?secret|credential|password|private[_-]?key|secret|token|access[_-]?token)
+        [A-Za-z0-9_.-]*
+    )
+    \s*[:=]\s*
+    (?P<quote>['"]?)
+    (?P<value>[^\s'"#]+)
+    (?P=quote)
+    """
+)
+CREDENTIAL_URL_RE = re.compile(r"://[^/\s:@]+(?::[^/\s@]*)?@")
+SECRET_FIELD_TOKEN_RE = re.compile(
+    r"(?i)(api[_-]?key|authorization|client[_-]?secret|credential|password|private[_-]?key|secret|session|token|access[_-]?token|cookie)"
 )
 PROHIBITED_SECRET_VALUE_FIELDS = frozenset(
     {
+        "access_token",
         "api_key",
         "authorization",
+        "client_secret",
         "cookie",
         "credential",
         "credentials",
         "oauth_token",
         "password",
         "private_key",
+        "secret",
+        "secret_key",
         "secret_value",
         "session",
         "token",
@@ -111,6 +139,105 @@ LATER_TASK_PATHS = (
     "packages/python/curios_telemetry",
     "packages/python/curios_ollama",
     "tests/integration",
+)
+ALLOWED_TOP_LEVEL_PATHS = frozenset(
+    {
+        ".editorconfig",
+        ".gitignore",
+        ".prettierignore",
+        "README.md",
+        "docs",
+        "eslint.config.mjs",
+        "infrastructure",
+        "package.json",
+        "packages",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "prettier.config.mjs",
+        "pyproject.toml",
+        "tests",
+        "tooling",
+        "tsconfig.base.json",
+        "tsconfig.json",
+        "uv.lock",
+    }
+)
+ALLOWED_PACKAGE_ROOTS = frozenset(
+    {
+        "packages/python/curios_contracts",
+        "packages/python/curios_core",
+        "packages/python/curios_observability",
+        "packages/typescript/curios-contracts",
+    }
+)
+ALLOWED_CORE_SOURCE_FILES = frozenset(
+    {
+        "__init__.py",
+        "application.py",
+        "context.py",
+        "ports/__init__.py",
+        "ports/providers.py",
+        "py.typed",
+    }
+)
+ALLOWED_CORE_EXPORTS = frozenset(
+    {
+        "CoreContext",
+        "CoreServices",
+        "ProviderCatalog",
+        "ProviderDescriptorsResult",
+        "__version__",
+    }
+)
+SECRET_FIELD_ALLOWLIST = {
+    SecretReference: frozenset(
+        {
+            "key",
+            "name",
+            "purpose",
+            "resolver_ref",
+            "scope",
+            "secret_provider_ref",
+        }
+    )
+}
+SECURITY_SCAN_ROOTS = (
+    "docs",
+    "infrastructure",
+    "packages/python/curios_contracts/src",
+    "packages/python/curios_core/src",
+    "packages/python/curios_observability/src",
+    "packages/typescript/curios-contracts/src",
+)
+SECURITY_SCAN_ROOT_FILES = frozenset(
+    {
+        ".editorconfig",
+        ".gitignore",
+        ".prettierignore",
+        "README.md",
+        "eslint.config.mjs",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "prettier.config.mjs",
+        "pyproject.toml",
+        "tsconfig.base.json",
+        "tsconfig.json",
+    }
+)
+SECURITY_SCAN_SUFFIXES = frozenset(
+    {
+        ".env.example",
+        ".js",
+        ".json",
+        ".md",
+        ".mjs",
+        ".py",
+        ".toml",
+        ".ts",
+        ".txt",
+        ".yaml",
+        ".yml",
+    }
 )
 
 
@@ -248,6 +375,213 @@ def _function_names(source_root: Path) -> set[str]:
     return names
 
 
+def _tracked_files() -> tuple[Path, ...]:
+    result = subprocess.run(
+        ["git", "ls-files"],
+        check=True,
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+    )
+    return tuple(REPO_ROOT / line for line in result.stdout.splitlines() if line)
+
+
+def _tracked_security_scan_files() -> tuple[Path, ...]:
+    scanned: list[Path] = []
+    for path in _tracked_files():
+        relative = path.relative_to(REPO_ROOT).as_posix()
+        if relative in SECURITY_SCAN_ROOT_FILES or any(
+            relative == root or relative.startswith(f"{root}/") for root in SECURITY_SCAN_ROOTS
+        ):
+            if path.name in {"pnpm-lock.yaml", "uv.lock"}:
+                continue
+            if path.name == ".env.example" or path.suffix in SECURITY_SCAN_SUFFIXES:
+                scanned.append(path)
+    return tuple(sorted(scanned))
+
+
+def _relative_repo_path(path: Path) -> str:
+    if path.is_absolute():
+        return path.relative_to(REPO_ROOT).as_posix()
+    return path.as_posix()
+
+
+def _is_approved_placeholder(path: Path, key: str, value: str) -> bool:
+    relative = _relative_repo_path(path)
+    if relative == "infrastructure/local/docker/.env.example":
+        return (
+            key.startswith("CURIOS_")
+            and value.startswith("curios_")
+            and ("dev" in value or "local" in value)
+        )
+    if relative == "infrastructure/local/docker/compose.yaml":
+        return key == "POSTGRES_PASSWORD" and value.startswith("${CURIOS_POSTGRES_PASSWORD:-")
+    return False
+
+
+def _is_sensitive_name(name: str) -> bool:
+    return SECRET_FIELD_TOKEN_RE.search(name) is not None
+
+
+def _looks_like_secret_value(value: str) -> bool:
+    if value == "":
+        return False
+    if value.startswith(("sk-", "pk_", "ghp_", "gho_", "xoxb-", "AKIA")):
+        return True
+    if SECRET_SHAPED_VALUE_RE.search(value) is not None:
+        return True
+    has_lower = any(character.islower() for character in value)
+    has_upper = any(character.isupper() for character in value)
+    has_digit = any(character.isdigit() for character in value)
+    return len(value) >= 20 and sum((has_lower, has_upper, has_digit)) >= 2
+
+
+def _python_secret_scan_violations(path: Path, text: str) -> tuple[str, ...]:
+    violations: list[str] = []
+    tree = ast.parse(text, filename=path.as_posix())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            if CREDENTIAL_URL_RE.search(node.value) is not None:
+                violations.append(f"{path}:{node.lineno}: credential-bearing URL")
+        elif isinstance(node, ast.Assign):
+            target_names = [
+                target.id
+                for target in node.targets
+                if isinstance(target, ast.Name) and _is_sensitive_name(target.id)
+            ]
+            if (
+                target_names
+                and isinstance(node.value, ast.Constant)
+                and isinstance(
+                    node.value.value,
+                    str,
+                )
+            ):
+                value = node.value.value
+                if _looks_like_secret_value(value):
+                    violations.append(
+                        f"{path}:{node.lineno}: secret-shaped assignment {target_names[0]!r}"
+                    )
+        elif isinstance(node, ast.AnnAssign):
+            if (
+                isinstance(node.target, ast.Name)
+                and _is_sensitive_name(node.target.id)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+                and _looks_like_secret_value(node.value.value)
+            ):
+                violations.append(
+                    f"{path}:{node.lineno}: secret-shaped assignment {node.target.id!r}"
+                )
+        elif isinstance(node, ast.keyword):
+            if (
+                node.arg is not None
+                and _is_sensitive_name(node.arg)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+                and _looks_like_secret_value(node.value.value)
+            ):
+                violations.append(f"{path}:{node.value.lineno}: secret-shaped keyword {node.arg!r}")
+        elif isinstance(node, ast.Dict):
+            for key, value_node in zip(node.keys, node.values, strict=False):
+                if (
+                    isinstance(key, ast.Constant)
+                    and isinstance(key.value, str)
+                    and _is_sensitive_name(key.value)
+                    and isinstance(value_node, ast.Constant)
+                    and isinstance(value_node.value, str)
+                    and _looks_like_secret_value(value_node.value)
+                ):
+                    violations.append(
+                        f"{path}:{value_node.lineno}: secret-shaped mapping key {key.value!r}"
+                    )
+    return tuple(violations)
+
+
+def _secret_scan_violations_for_text(path: Path, text: str) -> tuple[str, ...]:
+    if path.suffix == ".py":
+        return _python_secret_scan_violations(path, text)
+
+    violations: list[str] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if CREDENTIAL_URL_RE.search(line) is not None:
+            violations.append(f"{path}:{line_number}: credential-bearing URL")
+        for match in SENSITIVE_ASSIGNMENT_RE.finditer(line):
+            key = match.group("key")
+            value = match.group("value").rstrip(",;")
+            if _is_approved_placeholder(path, key, value):
+                continue
+            violations.append(f"{path}:{line_number}: secret-shaped assignment {key!r}")
+    return tuple(violations)
+
+
+def _secret_field_violations(contract: type[object]) -> tuple[str, ...]:
+    allowed_fields = SECRET_FIELD_ALLOWLIST.get(contract, frozenset())
+    violations: list[str] = []
+    for field in fields(contract):
+        if field.name in allowed_fields:
+            continue
+        if SECRET_FIELD_TOKEN_RE.search(field.name) is not None:
+            violations.append(field.name)
+    return tuple(sorted(violations))
+
+
+def _tracked_package_roots() -> frozenset[str]:
+    roots: set[str] = set()
+    for path in _tracked_files():
+        parts = path.relative_to(REPO_ROOT).parts
+        if len(parts) >= 3 and parts[0] == "packages":
+            roots.add("/".join(parts[:3]))
+    return frozenset(roots)
+
+
+def _tracked_top_level_paths() -> frozenset[str]:
+    return frozenset(path.relative_to(REPO_ROOT).parts[0] for path in _tracked_files())
+
+
+def _core_source_files() -> frozenset[str]:
+    return frozenset(
+        path.relative_to(CORE_SOURCE).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(CORE_SOURCE)
+    )
+
+
+def _core_public_exports() -> frozenset[str]:
+    source = (CORE_SOURCE / "__init__.py").read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=(CORE_SOURCE / "__init__.py").as_posix())
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+            )
+            and isinstance(node.value, ast.Tuple)
+        ):
+            values = [
+                item.value
+                for item in node.value.elts
+                if isinstance(item, ast.Constant) and isinstance(item.value, str)
+            ]
+            return frozenset(values)
+    return frozenset()
+
+
+def _pnpm_workspace_packages(path: Path) -> frozenset[str]:
+    packages: set[str] = set()
+    in_packages_block = False
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw_line.strip()
+        if stripped == "packages:":
+            in_packages_block = True
+            continue
+        if in_packages_block and stripped.startswith("- "):
+            packages.add(stripped[2:].strip("\"'"))
+        elif in_packages_block and stripped and not raw_line.startswith(" "):
+            break
+    return frozenset(packages)
+
+
 def _assert_no_security_failure(condition: bool, message: str) -> None:
     assert condition, f"{SECURITY_FAILURE}: {message}"
 
@@ -347,6 +681,37 @@ def test_security_records_do_not_serialize_secret_values_or_credential_fields() 
             )
 
 
+def test_tracked_security_surfaces_do_not_contain_secret_shaped_literals() -> None:
+    violations = tuple(
+        violation
+        for path in _tracked_security_scan_files()
+        for violation in _secret_scan_violations_for_text(
+            path,
+            path.read_text(encoding="utf-8"),
+        )
+    )
+
+    _assert_no_security_failure(
+        not violations,
+        f"tracked security-scanned surfaces contain secret-shaped literals: {list(violations)}",
+    )
+
+
+def test_secret_scanner_rejects_secret_literals_and_allows_documented_placeholders() -> None:
+    real_source = REPO_ROOT / "packages/python/curios_contracts/src/example.py"
+    placeholder = REPO_ROOT / "infrastructure/local/docker/.env.example"
+
+    assert _secret_scan_violations_for_text(real_source, 'api_key = "sk-live-value"')
+    assert _secret_scan_violations_for_text(
+        real_source,
+        "url = 'https://user:password@example.test/resource'",
+    )
+    assert not _secret_scan_violations_for_text(
+        placeholder,
+        "CURIOS_POSTGRES_PASSWORD=curios_local_dev_password",
+    )
+
+
 def test_secret_principal_and_authority_contracts_reject_secret_value_shapes() -> None:
     with pytest.raises(ValueError, match="secret-shaped"):
         SecretReference(
@@ -383,12 +748,38 @@ def test_security_contract_dataclass_fields_do_not_add_secret_value_slots() -> N
         SecretReference,
     )
     for contract in security_contracts:
-        field_names = {field.name for field in fields(contract)}
-        prohibited = field_names.intersection(PROHIBITED_SECRET_VALUE_FIELDS)
+        prohibited = _secret_field_violations(contract)
         _assert_no_security_failure(
             not prohibited,
             f"{contract.__name__} declares prohibited secret field(s): {sorted(prohibited)}",
         )
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    (
+        "access_token",
+        "api_key",
+        "client_secret",
+        "credential_material",
+        "password",
+        "private_key",
+        "secret",
+        "secret_key",
+        "session_cookie",
+    ),
+)
+def test_secret_field_detector_rejects_semantic_secret_value_variants(field_name: str) -> None:
+    namespace = {"__annotations__": {field_name: str}}
+    synthetic = type("SyntheticSecurityRecord", (), namespace)
+
+    # Convert the synthetic class to a dataclass after construction so the
+    # detector exercises real dataclass field metadata rather than raw strings.
+    from dataclasses import dataclass
+
+    synthetic_dataclass = dataclass(frozen=True)(synthetic)
+
+    assert _secret_field_violations(synthetic_dataclass)
 
 
 def test_security_contract_source_has_no_runtime_security_imports() -> None:
@@ -430,6 +821,14 @@ def test_local_docker_configuration_examples_remain_placeholder_and_curios_prefi
 
 
 def test_core_context_and_services_do_not_implement_security_authority_engines() -> None:
+    _assert_no_security_failure(
+        _core_source_files() == ALLOWED_CORE_SOURCE_FILES,
+        f"curios_core source topology changed: {sorted(_core_source_files())}",
+    )
+    _assert_no_security_failure(
+        _core_public_exports() == ALLOWED_CORE_EXPORTS,
+        f"curios_core public exports changed: {sorted(_core_public_exports())}",
+    )
     core_context_fields = set(get_type_hints(CoreContext))
     _assert_no_security_failure(
         core_context_fields == {"observability", "authority"},
@@ -459,8 +858,34 @@ def test_core_context_and_services_do_not_implement_security_authority_engines()
 
 def test_later_task_security_provider_runtime_surfaces_remain_absent() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
+    unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
+    unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
+    root_pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    python_workspace_members = frozenset(root_pyproject["tool"]["uv"]["workspace"]["members"])
+    node_workspaces = _pnpm_workspace_packages(REPO_ROOT / "pnpm-workspace.yaml")
 
     _assert_no_security_failure(
         not existing,
         f"TASK-BOOT-018+ path(s) unexpectedly exist: {existing}",
+    )
+    _assert_no_security_failure(
+        not unexpected_top_level,
+        f"unexpected tracked top-level path(s): {sorted(unexpected_top_level)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_packages,
+        f"unexpected tracked package root(s): {sorted(unexpected_packages)}",
+    )
+    _assert_no_security_failure(
+        python_workspace_members
+        == {
+            "packages/python/curios_contracts",
+            "packages/python/curios_core",
+            "packages/python/curios_observability",
+        },
+        f"unexpected Python workspace member(s): {sorted(python_workspace_members)}",
+    )
+    _assert_no_security_failure(
+        node_workspaces == {"apps/*", "packages/typescript/*"},
+        f"unexpected Node workspace member(s): {sorted(node_workspaces)}",
     )
