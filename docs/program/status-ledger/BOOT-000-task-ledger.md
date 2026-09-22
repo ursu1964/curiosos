@@ -69,6 +69,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-012 | VALIDATED, FROZEN | Independent review accepted the reconciled event and observability contracts in commit `d9c5edfa98997dc98a428ebc0a72747442117738`; TASK-BOOT-012 uses the frozen `ObjectReference(kind, ref_id)` contract and does not define a second generic reference abstraction. |
 | TASK-BOOT-013 | VALIDATED, FROZEN | Independent review accepted the configuration, security, effect, and policy contracts in commit `6679224e6684a8b7be885a6685020308ff0313e3`; integrated with TASK-BOOT-011 without embedding governance records into work or agent runtime contracts. |
 | TASK-BOOT-014 | TESTED | Repository-level contract/schema verification foundation implemented with deterministic synthetic fixtures and 129 total tests passing; formal generated JSON Schema remains a later derived representation. |
+| TASK-BOOT-015 | TESTED | Repository-level architecture conformance checks were implemented under `tests/architecture/**`; violations map to `ARCHITECTURE_FAILURE`. This task does not self-declare `VALIDATED` or `FROZEN`. |
 | TASK-BOOT-017 | TESTED | Core package foundation implemented and tested in `docs/tasks/TASK-BOOT-017-evidence.md`; not self-declared VALIDATED or FROZEN. |
 
 ## Outstanding BOOT Acceptance Verification Items
