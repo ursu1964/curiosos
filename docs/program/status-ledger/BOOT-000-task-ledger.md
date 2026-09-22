@@ -82,6 +82,13 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-025 | VALIDATED, FROZEN | Independent PG-11 revalidation accepted the corrected CI quality gates at commit `1aebc56e89de20ab7cbf6193ac6977c2f73ecfc0`; see `docs/tasks/PG-11-validation-evidence.md`. Hosted GitHub Actions execution has not yet been claimed as validation evidence. |
 | TASK-BOOT-026 | VALIDATED, FROZEN | Independent PG-12 validation accepted the BOOT acceptance suite at commit `6263f0eb26a87d6c730d42bbffc1b3f3bde2a220`; see `docs/tasks/PG-12-validation-evidence.md`. BOOT closure still requires TASK-BOOT-027 and TASK-BOOT-028. |
 | TASK-BOOT-027 | VALIDATED, FROZEN | Independent PG-13 verification accepted the complete integrated BOOT baseline at commit `a01d678f343b8eb7245359e035cf3722d0ceb9dd`; see `docs/tasks/TASK-BOOT-027-independent-verification-record.md`. BOOT closure still requires TASK-BOOT-028. |
+| TASK-BOOT-028 | VALIDATED, FROZEN | PG-14 recorded the final BOOT freeze/status-ledger closure; see `docs/tasks/TASK-BOOT-028-evidence.md` and `docs/program/bootstrap/BOOT-000-freeze-record.md`. The pre-closure verified baseline is `2b48cf7271cbe91b2bc48c1a95d68e0c55b4dd78`; the final BOOT baseline is the TASK-BOOT-028 closure commit after this record is committed and integrated. |
+
+## BOOT-000 Program Closure
+
+| Program | Lifecycle | Evidence |
+| --- | --- | --- |
+| BOOT-000 | VALIDATED, FROZEN | All `TASK-BOOT-001` through `TASK-BOOT-028` entries are `VALIDATED, FROZEN`; TASK-BOOT-027 independently verified the complete integrated BOOT baseline; TASK-BOOT-028 records the final BOOT freeze. |
 
 ## Outstanding BOOT Acceptance Verification Items
 
