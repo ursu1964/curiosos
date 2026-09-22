@@ -1029,13 +1029,9 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {"packages/python/curios_policy"}
     assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {"packages/python/curios_policy"}
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
-    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {
-        "packages/python/curios_runtime"
-    }
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-005"] == {"packages/python/curios_runtime"}
-    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-005"] == {
-        "packages/python/curios_runtime"
-    }
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-005"] == {"packages/python/curios_runtime"}
     assert "TASK-M0-006" not in M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK
     assert "TASK-M0-007" not in M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
