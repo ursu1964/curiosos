@@ -1,0 +1,24 @@
+{
+  "name": "curiosos",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.5.1",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=12.5.1 <13"
+  },
+  "scripts": {
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx --max-warnings=0",
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,json,yaml,yml}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.11.0",
+    "prettier": "3.9.8",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0"
+  }
+}
