@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-004-EVIDENCE
 title: TASK-M0-004 Event and Evidence Runtime Store Evidence
-lifecycle: TESTED
+lifecycle: FROZEN
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-004
@@ -135,9 +135,19 @@ The PostgreSQL integration used isolated generated schemas, stopped the local
 PostgreSQL service cleanly, and preserved the
 `curios-local-docker_postgres_data` named volume.
 
+## Independent Revalidation
+
+Independent revalidation of corrected candidate
+`002f04b19e964ed42ab3d6bd8fd1720010337163` accepted the append-order
+correction and runtime-store boundary.
+
+Validation evidence:
+
+- `docs/tasks/TASK-M0-004-validation-evidence.md`
+
 ## Lifecycle
 
-TASK-M0-004 is `IMPLEMENTED, TESTED` only. Independent validation is still
-required before `VALIDATED, FROZEN`.
+TASK-M0-004 is `VALIDATED, FROZEN`.
 
 TASK-M0-005 remains `READY`. TASK-M0-006 through TASK-M0-014 remain `BLOCKED`.
+Frozen M0-004 and M0-005 must integrate before downstream readiness changes.
