@@ -147,26 +147,23 @@ class M0WorkRepository:
 
     def read_work(self, work_id: WorkId) -> StoredWorkItem | None:
         """Read a persisted work item by canonical work ID."""
+        return self._read_work(work_id, operation="read_work")
+
+    def _read_work(self, work_id: WorkId, *, operation: str) -> StoredWorkItem | None:
         if not isinstance(work_id, WorkId):
             msg = "work_id must be a WorkId"
             raise TypeError(msg)
+        error: RepositoryError | None = None
         try:
             with self._store.transaction() as transaction:
                 record = transaction.read_record(PersistenceRecordKind.WORK, str(work_id))
         except PersistenceError as exc:
-            _raise_repository_error(_translate_persistence_error(exc, operation="read_work"))
+            error = _translate_persistence_error(exc, operation=operation)
+        if error is not None:
+            _raise_repository_error(error)
         if record is None:
             return None
-        item = record_to_canonical(record)
-        if not isinstance(item, WorkItem):
-            _raise_repository_error(
-                RepositoryError(
-                    RepositoryErrorCode.PERSISTENCE_FAILURE,
-                    "Persisted work record did not decode as WorkItem.",
-                    retryable=False,
-                    operation="read_work",
-                )
-            )
+        item = _decode_work_record(record, operation=operation)
         return StoredWorkItem(item=item, version=_record_version(record))
 
     def transition_work(
@@ -179,7 +176,7 @@ class M0WorkRepository:
     ) -> StoredWorkItem:
         """Move a work item through an allowed M0 state transition."""
         target_state = WorkItemState(target_state)
-        current = self.read_work(work_id)
+        current = self._read_work(work_id, operation="transition_work")
         if current is None:
             _raise_repository_error(_not_found("transition_work", f"work {work_id} was not found"))
         if expected_version is not None and expected_version != current.version:
@@ -208,9 +205,18 @@ class M0WorkRepository:
 
     def read_execution(self, execution_id: ExecutionId) -> StoredExecutionRecord | None:
         """Read a persisted execution-attempt record by canonical execution ID."""
+        return self._read_execution(execution_id, operation="read_execution")
+
+    def _read_execution(
+        self,
+        execution_id: ExecutionId,
+        *,
+        operation: str,
+    ) -> StoredExecutionRecord | None:
         if not isinstance(execution_id, ExecutionId):
             msg = "execution_id must be an ExecutionId"
             raise TypeError(msg)
+        error: RepositoryError | None = None
         try:
             with self._store.transaction() as transaction:
                 record = transaction.read_record(
@@ -218,19 +224,12 @@ class M0WorkRepository:
                     str(execution_id),
                 )
         except PersistenceError as exc:
-            _raise_repository_error(_translate_persistence_error(exc, operation="read_execution"))
+            error = _translate_persistence_error(exc, operation=operation)
+        if error is not None:
+            _raise_repository_error(error)
         if record is None:
             return None
-        execution = record_to_canonical(record)
-        if not isinstance(execution, ExecutionRecord):
-            _raise_repository_error(
-                RepositoryError(
-                    RepositoryErrorCode.PERSISTENCE_FAILURE,
-                    "Persisted execution record did not decode as ExecutionRecord.",
-                    retryable=False,
-                    operation="read_execution",
-                )
-            )
+        execution = _decode_execution_record(record, operation=operation)
         return StoredExecutionRecord(record=execution, version=_record_version(record))
 
     def transition_execution(
@@ -243,7 +242,7 @@ class M0WorkRepository:
     ) -> StoredExecutionRecord:
         """Move an execution attempt through an allowed M0 state transition."""
         target_state = ExecutionState(target_state)
-        current = self.read_execution(execution_id)
+        current = self._read_execution(execution_id, operation="transition_execution")
         if current is None:
             _raise_repository_error(
                 _not_found("transition_execution", f"execution {execution_id} was not found")
@@ -381,6 +380,32 @@ def _record_version(record: PersistenceRecord) -> str:
     return sha256(encoded).hexdigest()
 
 
+def _decode_work_record(record: PersistenceRecord, *, operation: str) -> WorkItem:
+    error: RepositoryError | None = None
+    try:
+        item = record_to_canonical(record)
+    except Exception:
+        error = _corrupt_record(operation, "work", "WorkItem")
+    else:
+        if isinstance(item, WorkItem):
+            return item
+        error = _corrupt_record(operation, "work", "WorkItem")
+    _raise_repository_error(error)
+
+
+def _decode_execution_record(record: PersistenceRecord, *, operation: str) -> ExecutionRecord:
+    error: RepositoryError | None = None
+    try:
+        execution = record_to_canonical(record)
+    except Exception:
+        error = _corrupt_record(operation, "execution", "ExecutionRecord")
+    else:
+        if isinstance(execution, ExecutionRecord):
+            return execution
+        error = _corrupt_record(operation, "execution", "ExecutionRecord")
+    _raise_repository_error(error)
+
+
 def _translate_persistence_error(exc: PersistenceError, *, operation: str) -> RepositoryError:
     if exc.code is PersistenceErrorCode.CONFLICT:
         return _conflict(operation)
@@ -388,6 +413,15 @@ def _translate_persistence_error(exc: PersistenceError, *, operation: str) -> Re
         RepositoryErrorCode.PERSISTENCE_FAILURE,
         "Work repository persistence operation failed.",
         retryable=exc.retryable,
+        operation=operation,
+    )
+
+
+def _corrupt_record(operation: str, record_name: str, canonical_name: str) -> RepositoryError:
+    return RepositoryError(
+        RepositoryErrorCode.PERSISTENCE_FAILURE,
+        f"Persisted {record_name} record did not decode as {canonical_name}.",
+        retryable=False,
         operation=operation,
     )
 
@@ -411,4 +445,4 @@ def _not_found(operation: str, message: str) -> RepositoryError:
 
 
 def _raise_repository_error(error: RepositoryError) -> NoReturn:
-    raise error
+    raise error from None
