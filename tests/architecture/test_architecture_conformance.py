@@ -34,6 +34,7 @@ FRONTEND_DIRECTION_RULE = "TypeScript package must not be upstream of canonical 
 INFRASTRUCTURE_RULE = "canonical domain packages must not import tooling or infrastructure"
 API_BOUNDARY_RULE = "FastAPI service composition must remain an outer application boundary"
 WEB_BOUNDARY_RULE = "web bootstrap must remain an outer frontend boundary"
+M0_INWARD_DEPENDENCY_RULE = "M0 implementation packages must not become inward dependencies"
 
 FASTAPI_IMPORTS = frozenset({"fastapi", "starlette"})
 SQLALCHEMY_IMPORTS = frozenset({"alembic", "sqlalchemy", "sqlmodel"})
@@ -60,6 +61,13 @@ OTEL_IMPLEMENTATION_IMPORTS = frozenset(
 DOCKER_TOOLING_IMPORTS = frozenset({"compose", "docker", "python_on_whales"})
 FRONTEND_RUNTIME_IMPORTS = frozenset({"node", "npm", "react", "typescript", "vite"})
 REPOSITORY_TOOLING_IMPORTS = frozenset({"infrastructure", "tooling"})
+M0_IMPLEMENTATION_IMPORTS = frozenset(
+    {
+        "curios_persistence",
+        "curios_policy",
+        "curios_runtime",
+    }
+)
 WEB_ALLOWED_DEPENDENCIES = frozenset(
     {
         "@curiosos/curios-contracts",
@@ -90,6 +98,7 @@ WEB_FORBIDDEN_SOURCE_IMPORTS = frozenset(
 CONTRACTS_FORBIDDEN_IMPORTS = frozenset(
     {
         "curios_core",
+        *M0_IMPLEMENTATION_IMPORTS,
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -103,6 +112,7 @@ CONTRACTS_FORBIDDEN_IMPORTS = frozenset(
 
 CORE_FORBIDDEN_IMPORTS = frozenset(
     {
+        *M0_IMPLEMENTATION_IMPORTS,
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -464,6 +474,33 @@ def test_curios_core_source_and_metadata_have_no_outward_dependencies() -> None:
             rule=CORE_RULE,
             pyproject_path=CORE_PACKAGE / "pyproject.toml",
             forbidden_dependencies=CORE_FORBIDDEN_IMPORTS,
+        ),
+    )
+
+    _assert_no_violations(violations)
+
+
+def test_m0_runtime_surfaces_are_not_inward_dependencies_of_contracts_or_core() -> None:
+    violations = (
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=CONTRACTS_SOURCE,
+            forbidden_imports=M0_IMPLEMENTATION_IMPORTS,
+        ),
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=CORE_SOURCE,
+            forbidden_imports=M0_IMPLEMENTATION_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=CONTRACTS_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=M0_IMPLEMENTATION_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=CORE_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=M0_IMPLEMENTATION_IMPORTS,
         ),
     )
 
