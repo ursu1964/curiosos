@@ -86,6 +86,9 @@ jobs:
       - name: PostgreSQL provider integration test
         run: uv run pytest tests/integration/test_postgres_provider_integration.py -q
 
+      - name: BOOT acceptance tests
+        run: uv run pytest tests/acceptance -q
+
       - name: Full pytest suite
         run: uv run pytest -q
 

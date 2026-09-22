@@ -142,6 +142,11 @@ AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
         "tests/integration/test_postgres_provider_integration.py",
     }
 )
+AUTHORIZED_BOOT026_ACCEPTANCE_TESTS = frozenset(
+    {
+        "tests/acceptance/test_boot_acceptance.py",
+    }
+)
 AUTHORIZED_GITHUB_PATHS = frozenset(
     {
         ".github/workflows/quality-gates.yml",
@@ -233,6 +238,7 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_ollama/src",
     "packages/python/curios_postgres_provider/src",
     "packages/typescript/curios-contracts/src",
+    "tests/acceptance",
 )
 SECURITY_SCAN_ROOT_FILES = frozenset(
     {
@@ -577,6 +583,14 @@ def _tracked_integration_tests() -> frozenset[str]:
         path.relative_to(REPO_ROOT).as_posix()
         for path in _tracked_files()
         if path.relative_to(REPO_ROOT).as_posix().startswith("tests/integration/")
+    )
+
+
+def _tracked_acceptance_tests() -> frozenset[str]:
+    return frozenset(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in _tracked_files()
+        if path.relative_to(REPO_ROOT).as_posix().startswith("tests/acceptance/")
     )
 
 
@@ -937,6 +951,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_
     unexpected_integration_tests = (
         _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
     )
+    unexpected_acceptance_tests = _tracked_acceptance_tests() - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
     unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
@@ -953,6 +968,11 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_
         not unexpected_integration_tests,
         "unexpected integration test path(s) outside TASK-BOOT-019: "
         f"{sorted(unexpected_integration_tests)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_acceptance_tests,
+        "unexpected acceptance test path(s) outside TASK-BOOT-026: "
+        f"{sorted(unexpected_acceptance_tests)}",
     )
     _assert_no_security_failure(
         not unexpected_top_level,

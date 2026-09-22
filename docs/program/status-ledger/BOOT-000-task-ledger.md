@@ -80,6 +80,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-023 | VALIDATED, FROZEN | Independent PG-10 validation accepted the API integration-test foundation; see `docs/tasks/PG-10-validation-evidence.md`. |
 | TASK-BOOT-024 | VALIDATED, FROZEN | Independent PG-10 validation accepted the minimal React/TypeScript/Vite web bootstrap; see `docs/tasks/PG-10-validation-evidence.md`. |
 | TASK-BOOT-025 | VALIDATED, FROZEN | Independent PG-11 revalidation accepted the corrected CI quality gates at commit `1aebc56e89de20ab7cbf6193ac6977c2f73ecfc0`; see `docs/tasks/PG-11-validation-evidence.md`. Hosted GitHub Actions execution has not yet been claimed as validation evidence. |
+| TASK-BOOT-026 | VALIDATED, FROZEN | Independent PG-12 validation accepted the BOOT acceptance suite at commit `6263f0eb26a87d6c730d42bbffc1b3f3bde2a220`; see `docs/tasks/PG-12-validation-evidence.md`. BOOT closure still requires TASK-BOOT-027 and TASK-BOOT-028. |
 
 ## Outstanding BOOT Acceptance Verification Items
 
