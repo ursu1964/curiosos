@@ -10,6 +10,7 @@ members = [
     "curios-core",
     "curios-observability",
     "curios-ollama",
+    "curios-policy",
     "curios-postgres-provider",
     "curiosos",
 ]
@@ -207,6 +208,17 @@ requires-dist = [
     { name = "curios-contracts", editable = "packages/python/curios_contracts" },
     { name = "curios-core", editable = "packages/python/curios_core" },
 ]
+
+[[package]]
+name = "curios-policy"
+version = "0.0.0"
+source = { editable = "packages/python/curios_policy" }
+dependencies = [
+    { name = "curios-contracts" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "curios-contracts", editable = "packages/python/curios_contracts" }]
 
 [[package]]
 name = "curios-postgres-provider"
