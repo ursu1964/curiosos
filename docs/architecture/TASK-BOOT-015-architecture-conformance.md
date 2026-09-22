@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-015-ARCHITECTURE-CONFORMANCE
 title: Curios Architecture Conformance Checks
-lifecycle: TESTED
+lifecycle: FROZEN
 artifact_type: architecture_conformance
 authority: implementation_agent
 task: TASK-BOOT-015
