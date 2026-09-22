@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-023-EVIDENCE
 title: TASK-BOOT-023 API Integration Tests Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-023
@@ -16,6 +16,8 @@ task: TASK-BOOT-023
 | 1 | IMPLEMENTING | Work began on branch `task/boot-023-api-integration` from required baseline `141c689 Validate and freeze TASK-BOOT-022`. |
 | 2 | IMPLEMENTED | Deterministic repository-level FastAPI integration tests, a test-only `httpx` dependency, and a narrow TASK-016 integration-test topology update were added. |
 | 3 | TESTED | Required TASK-023 checks and repository verification passed; see verification evidence below. |
+| 4 | VALIDATED | Independent PG-10 validation accepted TASK-BOOT-023 at integrated baseline `a678e1477fe2c07e3406047e978b56d0a5966675`; see `docs/tasks/PG-10-validation-evidence.md`. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-023 as `VALIDATED, FROZEN`. |
 
 ## Acceptance Mapping
 
@@ -91,7 +93,20 @@ DAG/router, agent runtime, model router, policy/authority engine, migrations,
 repository architecture, new canonical semantics, or TASK-BOOT-024+ behavior was
 introduced.
 
+## Independent Validation
+
+Independent PG-10 validation was performed against integrated baseline
+`a678e1477fe2c07e3406047e978b56d0a5966675`.
+
+| Validation Area | Result |
+| --- | --- |
+| Integration value | Passed: tests exercise real FastAPI `TestClient` construction, HTTP routing, JSON serialization, and lifespan handling beyond package-local TASK-022 unit tests. |
+| Endpoint behavior | Passed: `/health/live`, `/health/ready`, and `/providers` preserve their frozen TASK-022 meanings and remain deterministic. |
+| Failure translation | Passed: provider and configuration `Result.failure` values translate to bounded HTTP 503 responses with canonical `ContractError` detail. |
+| Provider determinism | Passed: TASK-023 tests use fakes/stubs only and introduce no live Ollama, network, GPU, model download, or live PostgreSQL requirement. |
+| Warning audit | Passed with technical-debt note: the two warnings originate in FastAPI/Starlette test dependencies and are not Curios validation defects. |
+| Scope review | Passed: no frontend behavior, production API behavior change, scheduler, DAG/router, agent runtime, policy engine, persistence architecture, or later task implementation was introduced. |
+
 ## Final Status
 
-`TASK-BOOT-023` is `IMPLEMENTED, TESTED`. It is not self-declared
-`VALIDATED` or `FROZEN`.
+`TASK-BOOT-023` is `VALIDATED, FROZEN` after independent PG-10 validation.

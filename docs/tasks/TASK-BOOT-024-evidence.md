@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-024-EVIDENCE
 title: TASK-BOOT-024 Web Bootstrap Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-BOOT-024
@@ -9,6 +9,16 @@ date: 2026-09-22
 ---
 
 # TASK-BOOT-024 Web Bootstrap Evidence
+
+## Lifecycle Trace
+
+| Step | Status | Evidence |
+| --- | --- | --- |
+| 1 | IMPLEMENTING | Work began on branch `task/boot-024-web-bootstrap` from required baseline `141c689 Validate and freeze TASK-BOOT-022`. |
+| 2 | IMPLEMENTED | Minimal `apps/web` React/TypeScript/Vite bootstrap, workspace metadata, tests, architecture/security transitions, and documentation were added. |
+| 3 | TESTED | Required frontend, repository, architecture, and security checks passed; see verification evidence below. |
+| 4 | VALIDATED | Independent PG-10 validation accepted TASK-BOOT-024 at integrated baseline `a678e1477fe2c07e3406047e978b56d0a5966675`; see `docs/tasks/PG-10-validation-evidence.md`. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-024 as `VALIDATED, FROZEN`. |
 
 ## Scope
 
@@ -105,7 +115,20 @@ Forbidden scope not changed:
 - No scheduler, DAG/router, model-router, agent runtime, policy/authority
   engine, backend persistence, migrations, generated API client, or product UI.
 
+## Independent Validation
+
+Independent PG-10 validation was performed against integrated baseline
+`a678e1477fe2c07e3406047e978b56d0a5966675`.
+
+| Validation Area | Result |
+| --- | --- |
+| Bootstrap scope | Passed: `apps/web` is a minimal React shell with no product workflow or later runtime behavior. |
+| API boundary | Passed: frontend references only `/health/live`, `/health/ready`, and `/providers`; tests/build require no live backend. |
+| Workspace ownership | Passed: `apps/web` is owned by the pnpm workspace, appears in root TypeScript references, and is excluded from the Python workspace. |
+| Dependency audit | Passed: React, Vite, TypeScript, Vitest, jsdom, and type/plugin dependencies are required for the authorized bootstrap; no UI framework, state manager, API SDK, backend, or provider dependency was added. |
+| Security review | Passed: no embedded secrets or credentials were found; TASK-016 scans the new web surface while continuing to block unrelated apps, services, providers, and later runtime surfaces. |
+| Architecture review | Passed: web does not import Python implementation internals, backend/provider packages, or provider-native objects, and does not become Curios semantic authority. |
+
 ## Final Implementation Status
 
-`TASK-BOOT-024` is `IMPLEMENTED` and `TESTED`. This implementation does not
-self-declare `VALIDATED` or `FROZEN`.
+`TASK-BOOT-024` is `VALIDATED, FROZEN` after independent PG-10 validation.
