@@ -134,7 +134,6 @@ LATER_TASK_PATHS = (
     "apps",
     "services",
     "providers",
-    "packages/python/curios_config",
     "packages/python/curios_postgres",
     "packages/python/curios_telemetry",
     "packages/python/curios_ollama",
@@ -164,6 +163,7 @@ ALLOWED_TOP_LEVEL_PATHS = frozenset(
 )
 ALLOWED_PACKAGE_ROOTS = frozenset(
     {
+        "packages/python/curios_config",
         "packages/python/curios_contracts",
         "packages/python/curios_core",
         "packages/python/curios_observability",
@@ -204,6 +204,7 @@ SECRET_FIELD_ALLOWLIST = {
 SECURITY_SCAN_ROOTS = (
     "docs",
     "infrastructure",
+    "packages/python/curios_config/src",
     "packages/python/curios_contracts/src",
     "packages/python/curios_core/src",
     "packages/python/curios_observability/src",
@@ -879,6 +880,7 @@ def test_later_task_security_provider_runtime_surfaces_remain_absent() -> None:
     _assert_no_security_failure(
         python_workspace_members
         == {
+            "packages/python/curios_config",
             "packages/python/curios_contracts",
             "packages/python/curios_core",
             "packages/python/curios_observability",

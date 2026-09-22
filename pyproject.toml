@@ -21,6 +21,7 @@ default-groups = ["dev"]
 members = [
   "packages/python/curios_contracts",
   "packages/python/curios_core",
+  "packages/python/curios_config",
   "packages/python/curios_observability",
 ]
 
