@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-001-EVIDENCE
 title: TASK-M0-001 M0 Topology and Guardrail Transition Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-001
@@ -136,9 +136,28 @@ non-blocking dependency warnings.
 
 None.
 
+## Independent Validation
+
+TASK-M0-001 independent validation passed against candidate
+`2ef5aea32c2cca1c6f36ba6fdb41fa61e9aefe16`.
+
+Validation confirmed:
+
+- implementation scope is limited to topology/security/architecture guardrails,
+  documentation, evidence, and status ledger updates;
+- no production implementation was added for persistence, policy evaluation,
+  event/evidence runtime, work repository, runtime service, provider executor,
+  API work routes, or web work console;
+- planned M0 surfaces are distinct from currently authorized tracked surfaces;
+- current tracked topology remains exact;
+- `curios_contracts` and `curios_core` cannot depend on planned M0
+  implementation packages;
+- M1+ deferred scope remains blocked;
+- full deterministic verification passed.
+
 ## Lifecycle State
 
-TASK-M0-001 is `IMPLEMENTED, TESTED`.
+TASK-M0-001 is `VALIDATED, FROZEN`.
 
-It is not `VALIDATED` or `FROZEN`; independent validation must make that
-decision. TASK-M0-002 through TASK-M0-014 remain `BLOCKED`.
+TASK-M0-002 and TASK-M0-003 are `READY` after TASK-M0-001 is integrated into
+the main M0 baseline. TASK-M0-004 through TASK-M0-014 remain `BLOCKED`.
