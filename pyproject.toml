@@ -45,6 +45,7 @@ warn_unused_configs = true
 minversion = "9.0"
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 markers = [
+  "acceptance: BOOT acceptance tests that verify cross-component foundation behavior.",
   "integration: Cross-package integration tests; some cases use Docker-backed services.",
 ]
 pythonpath = [
