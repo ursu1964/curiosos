@@ -1,7 +1,7 @@
 ---
 id: CONTRACT-BOOT-012-EVENTS-OBSERVABILITY
 title: Event and Observability Canonical Curios Contracts
-lifecycle: IMPLEMENTED
+lifecycle: FROZEN
 artifact_type: contract
 authority: authoritative
 task: TASK-BOOT-012
