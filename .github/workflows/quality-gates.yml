@@ -1,0 +1,136 @@
+name: Quality Gates
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python, Backend, Providers, Integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: Validate TOML manifests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          for path in sorted(Path(".").rglob("pyproject.toml")):
+              tomllib.loads(path.read_text(encoding="utf-8"))
+          PY
+
+      - name: Check uv lock consistency
+        run: uv lock --check
+
+      - name: Install locked Python workspace
+        run: uv sync --locked --all-groups --all-packages
+
+      - name: Validate LOCAL_DOCKER PostgreSQL compose config
+        run: >
+          docker compose
+          --env-file infrastructure/local/docker/.env.example
+          -f infrastructure/local/docker/compose.yaml
+          config --quiet
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: mypy strict baseline
+        run: uv run mypy apps/api/src packages/python/*/src
+
+      - name: Package-local Python tests
+        run: >
+          uv run pytest
+          apps/api/tests
+          packages/python/curios_contracts/tests
+          packages/python/curios_core/tests
+          packages/python/curios_config/tests
+          packages/python/curios_postgres_provider/tests
+          packages/python/curios_ollama/tests
+          packages/python/curios_observability/tests
+          -q
+
+      - name: Repository contract and schema tests
+        run: uv run pytest tests/contract tests/schema -q
+
+      - name: Architecture tests
+        run: uv run pytest tests/architecture -q
+
+      - name: Security tests
+        run: uv run pytest tests/security -q
+
+      - name: API integration tests
+        run: uv run pytest tests/integration/test_api_integration.py -q
+
+      - name: PostgreSQL provider integration test
+        run: uv run pytest tests/integration/test_postgres_provider_integration.py -q
+
+      - name: Full pytest suite
+        run: uv run pytest -q
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.5.1 --activate
+
+      - name: Install locked Node workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Repository frontend checks
+        run: pnpm check
+
+      - name: apps/web tests
+        run: pnpm --dir apps/web test
+
+      - name: apps/web typecheck
+        run: pnpm --dir apps/web typecheck
+
+      - name: apps/web production build
+        run: pnpm --dir apps/web build
+
+  repository:
+    name: Repository Hygiene
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Diff whitespace
+        run: git diff --check
