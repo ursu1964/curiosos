@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-022-FASTAPI-SERVICE-COMPOSITION
 title: TASK-BOOT-022 FastAPI Service Composition Boundary
-lifecycle: TESTED
+lifecycle: FROZEN
 artifact_type: architecture
 authority: implementation_agent
 task: TASK-BOOT-022
@@ -46,3 +46,10 @@ Curios semantic authority.
 TASK-BOOT-022 does not implement scheduler, DAG, model-router, agent-runtime,
 policy/authority engine, persistence repository architecture, migrations,
 frontend behavior, CI, or TASK-BOOT-023+ integration-test expansion.
+
+## Validation
+
+Independent validation accepted this FastAPI service-composition boundary at
+commit `fff9156475dbfb792e8908fcabda91922fe36650`. The accepted boundary is
+`VALIDATED, FROZEN` and remains limited to the outer application composition
+surface described above.

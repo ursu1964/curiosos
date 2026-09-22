@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-022-EVIDENCE
 title: TASK-BOOT-022 FastAPI Service Composition Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-022
@@ -16,6 +16,8 @@ task: TASK-BOOT-022
 | 1 | IMPLEMENTING | Work began from committed main HEAD `a5c91e107da34007fd3e5de9bcd5158a8baeec70` after PG-08 was closed. |
 | 2 | IMPLEMENTED | Minimal FastAPI application package, service composition boundary, package-local tests, architecture/security transitions, workspace metadata, and documentation were added. |
 | 3 | TESTED | Required deterministic checks passed; see verification evidence below. |
+| 4 | VALIDATED | Independent validation accepted the FastAPI service-composition boundary at commit `fff9156475dbfb792e8908fcabda91922fe36650`. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-022 as `VALIDATED, FROZEN`. |
 
 ## Acceptance Mapping
 
@@ -73,7 +75,24 @@ authority/grant engine, scheduler, DAG engine, model router, agent runtime,
 persistence repository architecture, migrations, frontend, CI, or TASK-BOOT-023+
 implementation was introduced.
 
+## Independent Validation
+
+Independent validation was performed against commit
+`fff9156475dbfb792e8908fcabda91922fe36650`.
+
+| Validation Area | Result |
+| --- | --- |
+| Acceptance matrix | Passed: all mandatory TASK-BOOT-022 criteria were satisfied. |
+| FastAPI boundary | Passed: FastAPI is owned by `apps/api`; `curios_contracts`, `curios_core`, and provider packages do not import or depend on the API layer or FastAPI. |
+| Composition/provider wiring | Passed: frozen configuration, core, telemetry, PostgreSQL, and Ollama provider boundaries are reused; PostgreSQL and Ollama construction remain explicit and optional. |
+| Endpoint behavior | Passed: liveness is bounded and provider-independent; readiness and provider listing derive from canonical configuration and provider descriptor results. |
+| Failure translation | Passed: bounded `Result.failure`/`ContractError` values are translated to HTTP 503 at the outer boundary without replacing canonical error semantics. |
+| Dependency audit | Passed: `fastapi` and Curios provider dependencies are required by `apps/api`; no dependency leaks inward. |
+| Security topology | Passed: TASK-016 topology permits exactly `apps/api` as the TASK-022 application surface; unrelated apps, services, provider trees, and later runtime surfaces remain blocked. |
+| Architecture conformance | Passed: architecture checks continue to block inward FastAPI/provider contamination and now verify the API package remains an outer boundary. |
+| Scope review | Passed: no TASK-BOOT-023+ implementation, frontend, scheduler, DAG/router, agent runtime, policy engine, migrations, repository/domain persistence architecture, model routing, or new canonical contract semantics were introduced. |
+| Mechanical verification | Passed: TOML validation, `uv lock --check`, locked sync, Ruff, Ruff format check, mypy, package tests, repository tests, Docker-backed PostgreSQL integration, full pytest, and `git diff --check`. |
+
 ## Final Status
 
-`TASK-BOOT-022` is `IMPLEMENTED` and `TESTED`. This task does not self-declare
-`VALIDATED` or `FROZEN`.
+`TASK-BOOT-022` is `VALIDATED, FROZEN` after independent validation.
