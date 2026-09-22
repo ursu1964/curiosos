@@ -44,6 +44,7 @@ class PersistenceErrorCode(StrEnum):
     CONFIGURATION = "CONFIGURATION"
     CONNECTIVITY = "CONNECTIVITY"
     CONFLICT = "CONFLICT"
+    INTEGRITY = "INTEGRITY"
     SCHEMA = "SCHEMA"
     UNKNOWN = "UNKNOWN"
 
@@ -204,7 +205,7 @@ class PersistenceTransaction:
         """Read one primitive record by kind and canonical ID."""
         kind = PersistenceRecordKind(kind)
         table = TABLES_BY_RECORD_KIND[kind]
-        statement = select(table.c.canonical_id, table.c.payload).where(
+        statement = select(table.c.canonical_id, table.c.payload, table.c.payload_sha256).where(
             table.c.canonical_id == record_id
         )
         try:
@@ -214,11 +215,60 @@ class PersistenceTransaction:
         else:
             if row is None:
                 return None
+            payload = _require_mapping(row["payload"], "payload")
+            _verify_payload_hash(
+                payload=payload,
+                payload_sha256=_require_str(row["payload_sha256"], "payload_sha256"),
+                operation=f"read_{kind.value}",
+            )
             return PersistenceRecord(
                 kind=kind,
                 record_id=_require_str(row["canonical_id"], "canonical_id"),
-                payload=_require_mapping(row["payload"], "payload"),
+                payload=payload,
             )
+        _raise_persistence_error(error)
+
+    def list_records(
+        self,
+        kind: PersistenceRecordKind,
+        *,
+        limit: int,
+    ) -> tuple[PersistenceRecord, ...]:
+        """List primitive records deterministically within a bounded limit."""
+        kind = PersistenceRecordKind(kind)
+        if not isinstance(limit, int):
+            msg = "limit must be an int"
+            raise TypeError(msg)
+        if limit < 1 or limit > 1000:
+            msg = "limit must be between 1 and 1000"
+            raise ValueError(msg)
+        table = TABLES_BY_RECORD_KIND[kind]
+        statement = (
+            select(table.c.canonical_id, table.c.payload, table.c.payload_sha256)
+            .order_by(table.c.append_ordinal.asc())
+            .limit(limit)
+        )
+        try:
+            rows = tuple(self._connection.execute(statement).mappings())
+        except SQLAlchemyError as exc:
+            error = _translate_error(exc, operation=f"list_{kind.value}")
+        else:
+            records: list[PersistenceRecord] = []
+            for row in rows:
+                payload = _require_mapping(row["payload"], "payload")
+                _verify_payload_hash(
+                    payload=payload,
+                    payload_sha256=_require_str(row["payload_sha256"], "payload_sha256"),
+                    operation=f"list_{kind.value}",
+                )
+                records.append(
+                    PersistenceRecord(
+                        kind=kind,
+                        record_id=_require_str(row["canonical_id"], "canonical_id"),
+                        payload=payload,
+                    )
+                )
+            return tuple(records)
         _raise_persistence_error(error)
 
     def count_records(self, kind: PersistenceRecordKind) -> int:
@@ -366,6 +416,23 @@ def _payload_sha256(payload: Mapping[str, object]) -> str:
         "utf-8"
     )
     return sha256(encoded).hexdigest()
+
+
+def _verify_payload_hash(
+    *,
+    payload: Mapping[str, object],
+    payload_sha256: str,
+    operation: str,
+) -> None:
+    if _payload_sha256(payload) == payload_sha256:
+        return
+    error = PersistenceError(
+        PersistenceErrorCode.INTEGRITY,
+        "Persistence record payload hash does not match stored payload.",
+        retryable=False,
+        operation=operation,
+    )
+    _raise_persistence_error(error)
 
 
 def _translate_error(exc: SQLAlchemyError, *, operation: str) -> PersistenceError:

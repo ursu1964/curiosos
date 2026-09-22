@@ -14,7 +14,7 @@ date: 2026-09-22
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. PG-M0-02A integrated validated/frozen TASK-M0-002 and TASK-M0-003; TASK-M0-004 and TASK-M0-005 are ready as the next M0 wave. |
+| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-004 is validated/frozen for the event/evidence runtime store; TASK-M0-005 remains ready independently. Frozen M0-004 and M0-005 must still integrate before downstream readiness changes. |
 
 ## Task Status
 
@@ -23,7 +23,7 @@ date: 2026-09-22
 | TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | VALIDATED, FROZEN | Independent validation accepted the M0 topology/security/architecture guardrail transition. |
 | TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | VALIDATED, FROZEN | Independent revalidation accepted the corrected PostgreSQL runtime persistence foundation and public exception boundary. |
 | TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | VALIDATED, FROZEN | Independent revalidation accepted the corrected minimal policy evaluator after the formatter-only guardrail-test correction. PG-M0-02 integration with frozen TASK-M0-002 remains required before downstream readiness changes. |
-| TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | READY | TASK-M0-001 and TASK-M0-002 are validated/frozen and integrated; may begin after explicit task authorization. |
+| TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | VALIDATED, FROZEN | Independent revalidation accepted the corrected append-order ordinal implementation and runtime event/evidence store boundary. PG-M0-02B integration with TASK-M0-005 remains required before downstream readiness changes. |
 | TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | READY | TASK-M0-002 is validated/frozen and integrated; may begin after explicit task authorization. |
 | TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | BLOCKED | Requires policy, event/evidence, and work repository foundations. |
 | TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | BLOCKED | Requires runtime service. |
