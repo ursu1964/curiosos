@@ -24,7 +24,7 @@ date: 2026-09-22
 | TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | VALIDATED, FROZEN | Independent revalidation accepted the corrected PostgreSQL runtime persistence foundation and public exception boundary. |
 | TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | VALIDATED, FROZEN | Independent revalidation accepted the corrected minimal policy evaluator after the formatter-only guardrail-test correction. PG-M0-02 integration with frozen TASK-M0-002 remains required before downstream readiness changes. |
 | TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | READY | TASK-M0-001 and TASK-M0-002 are validated/frozen and integrated; may begin after explicit task authorization. |
-| TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | READY | TASK-M0-002 is validated/frozen and integrated; may begin after explicit task authorization. |
+| TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | IMPLEMENTED, TESTED | Work repository/state-transition implementation completed with unit and PostgreSQL integration evidence; independent validation remains required before downstream readiness changes. |
 | TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | BLOCKED | Requires policy, event/evidence, and work repository foundations. |
 | TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | BLOCKED | Requires runtime service. |
 | TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05A | BLOCKED | Requires provider-inventory executor. |

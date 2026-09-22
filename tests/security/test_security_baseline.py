@@ -147,6 +147,7 @@ M0_PLANNED_PACKAGE_ROOTS_BY_TASK = {
 M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK = {
     "TASK-M0-002": frozenset({"packages/python/curios_persistence"}),
     "TASK-M0-003": frozenset({"packages/python/curios_policy"}),
+    "TASK-M0-005": frozenset({"packages/python/curios_runtime"}),
 }
 M0_PLANNED_APP_ROOTS_BY_TASK = {
     "TASK-M0-008": frozenset({"apps/api"}),
@@ -225,6 +226,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
         "packages/python/curios_persistence",
         "packages/python/curios_policy",
         "packages/python/curios_postgres_provider",
+        "packages/python/curios_runtime",
         "packages/typescript/curios-contracts",
     }
 )
@@ -275,6 +277,8 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_ollama/src",
     "packages/python/curios_persistence/src",
     "packages/python/curios_postgres_provider/src",
+    "packages/python/curios_runtime/src",
+    "packages/python/curios_runtime/tests",
     "packages/typescript/curios-contracts/src",
     "tests/acceptance",
 )
@@ -1021,6 +1025,7 @@ def test_m0_planned_surface_registry_is_task_scoped_and_only_m0_002_authorized()
     assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-002"] == {
         "packages/python/curios_persistence"
     }
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-005"] == {"packages/python/curios_runtime"}
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {"packages/python/curios_policy"}
     assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-003"] == {"packages/python/curios_policy"}
@@ -1091,6 +1096,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
             "packages/python/curios_persistence",
             "packages/python/curios_policy",
             "packages/python/curios_postgres_provider",
+            "packages/python/curios_runtime",
         },
         f"unexpected Python workspace member(s): {sorted(python_workspace_members)}",
     )

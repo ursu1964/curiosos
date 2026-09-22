@@ -28,7 +28,7 @@ from curios_contracts import (
     WorkItem,
     to_json_compatible,
 )
-from sqlalchemy import create_engine, inspect, select
+from sqlalchemy import create_engine, func, inspect, select
 from sqlalchemy.engine import Connection, Engine, make_url
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError, SQLAlchemyError
 
@@ -221,6 +221,43 @@ class PersistenceTransaction:
             )
         _raise_persistence_error(error)
 
+    def replace_record(self, record: PersistenceRecord, *, expected_payload_sha256: str) -> None:
+        """Replace one primitive record when its stored payload hash still matches.
+
+        The payload hash is a persistence-local version token. Repositories use
+        it for optimistic concurrency without exposing database-native details.
+        """
+        if not _is_payload_sha256(expected_payload_sha256):
+            msg = "expected_payload_sha256 must be a SHA-256 hex digest"
+            raise ValueError(msg)
+        table = TABLES_BY_RECORD_KIND[record.kind]
+        payload = dict(record.payload)
+        statement = (
+            table.update()
+            .where(table.c.canonical_id == record.record_id)
+            .where(table.c.payload_sha256 == expected_payload_sha256)
+            .values(
+                payload=payload,
+                payload_sha256=_payload_sha256(payload),
+                updated_at=func.now(),
+            )
+        )
+        try:
+            result = self._connection.execute(statement)
+        except SQLAlchemyError as exc:
+            error = _translate_error(exc, operation=f"replace_{record.kind.value}")
+        else:
+            if result.rowcount == 1:
+                return
+            error = PersistenceError(
+                PersistenceErrorCode.CONFLICT,
+                "Persistence record version conflicts with existing state.",
+                retryable=False,
+                operation=f"replace_{record.kind.value}",
+                cause_type=None,
+            )
+        _raise_persistence_error(error)
+
     def count_records(self, kind: PersistenceRecordKind) -> int:
         """Count stored records for one primitive kind."""
         kind = PersistenceRecordKind(kind)
@@ -366,6 +403,14 @@ def _payload_sha256(payload: Mapping[str, object]) -> str:
         "utf-8"
     )
     return sha256(encoded).hexdigest()
+
+
+def _is_payload_sha256(value: str) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 def _translate_error(exc: SQLAlchemyError, *, operation: str) -> PersistenceError:
