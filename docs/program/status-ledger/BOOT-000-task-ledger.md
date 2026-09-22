@@ -72,10 +72,10 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-015 | VALIDATED, FROZEN | Independent review accepted the architecture conformance checks in commit `12bb41da9695ef35ca69e99d24a132972a348edb`; violations map to `ARCHITECTURE_FAILURE`. |
 | TASK-BOOT-016 | VALIDATED, FROZEN | Independent PG-07B revalidation accepted the corrected security baseline tests in commit `93f7c6ffabeaca4b7ce24ff4e18746e11e672eb6`; PG-07B is closed. |
 | TASK-BOOT-017 | VALIDATED, FROZEN | Independent review accepted the core package foundation in commit `56428d8fcdd8b67ab822691e96c0a9a44bf39642`; `curios_core` preserves inward dependency direction and does not implement deferred runtime engines. |
-| TASK-BOOT-018 | IMPLEMENTED, TESTED | Implementation-agent evidence records the minimal configuration provider boundary in `docs/tasks/TASK-BOOT-018-evidence.md`; PG-08 integration and independent validation remain pending. |
-| TASK-BOOT-019 | TESTED | Implementation evidence recorded in `docs/tasks/TASK-BOOT-019-evidence.md`; PostgreSQL provider boundary added without self-declaring validation or freeze. |
-| TASK-BOOT-020 | TESTED | Implementation evidence recorded in `docs/tasks/TASK-BOOT-020-evidence.md`; Ollama provider boundary added without self-declaring validation or freeze. |
-| TASK-BOOT-021 | TESTED | Implementation evidence recorded in `docs/tasks/TASK-BOOT-021-evidence.md`; telemetry provider boundary added without self-declaring validation or freeze. |
+| TASK-BOOT-018 | VALIDATED, FROZEN | Independent PG-08C validation accepted the configuration provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
+| TASK-BOOT-019 | VALIDATED, FROZEN | Independent PG-08C validation accepted the PostgreSQL provider boundary and Docker-backed readiness evidence; see `docs/tasks/PG-08C-validation-evidence.md`. |
+| TASK-BOOT-020 | VALIDATED, FROZEN | Independent PG-08C validation accepted the deterministic Ollama provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
+| TASK-BOOT-021 | VALIDATED, FROZEN | Independent PG-08C validation accepted the telemetry provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
 
 ## Outstanding BOOT Acceptance Verification Items
 

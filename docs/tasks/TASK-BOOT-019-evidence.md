@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-019-EVIDENCE
 title: TASK-BOOT-019 PostgreSQL Provider Boundary Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-019
@@ -16,6 +16,8 @@ task: TASK-BOOT-019
 | 1 | IMPLEMENTING | Worktree verified on `task/boot-019-postgres-provider` at required base `122c018eff9ed8b4b8baf9b928cde1c6ce6a511b`; TASK-BOOT-019 reconstruction completed from the frozen DAG, task pack, ledger, TASK-006 readiness evidence, TASK-011 provider contracts, TASK-013 security contracts, TASK-014 test foundation, TASK-015 architecture checks, TASK-016 security baseline, and TASK-017 core provider port. |
 | 2 | IMPLEMENTED | Minimal PostgreSQL provider package, provider-local tests, Docker-backed readiness integration test, workspace metadata, lockfile update, and narrow TASK-016 topology transition were added. |
 | 3 | TESTED | Required provider, integration, quality, architecture, security, and contract checks were run; see verification evidence below. |
+| 4 | VALIDATED | Independent PG-08C validation accepted the PostgreSQL provider boundary. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-019 as `VALIDATED, FROZEN`. |
 
 ## Authorized Boundary
 
@@ -70,4 +72,4 @@ TASK-BOOT-019 introduces only the PostgreSQL provider implementation boundary:
 - Added no PostgreSQL, SQLAlchemy, or driver dependency to `curios_contracts` or
   `curios_core`.
 
-This implementation evidence does not self-declare `VALIDATED` or `FROZEN`.
+`TASK-BOOT-019` is `VALIDATED, FROZEN` after independent PG-08C validation.

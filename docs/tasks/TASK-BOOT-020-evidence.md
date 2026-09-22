@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-020-EVIDENCE
 title: TASK-BOOT-020 Ollama Provider Boundary Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-020
@@ -16,6 +16,8 @@ task: TASK-BOOT-020
 | 1 | IMPLEMENTING | Worktree verified on `task/boot-020-ollama-provider` at required base `122c018eff9ed8b4b8baf9b928cde1c6ce6a511b`; TASK-BOOT-020 implementation began. |
 | 2 | IMPLEMENTED | Minimal downstream `curios_ollama` provider boundary, deterministic fake-client tests, and TASK-016 topology transition were added for TASK-BOOT-020 scope. |
 | 3 | TESTED | Required deterministic checks were run after implementation; see check evidence below. |
+| 4 | VALIDATED | Independent PG-08C validation accepted the Ollama provider boundary. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-020 as `VALIDATED, FROZEN`. |
 
 ## Requirements Reconstructed
 
@@ -87,5 +89,4 @@ task: TASK-BOOT-020
 - Ordinary tests use deterministic fakes/stubs and require no live Ollama
   server, network access, GPU, or downloaded model.
 
-`TASK-BOOT-020` is `IMPLEMENTED` and `TESTED`. This task does not self-declare
-`VALIDATED` or `FROZEN`.
+`TASK-BOOT-020` is `VALIDATED, FROZEN` after independent PG-08C validation.

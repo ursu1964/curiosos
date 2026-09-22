@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-021-EVIDENCE
 title: TASK-BOOT-021 Telemetry Provider Boundary Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-021
@@ -16,6 +16,8 @@ task: TASK-BOOT-021
 | 1 | IMPLEMENTING | Worktree verified on `task/boot-021-telemetry-provider` at required base `122c018eff9ed8b4b8baf9b928cde1c6ce6a511b`; TASK-BOOT-021 implementation began. |
 | 2 | IMPLEMENTED | Minimal telemetry provider boundary was added inside the existing `curios_observability` package. |
 | 3 | TESTED | Deterministic repository checks were run after implementation; see check evidence below. |
+| 4 | VALIDATED | Independent PG-08C validation accepted the telemetry provider boundary. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-021 as `VALIDATED, FROZEN`. |
 
 ## Implementation Summary
 
@@ -62,5 +64,4 @@ task: TASK-BOOT-021
 
 ## Lifecycle Limit
 
-This evidence records only IMPLEMENTED and TESTED implementation-agent state.
-It does not declare TASK-BOOT-021 VALIDATED or FROZEN.
+`TASK-BOOT-021` is `VALIDATED, FROZEN` after independent PG-08C validation.

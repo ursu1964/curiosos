@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-018-EVIDENCE
 title: TASK-BOOT-018 Configuration Provider Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-018
@@ -16,6 +16,8 @@ task: TASK-BOOT-018
 | 1 | IMPLEMENTING | Worktree verified on `task/boot-018-config-provider` at required base `122c018eff9ed8b4b8baf9b928cde1c6ce6a511b`; TASK-BOOT-018 implementation began. |
 | 2 | IMPLEMENTED | Minimal `curios_config` provider boundary, package-local tests, workspace metadata, and security-transition checks were added for TASK-BOOT-018 scope. |
 | 3 | TESTED | Required deterministic checks were run after implementation; see check evidence below. |
+| 4 | VALIDATED | Independent PG-08C validation accepted the configuration provider boundary. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-018 as `VALIDATED, FROZEN`. |
 
 ## Implementation Summary
 
@@ -57,4 +59,4 @@ task: TASK-BOOT-018
 
 ## Final Status
 
-`TASK-BOOT-018` is `TESTED`. This task does not self-declare `VALIDATED` or `FROZEN`.
+`TASK-BOOT-018` is `VALIDATED, FROZEN` after independent PG-08C validation.
