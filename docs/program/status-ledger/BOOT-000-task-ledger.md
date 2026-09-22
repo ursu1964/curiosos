@@ -79,6 +79,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-022 | VALIDATED, FROZEN | Independent validation accepted the FastAPI service-composition boundary at commit `fff9156475dbfb792e8908fcabda91922fe36650`; see `docs/tasks/TASK-BOOT-022-evidence.md`. |
 | TASK-BOOT-023 | VALIDATED, FROZEN | Independent PG-10 validation accepted the API integration-test foundation; see `docs/tasks/PG-10-validation-evidence.md`. |
 | TASK-BOOT-024 | VALIDATED, FROZEN | Independent PG-10 validation accepted the minimal React/TypeScript/Vite web bootstrap; see `docs/tasks/PG-10-validation-evidence.md`. |
+| TASK-BOOT-025 | IMPLEMENTED, TESTED | CI quality gates implemented and locally/static verified; see `docs/tasks/TASK-BOOT-025-evidence.md`. Hosted GitHub Actions execution has not yet been claimed as validation evidence. |
 
 ## Outstanding BOOT Acceptance Verification Items
 

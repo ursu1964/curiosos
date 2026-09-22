@@ -144,6 +144,7 @@ AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
 )
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
+        ".github",
         ".editorconfig",
         ".gitignore",
         ".prettierignore",
@@ -214,6 +215,7 @@ SECRET_FIELD_ALLOWLIST = {
     )
 }
 SECURITY_SCAN_ROOTS = (
+    ".github/workflows",
     "apps/api/src",
     "apps/api/tests",
     "apps/web",
