@@ -27,6 +27,7 @@ members = [
   "packages/python/curios_ollama",
   "packages/python/curios_observability",
   "packages/python/curios_persistence",
+  "packages/python/curios_policy",
   "packages/python/curios_postgres_provider",
 ]
 
@@ -55,6 +56,7 @@ pythonpath = [
   "packages/python/curios_core/src",
   "packages/python/curios_observability/src",
   "packages/python/curios_persistence/src",
+  "packages/python/curios_policy/src",
   "tests/fixtures",
 ]
 testpaths = []
