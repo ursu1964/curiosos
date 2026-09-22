@@ -137,7 +137,6 @@ LATER_TASK_PATHS = (
     "packages/python/curios_config",
     "packages/python/curios_postgres",
     "packages/python/curios_telemetry",
-    "packages/python/curios_ollama",
     "tests/integration",
 )
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
@@ -166,6 +165,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
     {
         "packages/python/curios_contracts",
         "packages/python/curios_core",
+        "packages/python/curios_ollama",
         "packages/python/curios_observability",
         "packages/typescript/curios-contracts",
     }
@@ -207,6 +207,7 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_contracts/src",
     "packages/python/curios_core/src",
     "packages/python/curios_observability/src",
+    "packages/python/curios_ollama/src",
     "packages/typescript/curios-contracts/src",
 )
 SECURITY_SCAN_ROOT_FILES = frozenset(
@@ -881,6 +882,7 @@ def test_later_task_security_provider_runtime_surfaces_remain_absent() -> None:
         == {
             "packages/python/curios_contracts",
             "packages/python/curios_core",
+            "packages/python/curios_ollama",
             "packages/python/curios_observability",
         },
         f"unexpected Python workspace member(s): {sorted(python_workspace_members)}",
