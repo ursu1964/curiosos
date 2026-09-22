@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-026-EVIDENCE
 title: TASK-BOOT-026 BOOT Acceptance Suite Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-BOOT-026
@@ -17,7 +17,8 @@ date: 2026-09-22
 | 1 | IMPLEMENTING | Work began on branch `task/boot-026-acceptance-suite` from baseline `c188fe4414de9aef3dcbf8556578fdcef37a8f9e`, matching `main` after TASK-BOOT-025 integration. |
 | 2 | IMPLEMENTED | Added the BOOT acceptance suite under `tests/acceptance`, wired it into CI, and narrowly authorized the new acceptance-test topology in the security baseline. |
 | 3 | TESTED | Required acceptance and BOOT verification checks passed; see verification evidence below. |
-| 4 | VALIDATION PENDING | TASK-BOOT-026 is not self-declared `VALIDATED` or `FROZEN`; independent PG-12 validation must make that decision. |
+| 4 | VALIDATED | Independent PG-12 validation accepted TASK-BOOT-026 at commit `6263f0eb26a87d6c730d42bbffc1b3f3bde2a220`; see `docs/tasks/PG-12-validation-evidence.md`. |
+| 5 | FROZEN | The BOOT task ledger records TASK-BOOT-026 as `VALIDATED, FROZEN`. BOOT closure still requires TASK-BOOT-027 and TASK-BOOT-028. |
 
 ## Authoritative Acceptance Matrix
 
@@ -105,4 +106,4 @@ deployment, CD, release behavior, or later BOOT tasks.
 
 `TASK-BOOT-026` is `IMPLEMENTED, TESTED`.
 
-Independent PG-12 validation remains pending.
+Independent PG-12 validation passed. TASK-BOOT-026 is `VALIDATED, FROZEN`.
