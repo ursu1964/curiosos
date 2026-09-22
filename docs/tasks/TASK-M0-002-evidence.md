@@ -35,10 +35,37 @@ This matched `main` before TASK-M0-002 implementation began.
 | Keep canonical contracts authoritative | PASS | Persistence stores canonical IDs and JSON-compatible payloads; no ORM models were added to `curios_contracts` or `curios_core`. |
 | Own M0 schema/migration surface | PASS | Added in-package Alembic environment and `0001_m0_runtime_records` migration for work, execution, event, evidence, artifact, policy decision, and verification record tables. |
 | Provide transaction boundary | PASS | `PersistenceStore.transaction()` commits on success and rolls back on exceptions. |
-| Provide deterministic failure translation | PASS | SQLAlchemy integrity/connectivity/schema failures translate to `PersistenceError` codes without leaking native exception objects. |
+| Provide deterministic failure translation | PASS | SQLAlchemy integrity/connectivity/schema failures translate to `PersistenceError` codes without public `__cause__`/`__context__` native exception leakage. |
 | Preserve restart persistence | PASS | LOCAL_DOCKER integration rereads a persisted work record after store disposal and recreation. |
 | Preserve isolated PostgreSQL state | PASS | Integration uses a generated PostgreSQL schema and drops it after verification; the existing named volume is preserved. |
 | Avoid downstream TASK-M0-004/005 behavior | PASS | No event/evidence repository, work repository, state transition enforcement, runtime service, scheduler, or API behavior was added. |
+
+## Corrective Validation Finding
+
+Independent TASK-M0-002 validation at
+`3559b2342bd9cacc6d89911dda7f376bdcde1c09` failed because public persistence
+operations translated SQLAlchemy/PostgreSQL exceptions into bounded
+`PersistenceError` values using native Python exception chaining. That left
+provider/database-native exceptions reachable through `PersistenceError.__cause__`
+at the Curios persistence boundary.
+
+The corrective implementation removes native chaining from every audited
+public persistence translation site while preserving bounded Curios-owned
+diagnostics:
+
+- `PersistenceStore.transaction()` -> operation `transaction`
+- `PersistenceStore.check_readiness()` -> operation `readiness`
+- `PersistenceTransaction.insert_record()` -> operation `insert_<kind>`
+- `PersistenceTransaction.read_record()` -> operation `read_<kind>`
+- `PersistenceTransaction.count_records()` -> operation `count_<kind>`
+- `apply_schema_migrations()` -> operation `schema_migration`
+
+Translated public errors retain `code`, `retryable`, `operation`, and safe
+`cause_type` metadata. They do not expose the native exception object, raw SQL,
+connection URL, credentials, database-native traceback/detail, or arbitrary
+provider payload through the public error representation.
+
+TASK-M0-002 remains `IMPLEMENTED, TESTED` pending independent revalidation.
 
 ## Files Changed
 
@@ -147,13 +174,15 @@ Required TASK-M0-002 verification passed:
 | Ruff check | Passed: `uv run ruff check .`. |
 | Ruff format check | Passed: 151 files already formatted. |
 | mypy strict baseline | Passed: `uv run mypy apps/api/src packages/python/*/src` found no issues in 45 source files. |
-| Persistence unit tests | Passed: 13 passed. |
+| Persistence unit tests | Passed: 19 passed. |
 | Persistence LOCAL_DOCKER integration | Passed: 1 passed. |
 | Architecture and security tests | Passed: 51 passed. |
-| Contracts/core/provider/persistence regression tests | Passed: 142 passed. |
+| Contract/core tests | Passed: 123 passed. |
+| Provider/persistence regression tests | Passed: 48 passed. |
+| Contract/schema/API integration tests | Passed: 21 passed, 2 known dependency warnings. |
 | PostgreSQL integrations | Passed: 2 passed. |
 | BOOT acceptance | Passed: 6 passed, 2 known dependency warnings. |
-| Full pytest suite | Passed: 254 passed, 2 known dependency warnings. |
+| Full pytest suite | Passed: 260 passed, 2 known dependency warnings. |
 | Frontend frozen install | Passed. |
 | Frontend workspace check | Passed: typecheck, ESLint, and Prettier. |
 | Web tests | Passed: 1 test file, 2 tests. |

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, NoReturn, Self
 
 from alembic import command
 from alembic.config import Config
@@ -138,13 +138,16 @@ class PersistenceStore:
     @contextmanager
     def transaction(self) -> Iterator[PersistenceTransaction]:
         """Open a database transaction for primitive persistence operations."""
+        error: PersistenceError | None = None
         try:
             with self._engine.connect() as raw_connection:
                 connection = _with_schema(raw_connection, self._config.schema)
                 with connection.begin():
                     yield PersistenceTransaction(connection)
         except SQLAlchemyError as exc:
-            raise _translate_error(exc, operation="transaction") from exc
+            error = _translate_error(exc, operation="transaction")
+        if error is not None:
+            _raise_persistence_error(error)
 
     def check_readiness(self) -> dict[str, object]:
         """Return a bounded readiness summary for connectivity and schema presence."""
@@ -155,13 +158,15 @@ class PersistenceStore:
                 expected = {table.name for table in m0_persistence_metadata.sorted_tables}
                 existing = set(inspector.get_table_names(schema=self._config.schema))
         except SQLAlchemyError as exc:
-            raise _translate_error(exc, operation="readiness") from exc
-        return {
-            "database": "postgresql",
-            "schema": self._config.schema,
-            "ready": expected.issubset(existing),
-            "tables": tuple(sorted(expected & existing)),
-        }
+            error = _translate_error(exc, operation="readiness")
+        else:
+            return {
+                "database": "postgresql",
+                "schema": self._config.schema,
+                "ready": expected.issubset(existing),
+                "tables": tuple(sorted(expected & existing)),
+            }
+        _raise_persistence_error(error)
 
     def dispose(self) -> None:
         """Release database resources owned by this store."""
@@ -186,7 +191,10 @@ class PersistenceTransaction:
         try:
             self._connection.execute(statement)
         except SQLAlchemyError as exc:
-            raise _translate_error(exc, operation=f"insert_{record.kind.value}") from exc
+            error = _translate_error(exc, operation=f"insert_{record.kind.value}")
+        else:
+            return
+        _raise_persistence_error(error)
 
     def read_record(
         self,
@@ -202,23 +210,28 @@ class PersistenceTransaction:
         try:
             row = self._connection.execute(statement).mappings().one_or_none()
         except SQLAlchemyError as exc:
-            raise _translate_error(exc, operation=f"read_{kind.value}") from exc
-        if row is None:
-            return None
-        return PersistenceRecord(
-            kind=kind,
-            record_id=_require_str(row["canonical_id"], "canonical_id"),
-            payload=_require_mapping(row["payload"], "payload"),
-        )
+            error = _translate_error(exc, operation=f"read_{kind.value}")
+        else:
+            if row is None:
+                return None
+            return PersistenceRecord(
+                kind=kind,
+                record_id=_require_str(row["canonical_id"], "canonical_id"),
+                payload=_require_mapping(row["payload"], "payload"),
+            )
+        _raise_persistence_error(error)
 
     def count_records(self, kind: PersistenceRecordKind) -> int:
         """Count stored records for one primitive kind."""
         kind = PersistenceRecordKind(kind)
         table = TABLES_BY_RECORD_KIND[kind]
         try:
-            return len(tuple(self._connection.execute(select(table.c.canonical_id))))
+            count = len(tuple(self._connection.execute(select(table.c.canonical_id))))
         except SQLAlchemyError as exc:
-            raise _translate_error(exc, operation=f"count_{kind.value}") from exc
+            error = _translate_error(exc, operation=f"count_{kind.value}")
+        else:
+            return count
+        _raise_persistence_error(error)
 
 
 def canonical_to_record(value: object) -> PersistenceRecord:
@@ -296,6 +309,8 @@ def apply_schema_migrations(config: PersistenceConfig, *, revision: str = "head"
     if not isinstance(config, PersistenceConfig):
         msg = "config must be a PersistenceConfig"
         raise TypeError(msg)
+    engine: Engine | None = None
+    error: PersistenceError | None = None
     try:
         engine = _create_engine(config)
         with engine.begin() as raw_connection:
@@ -309,9 +324,12 @@ def apply_schema_migrations(config: PersistenceConfig, *, revision: str = "head"
             else:
                 command.upgrade(alembic_config, revision)
     except SQLAlchemyError as exc:
-        raise _translate_error(exc, operation="schema_migration") from exc
+        error = _translate_error(exc, operation="schema_migration")
     finally:
-        engine.dispose()
+        if engine is not None:
+            engine.dispose()
+    if error is not None:
+        _raise_persistence_error(error)
 
 
 def _create_engine(config: PersistenceConfig) -> Engine:
@@ -382,6 +400,10 @@ def _translate_error(exc: SQLAlchemyError, *, operation: str) -> PersistenceErro
         operation=operation,
         cause_type=type(exc).__name__,
     )
+
+
+def _raise_persistence_error(error: PersistenceError) -> NoReturn:
+    raise error
 
 
 def _validate_schema_name(schema: str) -> None:

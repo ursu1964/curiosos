@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import traceback
+from collections.abc import Callable
+
+import curios_persistence.boundary as persistence_boundary
 import pytest
 from contract_fixtures import UTC_NOW, fixed_id, human_principal, ref_for
 from curios_contracts import (
@@ -36,13 +40,20 @@ from curios_persistence import (
     PersistenceConfig,
     PersistenceError,
     PersistenceErrorCode,
+    PersistenceRecord,
     PersistenceRecordKind,
+    PersistenceStore,
+    apply_schema_migrations,
     canonical_to_record,
     record_to_canonical,
 )
 from curios_persistence.boundary import _translate_error
 from curios_persistence.schema import M0_PERSISTENCE_TABLE_NAMES
-from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError, SQLAlchemyError
+
+_NATIVE_STATEMENT = "SELECT provider_native_detail"
+_NATIVE_DETAIL = "provider-native-credential-fragment"
+_TEST_POSTGRES_URL = "postgresql+psycopg://curios@127.0.0.1:5432/curios_dev"
 
 
 def test_persistence_config_accepts_only_postgresql_urls_and_hides_url_repr() -> None:
@@ -239,6 +250,186 @@ def test_persistence_failures_translate_sqlalchemy_errors_deterministically() ->
     assert programming.retryable is False
 
 
+@pytest.mark.parametrize(
+    ("operation", "exercise"),
+    (
+        pytest.param("readiness", lambda store: store.check_readiness(), id="readiness"),
+        pytest.param("transaction", lambda store: _open_transaction(store), id="transaction"),
+    ),
+)
+def test_store_public_boundaries_do_not_chain_native_connectivity_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    exercise: Callable[[PersistenceStore], object],
+) -> None:
+    native_error = OperationalError(
+        _NATIVE_STATEMENT,
+        {"parameter": _NATIVE_DETAIL},
+        Exception(_NATIVE_DETAIL),
+    )
+    monkeypatch.setattr(
+        persistence_boundary,
+        "_create_engine",
+        lambda config: _FailingEngine(native_error),
+    )
+    store = PersistenceStore(PersistenceConfig(sqlalchemy_url=_TEST_POSTGRES_URL))
+
+    with pytest.raises(PersistenceError) as translated:
+        exercise(store)
+
+    _assert_public_error_is_bounded(
+        translated.value,
+        code=PersistenceErrorCode.CONNECTIVITY,
+        retryable=True,
+        operation=operation,
+        cause_type="OperationalError",
+    )
+
+
+def test_record_conflict_failures_do_not_chain_native_integrity_errors() -> None:
+    native_error = IntegrityError(
+        _NATIVE_STATEMENT,
+        {"parameter": _NATIVE_DETAIL},
+        Exception(_NATIVE_DETAIL),
+    )
+    transaction = persistence_boundary.PersistenceTransaction(_FailingConnection(native_error))
+
+    with pytest.raises(PersistenceError) as translated:
+        transaction.insert_record(
+            PersistenceRecord(PersistenceRecordKind.WORK, "work_conflict", {"kind": "work"})
+        )
+
+    _assert_public_error_is_bounded(
+        translated.value,
+        code=PersistenceErrorCode.CONFLICT,
+        retryable=False,
+        operation="insert_work",
+        cause_type="IntegrityError",
+    )
+
+
+def test_record_operation_failures_do_not_chain_native_schema_errors() -> None:
+    native_error = ProgrammingError(
+        _NATIVE_STATEMENT,
+        {"parameter": _NATIVE_DETAIL},
+        Exception(_NATIVE_DETAIL),
+    )
+    transaction = persistence_boundary.PersistenceTransaction(_FailingConnection(native_error))
+
+    with pytest.raises(PersistenceError) as translated:
+        transaction.read_record(PersistenceRecordKind.WORK, "work_missing")
+
+    _assert_public_error_is_bounded(
+        translated.value,
+        code=PersistenceErrorCode.SCHEMA,
+        retryable=False,
+        operation="read_work",
+        cause_type="ProgrammingError",
+    )
+
+
+def test_generic_record_operation_failures_do_not_chain_native_database_errors() -> None:
+    native_error = SQLAlchemyError(_NATIVE_DETAIL)
+    transaction = persistence_boundary.PersistenceTransaction(_FailingConnection(native_error))
+
+    with pytest.raises(PersistenceError) as translated:
+        transaction.count_records(PersistenceRecordKind.WORK)
+
+    _assert_public_error_is_bounded(
+        translated.value,
+        code=PersistenceErrorCode.UNKNOWN,
+        retryable=False,
+        operation="count_work",
+        cause_type="SQLAlchemyError",
+    )
+
+
+def test_schema_migration_failures_do_not_chain_native_schema_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    native_error = ProgrammingError(
+        _NATIVE_STATEMENT,
+        {"parameter": _NATIVE_DETAIL},
+        Exception(_NATIVE_DETAIL),
+    )
+    engine = _FailingEngine(native_error)
+    monkeypatch.setattr(persistence_boundary, "_create_engine", lambda config: engine)
+
+    with pytest.raises(PersistenceError) as translated:
+        apply_schema_migrations(PersistenceConfig(sqlalchemy_url=_TEST_POSTGRES_URL))
+
+    _assert_public_error_is_bounded(
+        translated.value,
+        code=PersistenceErrorCode.SCHEMA,
+        retryable=False,
+        operation="schema_migration",
+        cause_type="ProgrammingError",
+    )
+    assert engine.disposed is True
+
+
 def test_contract_translation_rejects_unsupported_event_type() -> None:
     with pytest.raises(ValueError, match="event type"):
         EventType("not_a_dotted_type")
+
+
+def _open_transaction(store: PersistenceStore) -> None:
+    with store.transaction():
+        pass
+
+
+def _assert_public_error_is_bounded(
+    error: PersistenceError,
+    *,
+    code: PersistenceErrorCode,
+    retryable: bool,
+    operation: str,
+    cause_type: str,
+) -> None:
+    assert error.__cause__ is None
+    assert error.__context__ is None
+    assert error.__suppress_context__ is False
+    assert error.code is code
+    assert error.retryable is retryable
+    assert error.operation == operation
+    assert error.to_json_compatible() == {
+        "code": code.value,
+        "message": str(error),
+        "retryable": retryable,
+        "operation": operation,
+        "cause_type": cause_type,
+    }
+
+    public_error_surface = " ".join(
+        (
+            str(error),
+            repr(error),
+            repr(error.to_json_compatible()),
+            "".join(traceback.format_exception(type(error), error, error.__traceback__)),
+        )
+    )
+    assert _NATIVE_STATEMENT not in public_error_surface
+    assert _NATIVE_DETAIL not in public_error_surface
+
+
+class _FailingEngine:
+    def __init__(self, error: SQLAlchemyError) -> None:
+        self._error = error
+        self.disposed = False
+
+    def connect(self) -> object:
+        raise self._error
+
+    def begin(self) -> object:
+        raise self._error
+
+    def dispose(self) -> None:
+        self.disposed = True
+
+
+class _FailingConnection:
+    def __init__(self, error: SQLAlchemyError) -> None:
+        self._error = error
+
+    def execute(self, statement: object) -> object:
+        raise self._error
