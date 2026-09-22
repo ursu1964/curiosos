@@ -1,12 +1,12 @@
 ---
 id: TASK-M0-005-EVIDENCE
 title: TASK-M0-005 Work Repository and State Transitions Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-005
 milestone_id: M0
-date: 2026-09-22
+date: 2026-09-23
 ---
 
 # TASK-M0-005 Evidence
@@ -28,7 +28,8 @@ deterministic M0 state transitions using TASK-M0-002 persistence primitives.
 - TASK-M0-005 unit and PostgreSQL integration tests
 - topology/security test updates authorizing `packages/python/curios_runtime`
   for TASK-M0-005
-- M0 ledger transition to `IMPLEMENTED, TESTED`
+- M0 ledger transition to `IMPLEMENTED, TESTED`, followed by independent
+  revalidation to `VALIDATED, FROZEN`
 
 ## Repository API
 
@@ -177,8 +178,13 @@ was preserved; `docker compose down -v` was not used.
 
 ## Lifecycle
 
-TASK-M0-005 is `IMPLEMENTED, TESTED` only.
+TASK-M0-005 was implemented and tested by the implementation agent, corrected
+after independent validation found corrupt-payload decode leakage, then
+independently revalidated at candidate
+`ac96aca82742146dd31c258dfaace3c40ae33fc0`.
 
-Independent validation is required before `VALIDATED, FROZEN` or any downstream
-readiness transition. TASK-M0-004 remains unchanged. TASK-M0-006 through
-TASK-M0-014 remain `BLOCKED`.
+TASK-M0-005 is `VALIDATED, FROZEN`.
+
+TASK-M0-004 remains unchanged and must integrate with frozen TASK-M0-005 before
+TASK-M0-006 can become ready. TASK-M0-006 through TASK-M0-014 remain
+`BLOCKED`.
