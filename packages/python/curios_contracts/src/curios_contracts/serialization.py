@@ -4,11 +4,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from enum import Enum
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from curios_contracts.identifiers import CuriosId
 from curios_contracts.schema_version import SchemaVersion
 from curios_contracts.temporal import DurationMilliseconds, UtcTimestamp
+
+
+@runtime_checkable
+class SupportsJsonCompatible(Protocol):
+    """Protocol for canonical contract value objects with object serialization."""
+
+    def to_json_compatible(self) -> object:
+        """Return a JSON-compatible representation."""
 
 
 def to_json_compatible(value: object) -> object:
@@ -23,6 +31,8 @@ def to_json_compatible(value: object) -> object:
         return value.to_json_primitive()
     if isinstance(value, SchemaVersion):
         return value.to_json_primitive()
+    if isinstance(value, SupportsJsonCompatible):
+        return to_json_compatible(value.to_json_compatible())
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, str | int | float | bool):
