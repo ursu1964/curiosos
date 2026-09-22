@@ -36,7 +36,11 @@ def test_event_observability_contracts_do_not_import_telemetry_brokers_or_provid
 
 
 def test_task_012_does_not_implement_task_010_contracts() -> None:
-    source = _source_text()
+    task_012_modules = (
+        SOURCE_ROOT / "events.py",
+        SOURCE_ROOT / "observability.py",
+    )
+    source = "\n".join(path.read_text(encoding="utf-8") for path in task_012_modules)
 
     forbidden_contracts = (
         "class Result",
@@ -48,3 +52,14 @@ def test_task_012_does_not_implement_task_010_contracts() -> None:
 
     for contract in forbidden_contracts:
         assert contract not in source
+
+
+def test_only_object_reference_is_the_generic_reference_contract() -> None:
+    source = _source_text()
+
+    assert "class ObjectReference" in source
+    obsolete_class = "class " + "Refer" + "ence:"
+    obsolete_import = "from curios_contracts.references import " + "Refer" + "ence"
+
+    assert obsolete_class not in source
+    assert obsolete_import not in source

@@ -46,7 +46,6 @@ from curios_contracts.observability import ObservabilityContext
 from curios_contracts.references import (
     REFERENCE_KIND_VALUES,
     ObjectReference,
-    Reference,
     ReferenceKind,
 )
 from curios_contracts.results import RESULT_STATUS_VALUES, Result, ResultStatus
@@ -103,7 +102,6 @@ __all__ = (
     "ObservabilityContext",
     "ProjectId",
     "ProviderId",
-    "Reference",
     "ReferenceKind",
     "Result",
     "ResultStatus",

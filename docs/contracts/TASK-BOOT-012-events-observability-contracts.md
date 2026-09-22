@@ -55,26 +55,29 @@ belongs to those scopes.
 
 TASK-BOOT-012 adds the minimum missing primitive `CorrelationId` with the runtime
 prefix `cor`. It does not add a distinct `CausationId`. Causation is represented
-as a `Reference` to the immediate cause because the cause is an existing fact or
-record, most commonly the prior canonical event's `event_id`, rather than a new
-generated namespace.
+as an `ObjectReference` to the immediate cause because the cause is an existing
+fact or record, most commonly the prior canonical event's `event_id`, rather
+than a new generated namespace.
 
-## CONTRACT-BOOT-012-REF-001 Reference
+## CONTRACT-BOOT-012-REF-001 ObjectReference Dependency
 
-`Reference` is the provider-neutral typed reference used by event producers,
-subjects, principals, and causation links. It serializes as:
+TASK-BOOT-012 uses the frozen TASK-BOOT-010 `ObjectReference(kind, ref_id)` as
+the single canonical generic Curios reference contract. It is used for event
+producers, subjects, principals, and causation links. It serializes as:
 
 ```json
 {
-  "ref_type": "work",
+  "kind": "work",
   "ref_id": "wrk_..."
 }
 ```
 
-`ref_type` is a stable lower-case Curios-owned type string. `ref_id` is the
-canonical identifier in the referenced namespace. This primitive intentionally
-does not implement TASK-BOOT-010 artifact, evidence, or verification reference
-contracts.
+`kind` is a stable lower-case Curios-owned object-reference namespace from
+TASK-BOOT-010. `ref_id` is the typed canonical Curios identifier in that
+namespace. TASK-BOOT-012 uses the existing `EventId` namespace as
+`kind: "event"` so causation can point at prior canonical events without adding
+`CausationId`. TASK-BOOT-012 does not define a second generic reference
+abstraction.
 
 ## CONTRACT-BOOT-012-EVT-001 EventEnvelope
 
@@ -87,8 +90,8 @@ contains:
 | `event_type` | Stable serializable event type string. |
 | `schema_version` | Explicit envelope/payload schema version. |
 | `occurred_at` | Canonical UTC occurrence timestamp. |
-| `producer` | Provider-neutral `Reference` for the producer. |
-| `subject_ref` | Provider-neutral `Reference` for the primary subject. |
+| `producer` | Provider-neutral `ObjectReference` for the producer. |
+| `subject_ref` | Provider-neutral `ObjectReference` for the primary subject. |
 | `observability_context` | `ObservabilityContext` for trace, correlation, scope, and cause. |
 | `payload` | JSON-compatible event-specific fact payload. |
 | `metadata` | Optional bounded JSON-compatible metadata. |

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from curios_contracts import ObjectReference, ProjectId, ProviderId, ReferenceKind
+from curios_contracts import EventId, ObjectReference, ProjectId, ProviderId, ReferenceKind
 
 
 def test_object_reference_preserves_id_namespace_meaning() -> None:
@@ -23,3 +23,9 @@ def test_object_reference_accepts_provider_references() -> None:
     provider_reference = ObjectReference.from_id(ProviderId.generate())
 
     assert provider_reference.kind is ReferenceKind.PROVIDER
+
+
+def test_object_reference_accepts_event_references_for_causation() -> None:
+    event_reference = ObjectReference.from_id(EventId.generate())
+
+    assert event_reference.kind is ReferenceKind.EVENT

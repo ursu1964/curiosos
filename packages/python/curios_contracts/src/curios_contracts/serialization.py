@@ -19,14 +19,6 @@ class SupportsJsonCompatible(Protocol):
         """Return a JSON-compatible representation."""
 
 
-@runtime_checkable
-class SupportsToJson(Protocol):
-    """Temporary protocol for pre-reconciliation TASK-BOOT-012 objects."""
-
-    def to_json(self) -> object:
-        """Return a JSON-compatible representation."""
-
-
 def to_json_compatible(value: object) -> object:
     """Convert primitive contract values into JSON-compatible Python values.
 
@@ -41,8 +33,6 @@ def to_json_compatible(value: object) -> object:
         return value.to_json_primitive()
     if isinstance(value, SupportsJsonCompatible):
         return to_json_compatible(value.to_json_compatible())
-    if isinstance(value, SupportsToJson):
-        return to_json_compatible(value.to_json())
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, str | int | float | bool):

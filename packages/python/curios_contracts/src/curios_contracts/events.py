@@ -10,7 +10,7 @@ from typing import Self
 
 from curios_contracts.identifiers import EventId
 from curios_contracts.observability import ObservabilityContext
-from curios_contracts.references import Reference
+from curios_contracts.references import ObjectReference
 from curios_contracts.schema_version import SchemaVersion
 from curios_contracts.serialization import to_json_compatible
 from curios_contracts.temporal import UtcTimestamp
@@ -68,8 +68,8 @@ class EventEnvelope:
     event_type: EventType
     schema_version: SchemaVersion
     occurred_at: UtcTimestamp
-    producer: Reference
-    subject_ref: Reference
+    producer: ObjectReference
+    subject_ref: ObjectReference
     observability_context: ObservabilityContext
     payload: object = field(default_factory=dict)
     metadata: object = field(default_factory=dict)
@@ -79,8 +79,8 @@ class EventEnvelope:
         _require_type(self.event_type, EventType, "event_type")
         _require_type(self.schema_version, SchemaVersion, "schema_version")
         _require_type(self.occurred_at, UtcTimestamp, "occurred_at")
-        _require_type(self.producer, Reference, "producer")
-        _require_type(self.subject_ref, Reference, "subject_ref")
+        _require_type(self.producer, ObjectReference, "producer")
+        _require_type(self.subject_ref, ObjectReference, "subject_ref")
         _require_type(
             self.observability_context,
             ObservabilityContext,
@@ -120,8 +120,8 @@ class EventEnvelope:
             event_type=EventType(event_type),
             schema_version=SchemaVersion.parse(schema_version),
             occurred_at=UtcTimestamp.parse(occurred_at),
-            producer=Reference.from_json(producer),
-            subject_ref=Reference.from_json(subject_ref),
+            producer=ObjectReference.from_json_compatible(producer),
+            subject_ref=ObjectReference.from_json_compatible(subject_ref),
             observability_context=ObservabilityContext.from_json(observability_context),
             payload=payload,
             metadata=value.get("metadata", {}),
@@ -134,15 +134,19 @@ class EventEnvelope:
             "event_type": str(self.event_type),
             "schema_version": str(self.schema_version),
             "occurred_at": str(self.occurred_at),
-            "producer": self.producer.to_json(),
-            "subject_ref": self.subject_ref.to_json(),
-            "observability_context": self.observability_context.to_json(),
+            "producer": self.producer.to_json_compatible(),
+            "subject_ref": self.subject_ref.to_json_compatible(),
+            "observability_context": self.observability_context.to_json_compatible(),
             "payload": _ensure_json_object(self.payload, "payload"),
         }
         metadata = _ensure_metadata(self.metadata)
         if metadata:
             serialized["metadata"] = metadata
         return serialized
+
+    def to_json_compatible(self) -> dict[str, object]:
+        """Return the canonical JSON-compatible object representation."""
+        return self.to_json()
 
 
 def _require_type[ValueT](value: object, expected_type: type[ValueT], field_name: str) -> None:
