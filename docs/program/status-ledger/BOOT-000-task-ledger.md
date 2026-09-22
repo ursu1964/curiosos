@@ -1,0 +1,59 @@
+---
+id: BOOT-000-TASK-LEDGER
+title: BOOT-000 Task Ledger
+lifecycle: FROZEN
+artifact_type: status_ledger
+authority: authoritative
+---
+
+# BOOT-000 Task Ledger
+
+This ledger initializes `TASK-BOOT-001` through `TASK-BOOT-028`.
+
+Pre-implementation status for every task:
+
+```text
+DEFINED
+SPECIFIED
+task specification FROZEN
+```
+
+No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and verification support that state.
+
+| Task ID | Title | Workstream | Dependencies | Parallel Group | Pre-Implementation Status |
+| --- | --- | --- | --- | --- | --- |
+| TASK-BOOT-001 | Build Pack foundation | WS-01 | none | PG-01 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-002 | Repository metadata conventions | WS-02 | TASK-BOOT-001 | PG-02 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-003 | Python uv workspace | WS-03 | TASK-BOOT-002 | PG-03 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-004 | pnpm/TypeScript workspace | WS-03 | TASK-BOOT-002 | PG-03 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-005 | Developer command surface | WS-02 | TASK-BOOT-002 | PG-03 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-006 | LOCAL_DOCKER PostgreSQL baseline | WS-04 | TASK-BOOT-002 | PG-03 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-007 | Python package skeletons | WS-05 | TASK-BOOT-003 | PG-04 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-008 | TypeScript package skeletons | WS-03 | TASK-BOOT-004 | PG-04 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-009 | Primitive contracts | WS-05 | TASK-BOOT-007 | PG-05 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-010 | Result, error, artifact/evidence refs | WS-05 | TASK-BOOT-009 | PG-06 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-011 | Work, execution, capability, provider, agent contracts | WS-05 | TASK-BOOT-009, TASK-BOOT-010 | PG-06 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-012 | Event and observability contracts | WS-05 | TASK-BOOT-009, TASK-BOOT-010 | PG-06 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-013 | Config, security, effect, policy contracts | WS-05 | TASK-BOOT-009, TASK-BOOT-010 | PG-06 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-014 | Contract/schema test foundation | WS-06 | TASK-BOOT-009, TASK-BOOT-010, TASK-BOOT-011, TASK-BOOT-012, TASK-BOOT-013 | PG-07A | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-015 | Architecture conformance checks | WS-06 | TASK-BOOT-009, TASK-BOOT-010, TASK-BOOT-011, TASK-BOOT-012, TASK-BOOT-013 | PG-07A | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-016 | Security baseline tests | WS-06 | TASK-BOOT-013, TASK-BOOT-015 | PG-07B | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-017 | Core package foundation | WS-05 | TASK-BOOT-011, TASK-BOOT-013 | PG-07A | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-018 | Configuration provider | WS-07 | TASK-BOOT-013, TASK-BOOT-014 | PG-08 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-019 | PostgreSQL provider boundary | WS-07 | TASK-BOOT-006, TASK-BOOT-011, TASK-BOOT-013, TASK-BOOT-014 | PG-08 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-020 | Ollama provider boundary with deterministic tests | WS-07 | TASK-BOOT-011, TASK-BOOT-013, TASK-BOOT-014 | PG-08 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-021 | Telemetry provider boundary | WS-07 | TASK-BOOT-012, TASK-BOOT-014 | PG-08 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-022 | FastAPI service composition | WS-07 | TASK-BOOT-017, TASK-BOOT-018, TASK-BOOT-019, TASK-BOOT-020, TASK-BOOT-021 | PG-09 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-023 | API integration tests | WS-08 | TASK-BOOT-022 | PG-10 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-024 | Web bootstrap | WS-07 | TASK-BOOT-008, TASK-BOOT-022 | PG-10 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-025 | CI quality gates | WS-08 | TASK-BOOT-003, TASK-BOOT-004, TASK-BOOT-005, TASK-BOOT-006, TASK-BOOT-007, TASK-BOOT-008, TASK-BOOT-009, TASK-BOOT-010, TASK-BOOT-011, TASK-BOOT-012, TASK-BOOT-013, TASK-BOOT-014, TASK-BOOT-015, TASK-BOOT-016, TASK-BOOT-017, TASK-BOOT-018, TASK-BOOT-019, TASK-BOOT-020, TASK-BOOT-021, TASK-BOOT-022, TASK-BOOT-023, TASK-BOOT-024 | PG-11 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-026 | BOOT acceptance suite | WS-08 | TASK-BOOT-023, TASK-BOOT-024, TASK-BOOT-025 | PG-12 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-027 | Independent verification record | WS-08 | TASK-BOOT-026 | PG-13 | DEFINED, SPECIFIED, task specification FROZEN |
+| TASK-BOOT-028 | BOOT freeze/status ledger update | WS-01 | TASK-BOOT-027 | PG-14 | DEFINED, SPECIFIED, task specification FROZEN |
+
+## Execution Status
+
+| Task ID | Current Lifecycle | Evidence |
+| --- | --- | --- |
+| TASK-BOOT-001 | VALIDATED, FROZEN | Independent review accepted the Enterprise Build Pack foundation. |
+| TASK-BOOT-002 | VALIDATED, FROZEN | Independent review accepted the repository metadata and convention updates. |

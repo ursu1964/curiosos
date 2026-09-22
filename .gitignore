@@ -3,9 +3,25 @@
 .env.*
 !.env.example
 
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Node / frontend
+node_modules/
+dist/
+build/
+coverage/
 
 # Editors
 .vscode/
@@ -18,3 +34,6 @@ Thumbs.db
 *.tmp
 *.swp
 *~
+
+# Generated outputs
+generated/
