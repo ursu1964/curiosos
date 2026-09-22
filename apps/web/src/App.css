@@ -1,0 +1,131 @@
+:root {
+  color: #172026;
+  background: #f6f8f5;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.web-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(54, 95, 145, 0.12), transparent 34%),
+    linear-gradient(315deg, rgba(21, 128, 61, 0.14), transparent 38%),
+    #f6f8f5;
+}
+
+.web-shell__inner {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0;
+}
+
+.web-shell__eyebrow {
+  margin: 0 0 12px;
+  color: #4f6355;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.web-shell h1 {
+  margin: 0;
+  max-width: 760px;
+  color: #111817;
+  font-size: clamp(2rem, 3.5rem, 3.5rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.web-shell__summary {
+  max-width: 640px;
+  margin: 20px 0 0;
+  color: #33423c;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.web-shell__panel {
+  margin-top: 36px;
+  border: 1px solid #d6dfd2;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 44px rgba(25, 39, 33, 0.08);
+}
+
+.web-shell__panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #d6dfd2;
+}
+
+.web-shell__panel-title,
+.web-shell__contract {
+  margin: 0;
+}
+
+.web-shell__panel-title {
+  color: #172026;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.web-shell__contract {
+  color: #52645e;
+  font-size: 0.9rem;
+}
+
+.web-shell__endpoints {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px 24px 24px;
+  margin: 0;
+  list-style: none;
+}
+
+.web-shell__endpoint {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #dce3dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172026;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .web-shell__inner {
+    width: min(100% - 24px, 960px);
+    padding: 32px 0;
+  }
+
+  .web-shell__endpoints {
+    grid-template-columns: 1fr;
+  }
+}
