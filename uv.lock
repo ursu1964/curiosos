@@ -91,6 +91,12 @@ source = { editable = "packages/python/curios_contracts" }
 name = "curios-core"
 version = "0.0.0"
 source = { editable = "packages/python/curios_core" }
+dependencies = [
+    { name = "curios-contracts" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "curios-contracts", editable = "packages/python/curios_contracts" }]
 
 [[package]]
 name = "curios-observability"
