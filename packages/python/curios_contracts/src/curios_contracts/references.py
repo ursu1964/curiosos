@@ -1,4 +1,4 @@
-"""Provider-neutral object reference primitives for TASK-BOOT-010 contracts."""
+"""Provider-neutral object reference primitives for canonical Curios contracts."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from curios_contracts.identifiers import (
     ArtifactId,
     CapabilityId,
     CuriosId,
+    EventId,
     EvidenceId,
     ExecutionId,
     MilestoneId,
@@ -41,6 +42,7 @@ class ReferenceKind(StrEnum):
     ARTIFACT = "artifact"
     EVIDENCE = "evidence"
     VERIFICATION = "verification"
+    EVENT = "event"
     TRACE = "trace"
 
 
@@ -58,6 +60,7 @@ _REFERENCE_ID_TYPES: dict[ReferenceKind, type[CuriosId]] = {
     ReferenceKind.ARTIFACT: ArtifactId,
     ReferenceKind.EVIDENCE: EvidenceId,
     ReferenceKind.VERIFICATION: VerificationId,
+    ReferenceKind.EVENT: EventId,
     ReferenceKind.TRACE: TraceId,
 }
 _REFERENCE_KIND_BY_ID_TYPE: dict[type[CuriosId], ReferenceKind] = {

@@ -17,6 +17,7 @@ from curios_contracts.errors import (
     ErrorSeverity,
     ResultWarning,
 )
+from curios_contracts.events import RUNTIME_EVENT_TYPES, EventEnvelope, EventType, RuntimeEventType
 from curios_contracts.evidence import EVIDENCE_KIND_VALUES, EvidenceKind, EvidenceReference
 from curios_contracts.identifiers import (
     ID_PREFIXES,
@@ -26,6 +27,7 @@ from curios_contracts.identifiers import (
     ApplicationId,
     ArtifactId,
     CapabilityId,
+    CorrelationId,
     CuriosId,
     EventId,
     EvidenceId,
@@ -40,6 +42,7 @@ from curios_contracts.identifiers import (
     ensure_id_type,
 )
 from curios_contracts.lifecycle import ENGINEERING_LIFECYCLE_VALUES, EngineeringLifecycle
+from curios_contracts.observability import ObservabilityContext
 from curios_contracts.references import (
     REFERENCE_KIND_VALUES,
     ObjectReference,
@@ -68,6 +71,7 @@ __all__ = (
     "INTEGRITY_ALGORITHM_VALUES",
     "REFERENCE_KIND_VALUES",
     "RESULT_STATUS_VALUES",
+    "RUNTIME_EVENT_TYPES",
     "VERIFICATION_OUTCOME_VALUES",
     "AgentDefinitionId",
     "AgentInstanceId",
@@ -77,13 +81,16 @@ __all__ = (
     "ArtifactReference",
     "CapabilityId",
     "ContractError",
+    "CorrelationId",
     "CuriosId",
     "DurationMilliseconds",
     "EngineeringLifecycle",
     "ErrorCategory",
     "ErrorCode",
     "ErrorSeverity",
+    "EventEnvelope",
     "EventId",
+    "EventType",
     "EvidenceKind",
     "EvidenceId",
     "EvidenceReference",
@@ -92,12 +99,14 @@ __all__ = (
     "IntegrityDescriptor",
     "MilestoneId",
     "ObjectReference",
+    "ObservabilityContext",
     "ProjectId",
     "ProviderId",
     "ReferenceKind",
     "Result",
     "ResultStatus",
     "ResultWarning",
+    "RuntimeEventType",
     "SchemaVersion",
     "TraceId",
     "UtcTimestamp",

@@ -29,9 +29,16 @@ def test_contract_source_has_no_provider_or_framework_imports() -> None:
     assert imported_roots.isdisjoint(FORBIDDEN_IMPORT_ROOTS)
 
 
-def test_task_boot_010_does_not_implement_event_or_observability_contracts() -> None:
+def test_task_boot_010_modules_do_not_implement_event_or_observability_contracts() -> None:
+    task_010_modules = (
+        "artifacts.py",
+        "errors.py",
+        "evidence.py",
+        "results.py",
+        "verification.py",
+    )
     source_text = "\n".join(
-        source_path.read_text(encoding="utf-8") for source_path in SOURCE_ROOT.glob("*.py")
+        (SOURCE_ROOT / source_path).read_text(encoding="utf-8") for source_path in task_010_modules
     )
 
     assert "EventEnvelope" not in source_text
