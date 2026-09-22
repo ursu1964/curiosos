@@ -8,6 +8,7 @@ members = [
     "curios-contracts",
     "curios-core",
     "curios-observability",
+    "curios-ollama",
     "curiosos",
 ]
 
@@ -123,6 +124,21 @@ dependencies = [
 requires-dist = [
     { name = "curios-contracts", editable = "packages/python/curios_contracts" },
     { name = "opentelemetry-api", specifier = ">=1.38.0" },
+]
+
+[[package]]
+name = "curios-ollama"
+version = "0.0.0"
+source = { editable = "packages/python/curios_ollama" }
+dependencies = [
+    { name = "curios-contracts" },
+    { name = "curios-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "curios-contracts", editable = "packages/python/curios_contracts" },
+    { name = "curios-core", editable = "packages/python/curios_core" },
 ]
 
 [[package]]
