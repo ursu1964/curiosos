@@ -57,3 +57,4 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | --- | --- | --- |
 | TASK-BOOT-001 | VALIDATED, FROZEN | Independent review accepted the Enterprise Build Pack foundation. |
 | TASK-BOOT-002 | VALIDATED, FROZEN | Independent review accepted the repository metadata and convention updates. |
+| TASK-BOOT-003 | IMPLEMENTED, TESTED | Python 3.14.7 and uv 0.12.0 workspace foundation created; `uv.lock` generated; locked resolution, tool availability, `.venv` ignore behavior, and allowed-scope checks were run. |
