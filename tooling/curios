@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+set -u
+
+readonly EXIT_USAGE=2
+readonly EXIT_UNAVAILABLE=78
+
+readonly REQUIRED_COMMANDS="setup dev dev-api dev-web db-up db-down db-migrate format lint typecheck test test-unit test-contract test-integration test-e2e verify"
+
+usage() {
+  cat <<'EOF'
+Usage: tooling/curios <command>
+
+Developer command intentions:
+  setup
+  dev
+  dev-api
+  dev-web
+  db-up
+  db-down
+  db-migrate
+  format
+  lint
+  typecheck
+  test
+  test-unit
+  test-contract
+  test-integration
+  test-e2e
+  verify
+
+Inspection commands:
+  commands   Print command intention names.
+  status     Report current bootstrap availability.
+  help       Show this help.
+
+Exit codes:
+  0   command completed
+  2   usage error or unknown command
+  78  command intention exists but is not bootstrapped yet
+EOF
+}
+
+print_commands() {
+  printf '%s\n' ${REQUIRED_COMMANDS}
+}
+
+unavailable_reason() {
+  case "$1" in
+    setup)
+      printf 'workspace setup is not bootstrapped; Python and Node workspace manifests are intentionally outside TASK-BOOT-005 scope'
+      ;;
+    dev)
+      printf 'aggregate development runtime is not bootstrapped; API, web, and local infrastructure entrypoints do not exist yet'
+      ;;
+    dev-api)
+      printf 'API development runtime is not bootstrapped; service implementation is deferred to later tasks'
+      ;;
+    dev-web)
+      printf 'web development runtime is not bootstrapped; web application implementation is deferred to later tasks'
+      ;;
+    db-up | db-down)
+      printf 'LOCAL_DOCKER database infrastructure is not bootstrapped; PostgreSQL compose files are deferred to TASK-BOOT-006'
+      ;;
+    db-migrate)
+      printf 'database migration tooling is not bootstrapped; schema and Alembic ownership are deferred to later tasks'
+      ;;
+    format)
+      printf 'format tooling is not bootstrapped; Python and Node formatter manifests are outside TASK-BOOT-005 scope'
+      ;;
+    lint)
+      printf 'lint tooling is not bootstrapped; Python and Node linter manifests are outside TASK-BOOT-005 scope'
+      ;;
+    typecheck)
+      printf 'typecheck tooling is not bootstrapped; Python and TypeScript workspaces are outside TASK-BOOT-005 scope'
+      ;;
+    test)
+      printf 'aggregate test tooling is not bootstrapped; concrete test suites are deferred to later tasks'
+      ;;
+    test-unit)
+      printf 'unit test tooling is not bootstrapped; package and test skeletons are deferred to later tasks'
+      ;;
+    test-contract)
+      printf 'contract test tooling is not bootstrapped; contracts and schema test foundation are deferred to later tasks'
+      ;;
+    test-integration)
+      printf 'integration test tooling is not bootstrapped; service and provider boundaries are deferred to later tasks'
+      ;;
+    test-e2e)
+      printf 'end-to-end test tooling is not bootstrapped; API and web implementations are deferred to later tasks'
+      ;;
+    verify)
+      printf 'repository verification is not bootstrapped; no concrete quality gates exist yet'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+is_required_command() {
+  local candidate="$1"
+  local command_name
+
+  for command_name in ${REQUIRED_COMMANDS}; do
+    if [ "${candidate}" = "${command_name}" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+not_bootstrapped() {
+  local command_name="$1"
+  local reason
+
+  reason="$(unavailable_reason "${command_name}")"
+  {
+    printf 'curios: %s: not bootstrapped\n' "${command_name}"
+    printf 'reason: %s\n' "${reason}"
+  } >&2
+  exit "${EXIT_UNAVAILABLE}"
+}
+
+print_status() {
+  local command_name
+
+  for command_name in ${REQUIRED_COMMANDS}; do
+    printf '%-18s unavailable  ' "${command_name}"
+    unavailable_reason "${command_name}"
+    printf '\n'
+  done
+}
+
+main() {
+  if [ "$#" -eq 0 ]; then
+    usage >&2
+    exit "${EXIT_USAGE}"
+  fi
+
+  local command_name="$1"
+  shift
+
+  case "${command_name}" in
+    help | -h | --help)
+      usage
+      ;;
+    commands)
+      if [ "$#" -ne 0 ]; then
+        printf 'curios: commands does not accept arguments\n' >&2
+        exit "${EXIT_USAGE}"
+      fi
+      print_commands
+      ;;
+    status)
+      if [ "$#" -ne 0 ]; then
+        printf 'curios: status does not accept arguments\n' >&2
+        exit "${EXIT_USAGE}"
+      fi
+      print_status
+      ;;
+    *)
+      if ! is_required_command "${command_name}"; then
+        printf 'curios: unknown command: %s\n\n' "${command_name}" >&2
+        usage >&2
+        exit "${EXIT_USAGE}"
+      fi
+
+      not_bootstrapped "${command_name}"
+      ;;
+  esac
+}
+
+main "$@"

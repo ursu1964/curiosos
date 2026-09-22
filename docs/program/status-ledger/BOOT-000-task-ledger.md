@@ -59,3 +59,4 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-002 | VALIDATED, FROZEN | Independent review accepted the repository metadata and convention updates. |
 | TASK-BOOT-003 | VALIDATED, FROZEN | Independent review accepted the Python uv workspace foundation in commit `ee69e11e6a00a774ebf388a4fe91f05eea7e67f9`. |
 | TASK-BOOT-004 | VALIDATED, FROZEN | Independent review accepted the TypeScript/pnpm workspace foundation in commit `0ae55c9f6b3ce7320d6a700eb8b026c3966cf1df`. |
+| TASK-BOOT-005 | VALIDATED, FROZEN | Independent review accepted the developer command surface in commit `389302e`. |
