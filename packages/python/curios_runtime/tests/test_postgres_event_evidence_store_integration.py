@@ -8,7 +8,7 @@ from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
-from contract_fixtures import SCHEMA_V1, UTC_NOW, fixed_id, ref_for
+from contract_fixtures import SCHEMA_V1, UTC_LATER, UTC_NOW, fixed_id, ref_for
 from curios_contracts import (
     CorrelationId,
     EventEnvelope,
@@ -21,6 +21,9 @@ from curios_contracts import (
     ProjectId,
     RuntimeEventType,
     TraceId,
+    VerificationId,
+    VerificationOutcome,
+    VerificationReference,
     WorkId,
 )
 from curios_persistence import (
@@ -58,17 +61,29 @@ def test_task_m0_004_event_evidence_store_against_local_docker() -> None:
     persistence = PersistenceStore(config)
     store = EventEvidenceRuntimeStore(persistence)
     event = _event()
+    lexically_later_event = _event(ordinal=2)
+    lexically_earlier_event = _event(ordinal=1)
     evidence = _evidence()
+    verification = _verification()
 
     try:
         _wait_for_store_initialization(persistence)
 
         assert store.append_event(event) == event
+        assert store.append_event(lexically_later_event) == lexically_later_event
+        assert store.append_event(lexically_earlier_event) == lexically_earlier_event
         assert store.append_evidence(evidence) == evidence
+        assert store.append_verification(verification) == verification
         assert store.require_event(event.event_id) == event
         assert store.require_evidence(evidence.evidence_id) == evidence
-        assert store.list_events(limit=10) == (event,)
+        assert store.require_verification(verification.verification_id) == verification
+        assert store.list_events(limit=10) == (
+            event,
+            lexically_later_event,
+            lexically_earlier_event,
+        )
         assert store.list_evidence(limit=10) == (evidence,)
+        assert store.list_verifications(limit=10) == (verification,)
 
         stored_hash = _single_value(
             config,
@@ -88,6 +103,12 @@ def test_task_m0_004_event_evidence_store_against_local_docker() -> None:
         try:
             assert restarted.require_event(event.event_id) == event
             assert restarted.require_evidence(evidence.evidence_id) == evidence
+            assert restarted.require_verification(verification.verification_id) == verification
+            assert restarted.list_events(limit=10) == (
+                event,
+                lexically_later_event,
+                lexically_earlier_event,
+            )
         finally:
             restarted_persistence.dispose()
 
@@ -129,12 +150,12 @@ def test_task_m0_004_event_evidence_store_against_local_docker() -> None:
     )
 
 
-def _event() -> EventEnvelope:
+def _event(ordinal: int = 0) -> EventEnvelope:
     return EventEnvelope(
-        event_id=fixed_id(EventId),
+        event_id=fixed_id(EventId, ordinal=ordinal),
         event_type=RuntimeEventType.EVIDENCE_PRODUCED.value,
         schema_version=SCHEMA_V1,
-        occurred_at=UTC_NOW,
+        occurred_at=UTC_NOW if ordinal == 0 else UTC_LATER,
         producer=ref_for(ProjectId),
         subject_ref=ref_for(WorkId),
         observability_context=ObservabilityContext(
@@ -144,7 +165,7 @@ def _event() -> EventEnvelope:
             trace_id=fixed_id(TraceId),
             correlation_id=fixed_id(CorrelationId),
         ),
-        payload={"evidence_id": str(fixed_id(EvidenceId))},
+        payload={"evidence_id": str(fixed_id(EvidenceId)), "ordinal": ordinal},
         metadata={"source": "runtime-store-postgres"},
     )
 
@@ -157,6 +178,17 @@ def _evidence() -> EvidenceReference:
         collected_at=UTC_NOW,
         summary="Runtime store PostgreSQL evidence.",
         trace_id=fixed_id(TraceId),
+    )
+
+
+def _verification() -> VerificationReference:
+    return VerificationReference(
+        verification_id=fixed_id(VerificationId),
+        subject_ref=ref_for(EvidenceId),
+        outcome=VerificationOutcome.NOT_EVALUATED,
+        evidence_refs=(fixed_id(EvidenceId),),
+        verified_at=UTC_LATER,
+        verifier_ref=ref_for(ProjectId),
     )
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Column, DateTime, MetaData, String, Table, func
+from sqlalchemy import BigInteger, Column, DateTime, Identity, MetaData, String, Table, func
 from sqlalchemy.dialects.postgresql import JSONB
 
 from curios_persistence.kinds import PersistenceRecordKind
@@ -14,6 +14,7 @@ def _record_table(name: str) -> Table:
     return Table(
         name,
         m0_persistence_metadata,
+        Column("append_ordinal", BigInteger, Identity(always=True), nullable=False),
         Column("canonical_id", String(128), primary_key=True),
         Column("payload", JSONB, nullable=False),
         Column("payload_sha256", String(64), nullable=False),

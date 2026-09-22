@@ -14,6 +14,7 @@ from curios_persistence import (
     PersistenceConfig,
     PersistenceError,
     PersistenceErrorCode,
+    PersistenceRecord,
     PersistenceRecordKind,
     PersistenceStore,
     canonical_to_record,
@@ -93,6 +94,83 @@ def test_task_m0_002_persistence_boundary_against_local_docker() -> None:
         with store.transaction() as transaction:
             assert transaction.count_records(PersistenceRecordKind.WORK) == 1
 
+        expected_event_order = (
+            "z_second_by_sort",
+            "a_first_by_sort",
+            "m_third_across_transactions",
+            "c_fourth_after_failed_insert",
+        )
+        with store.transaction() as transaction:
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[0],
+                    {"position": 1},
+                )
+            )
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[1],
+                    {"position": 2},
+                )
+            )
+            assert (
+                tuple(
+                    record.record_id
+                    for record in transaction.list_records(PersistenceRecordKind.EVENT, limit=10)
+                )
+                == expected_event_order[:2]
+            )
+
+        with store.transaction() as transaction:
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[2],
+                    {"position": 3},
+                )
+            )
+
+        with (
+            pytest.raises(RuntimeError, match="force rollback"),
+            store.transaction() as transaction,
+        ):
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    "b_rolled_back_between_successful_inserts",
+                    {"position": "rolled_back"},
+                )
+            )
+            raise RuntimeError("force rollback")
+
+        with pytest.raises(PersistenceError) as duplicate_event, store.transaction() as transaction:
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[0],
+                    {"position": "duplicate"},
+                )
+            )
+        assert duplicate_event.value.code is PersistenceErrorCode.CONFLICT
+
+        with store.transaction() as transaction:
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[3],
+                    {"position": 4},
+                )
+            )
+            assert (
+                tuple(
+                    record.record_id
+                    for record in transaction.list_records(PersistenceRecordKind.EVENT, limit=10)
+                )
+                == expected_event_order
+            )
+
         with pytest.raises(PersistenceError) as duplicate, store.transaction() as transaction:
             transaction.insert_record(work_record)
         assert duplicate.value.code is PersistenceErrorCode.CONFLICT
@@ -105,10 +183,78 @@ def test_task_m0_002_persistence_boundary_against_local_docker() -> None:
                 recovered = transaction.read_record(PersistenceRecordKind.WORK, str(work.work_id))
                 assert recovered is not None
                 assert record_to_canonical(recovered) == work
+                assert (
+                    tuple(
+                        record.record_id
+                        for record in transaction.list_records(
+                            PersistenceRecordKind.EVENT, limit=10
+                        )
+                    )
+                    == expected_event_order
+                )
         finally:
             restarted.dispose()
 
         _assert_migration_downgrade_removes_record_tables(config)
+    finally:
+        store.dispose()
+        _drop_schema(config)
+        _run_compose("stop", "postgres")
+
+    subprocess.run(
+        ("docker", "volume", "inspect", POSTGRES_VOLUME),
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_append_ordinal_migration_upgrades_existing_m0_002_rows() -> None:
+    _require_docker()
+    _run_compose("config", "--quiet")
+    _run_compose("up", "-d", "postgres")
+
+    schema = f"m0_004_upgrade_{uuid4().hex}"
+    config = PersistenceConfig(sqlalchemy_url=_postgres_url(), schema=schema)
+    store = PersistenceStore(config)
+    expected_event_order = ("z_before_upgrade", "a_before_upgrade")
+
+    try:
+        _wait_for_migration(config, revision="0001_m0_runtime_records")
+        with store.transaction() as transaction:
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[0],
+                    {"position": 1},
+                )
+            )
+            transaction.insert_record(
+                PersistenceRecord(
+                    PersistenceRecordKind.EVENT,
+                    expected_event_order[1],
+                    {"position": 2},
+                )
+            )
+
+        store.dispose()
+        _wait_for_migration(config)
+
+        upgraded = PersistenceStore(config)
+        try:
+            with upgraded.transaction() as transaction:
+                assert (
+                    tuple(
+                        record.record_id
+                        for record in transaction.list_records(
+                            PersistenceRecordKind.EVENT, limit=10
+                        )
+                    )
+                    == expected_event_order
+                )
+        finally:
+            upgraded.dispose()
     finally:
         store.dispose()
         _drop_schema(config)
@@ -136,6 +282,23 @@ def _wait_for_store_initialization(store: PersistenceStore) -> None:
                 raise
             time.sleep(1)
     pytest.fail(f"PostgreSQL persistence did not initialize: {last_error!r}")
+
+
+def _wait_for_migration(config: PersistenceConfig, *, revision: str = "head") -> None:
+    from curios_persistence import apply_schema_migrations
+
+    deadline = time.monotonic() + 75
+    last_error: object | None = None
+    while time.monotonic() < deadline:
+        try:
+            apply_schema_migrations(config, revision=revision)
+            return
+        except PersistenceError as exc:
+            last_error = exc.to_json_compatible()
+            if exc.code is not PersistenceErrorCode.CONNECTIVITY:
+                raise
+            time.sleep(1)
+    pytest.fail(f"PostgreSQL persistence migration did not complete: {last_error!r}")
 
 
 def _assert_migration_downgrade_removes_record_tables(config: PersistenceConfig) -> None:

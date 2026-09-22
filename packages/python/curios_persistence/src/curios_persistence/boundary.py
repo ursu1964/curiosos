@@ -245,7 +245,7 @@ class PersistenceTransaction:
         table = TABLES_BY_RECORD_KIND[kind]
         statement = (
             select(table.c.canonical_id, table.c.payload, table.c.payload_sha256)
-            .order_by(table.c.created_at.asc(), table.c.canonical_id.asc())
+            .order_by(table.c.append_ordinal.asc())
             .limit(limit)
         )
         try:
