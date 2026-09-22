@@ -12,8 +12,16 @@ from curios_contracts.temporal import DurationMilliseconds, UtcTimestamp
 
 
 @runtime_checkable
+class SupportsJsonCompatible(Protocol):
+    """Protocol for canonical contract value objects with object serialization."""
+
+    def to_json_compatible(self) -> object:
+        """Return a JSON-compatible representation."""
+
+
+@runtime_checkable
 class SupportsToJson(Protocol):
-    """Protocol for composed contracts with explicit JSON object rendering."""
+    """Temporary protocol for pre-reconciliation TASK-BOOT-012 objects."""
 
     def to_json(self) -> object:
         """Return a JSON-compatible representation."""
@@ -31,6 +39,8 @@ def to_json_compatible(value: object) -> object:
         return value.to_json_primitive()
     if isinstance(value, SchemaVersion):
         return value.to_json_primitive()
+    if isinstance(value, SupportsJsonCompatible):
+        return to_json_compatible(value.to_json_compatible())
     if isinstance(value, SupportsToJson):
         return to_json_compatible(value.to_json())
     if isinstance(value, Enum):
