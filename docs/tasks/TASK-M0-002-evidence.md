@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-002-EVIDENCE
 title: TASK-M0-002 PostgreSQL Runtime Persistence Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-002
@@ -65,7 +65,9 @@ Translated public errors retain `code`, `retryable`, `operation`, and safe
 connection URL, credentials, database-native traceback/detail, or arbitrary
 provider payload through the public error representation.
 
-TASK-M0-002 remains `IMPLEMENTED, TESTED` pending independent revalidation.
+Independent revalidation at
+`f4f3accd4541eed9e3bb6fd2a508c606d7cb9b81` passed and accepted the corrected
+exception boundary.
 
 ## Files Changed
 
@@ -194,9 +196,25 @@ The warnings are the existing Starlette/TestClient `httpx` deprecation and
 anyio `BlockingPortal` alias deprecation warnings previously classified as
 non-blocking dependency warnings.
 
+## Independent Revalidation
+
+TASK-M0-002 independent revalidation passed against candidate
+`f4f3accd4541eed9e3bb6fd2a508c606d7cb9b81`.
+
+Validation confirmed:
+
+- the previous public exception-chaining defect is fully resolved;
+- public translated `PersistenceError` values expose no native exception object,
+  raw SQL, connection URL, credentials, or provider-native details;
+- the complete TASK-M0-002 persistence-only acceptance remains satisfied;
+- schema tables remain authorized primitives rather than downstream semantics;
+- dependencies and topology guardrails remain valid;
+- LOCAL_DOCKER PostgreSQL 18 integration and complete mechanical verification
+  passed.
+
 ## Lifecycle State
 
-TASK-M0-002 is `IMPLEMENTED, TESTED`.
+TASK-M0-002 is `VALIDATED, FROZEN`.
 
 TASK-M0-003 remains `READY`.
 
