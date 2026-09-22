@@ -1,7 +1,7 @@
 [project]
 name = "curios-runtime"
 version = "0.0.0"
-description = "M0 runtime event and evidence store boundaries."
+description = "M0 runtime event/evidence store and work repository boundaries."
 requires-python = ">=3.14,<3.15"
 dependencies = [
   "curios-contracts",

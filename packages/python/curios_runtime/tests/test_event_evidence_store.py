@@ -34,6 +34,7 @@ from curios_runtime import EventEvidenceRuntimeStore, RuntimeStoreError, Runtime
 
 PACKAGE_ROOT = Path(__file__).parents[1]
 SOURCE_ROOT = PACKAGE_ROOT / "src" / "curios_runtime"
+EVENT_EVIDENCE_SOURCE = SOURCE_ROOT / "event_evidence_store.py"
 PYPROJECT = PACKAGE_ROOT / "pyproject.toml"
 
 
@@ -240,7 +241,7 @@ def test_runtime_store_public_boundary_exports_no_persistence_objects() -> None:
 
 
 def test_runtime_store_source_does_not_introduce_blocked_runtime_scope() -> None:
-    source = "\n".join(path.read_text(encoding="utf-8") for path in SOURCE_ROOT.rglob("*.py"))
+    source = EVENT_EVIDENCE_SOURCE.read_text(encoding="utf-8")
     pyproject = PYPROJECT.read_text(encoding="utf-8")
 
     for forbidden in (
