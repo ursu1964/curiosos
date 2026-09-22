@@ -57,3 +57,4 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | --- | --- | --- |
 | TASK-BOOT-001 | VALIDATED, FROZEN | Independent review accepted the Enterprise Build Pack foundation. |
 | TASK-BOOT-002 | VALIDATED, FROZEN | Independent review accepted the repository metadata and convention updates. |
+| TASK-BOOT-006 | IMPLEMENTED | `LOCAL_DOCKER` PostgreSQL 18 Compose baseline created and statically validated; runtime health check not executed because the Docker daemon socket was unavailable. Evidence: `docs/tasks/TASK-BOOT-006-local-docker-postgresql-evidence.md`. |
