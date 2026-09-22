@@ -76,4 +76,4 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 
 | ID | Subject | Status | Required Before |
 | --- | --- | --- | --- |
-| BOOT-VERIFY-PG-READINESS-001 | Start the TASK-BOOT-006 PostgreSQL service, verify health/readiness, and stop it cleanly without destroying the persistent volume. | DEFERRED because the Docker daemon was unavailable during TASK-BOOT-006 validation. | Final BOOT-000 acceptance |
+| BOOT-VERIFY-PG-READINESS-001 | Start the TASK-BOOT-006 PostgreSQL service, verify health/readiness, and stop it cleanly without destroying the persistent volume. | VERIFIED by corrective evidence in `docs/tasks/BOOT-VERIFY-PG-READINESS-001-evidence.md`; PostgreSQL reached healthy state, readiness passed, service stopped cleanly, and the named volume remained present. | Final BOOT-000 acceptance |
