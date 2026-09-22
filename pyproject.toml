@@ -18,7 +18,11 @@ package = false
 default-groups = ["dev"]
 
 [tool.uv.workspace]
-members = []
+members = [
+  "packages/python/curios_contracts",
+  "packages/python/curios_core",
+  "packages/python/curios_observability",
+]
 
 [tool.ruff]
 line-length = 100
