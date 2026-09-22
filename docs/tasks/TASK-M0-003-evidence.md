@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-003-EVIDENCE
 title: TASK-M0-003 Minimal Policy Evaluator Evidence
-lifecycle: IMPLEMENTED, TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-003
@@ -23,7 +23,8 @@ READ_ONLY provider-inventory work and fail-safe governed effects.
 - TASK-M0-003 security semantics documentation
 - narrow security/architecture test updates authorizing only
   `packages/python/curios_policy/**`
-- M0 status ledger transition to `IMPLEMENTED, TESTED`
+- M0 status ledger transition to `IMPLEMENTED, TESTED`, followed by
+  independent revalidation to `VALIDATED, FROZEN`
 
 ## Evaluator Semantics
 
@@ -50,13 +51,19 @@ READ_ONLY provider-inventory work and fail-safe governed effects.
 
 ## Verification
 
-Local verification was run for TASK-M0-003 and repository gates. See the final
-TASK-M0-003 implementation report for exact command outcomes, test counts, and
-commit SHA.
+Local verification was run for TASK-M0-003 and repository gates during
+implementation. Independent revalidation was later run against corrected
+candidate `1c842276e8c79de4d1b2b8acc4cac392b0e49812`; see
+`docs/tasks/TASK-M0-003-validation-evidence.md` for exact command outcomes,
+test counts, warnings, and correction-audit evidence.
 
 ## Lifecycle
 
-TASK-M0-003 is implemented and tested only. It is not self-declared
-`VALIDATED` or `FROZEN`.
+TASK-M0-003 was implemented and tested by the implementation agent, then
+independently revalidated after the formatter-only corrective commit.
+
+TASK-M0-003 is `VALIDATED, FROZEN`.
 
 TASK-M0-002 remains unchanged. TASK-M0-004 through TASK-M0-014 remain blocked.
+PG-M0-02 integration with frozen TASK-M0-002 remains required before downstream
+task readiness changes.
