@@ -63,6 +63,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-006 | VALIDATED, FROZEN | Independent review accepted the `LOCAL_DOCKER` PostgreSQL baseline in commit `72edf0bd0114ccd074a3404e0a1588b81629066c`; live PostgreSQL readiness remains deferred for BOOT acceptance. |
 | TASK-BOOT-007 | VALIDATED, FROZEN | Independent review accepted the Python package skeletons in commit `507f12362e9588470f3c556ebf30c36e15b3d141`. |
 | TASK-BOOT-008 | VALIDATED, FROZEN | Independent review accepted the TypeScript package skeletons in commit `45b1e7f0e2b99f2e19edb86e7cf02214c90b6097`. |
+| TASK-BOOT-009 | TESTED | Implementation-agent evidence recorded in `docs/tasks/TASK-BOOT-009-evidence.md`; ready for independent validation. |
 
 ## Outstanding BOOT Acceptance Verification Items
 
