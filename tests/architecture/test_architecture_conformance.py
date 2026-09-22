@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import re
 import tomllib
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ TYPESCRIPT_CONTRACTS_PACKAGE = REPO_ROOT / "packages/typescript/curios-contracts
 TYPESCRIPT_CONTRACTS_WORKSPACE = "packages/typescript/curios-contracts"
 API_PACKAGE = REPO_ROOT / "apps/api"
 API_SOURCE = API_PACKAGE / "src/curios_api"
+WEB_PACKAGE = REPO_ROOT / "apps/web"
+WEB_SOURCE = WEB_PACKAGE / "src"
 
 ARCHITECTURE_FAILURE = "ARCHITECTURE_FAILURE"
 
@@ -30,6 +33,7 @@ OBJECT_REFERENCE_RULE = "ObjectReference is the single generic reference abstrac
 FRONTEND_DIRECTION_RULE = "TypeScript package must not be upstream of canonical semantics"
 INFRASTRUCTURE_RULE = "canonical domain packages must not import tooling or infrastructure"
 API_BOUNDARY_RULE = "FastAPI service composition must remain an outer application boundary"
+WEB_BOUNDARY_RULE = "web bootstrap must remain an outer frontend boundary"
 
 FASTAPI_IMPORTS = frozenset({"fastapi", "starlette"})
 SQLALCHEMY_IMPORTS = frozenset({"alembic", "sqlalchemy", "sqlmodel"})
@@ -56,6 +60,32 @@ OTEL_IMPLEMENTATION_IMPORTS = frozenset(
 DOCKER_TOOLING_IMPORTS = frozenset({"compose", "docker", "python_on_whales"})
 FRONTEND_RUNTIME_IMPORTS = frozenset({"node", "npm", "react", "typescript", "vite"})
 REPOSITORY_TOOLING_IMPORTS = frozenset({"infrastructure", "tooling"})
+WEB_ALLOWED_DEPENDENCIES = frozenset(
+    {
+        "@curiosos/curios-contracts",
+        "@types/react",
+        "@types/react-dom",
+        "@vitejs/plugin-react",
+        "jsdom",
+        "react",
+        "react-dom",
+        "typescript",
+        "vite",
+        "vitest",
+    }
+)
+WEB_FORBIDDEN_SOURCE_IMPORTS = frozenset(
+    {
+        "curios_api",
+        "curios_config",
+        "curios_contracts",
+        "curios_core",
+        "curios_observability",
+        "curios_ollama",
+        "curios_postgres_provider",
+        "fastapi",
+    }
+)
 
 CONTRACTS_FORBIDDEN_IMPORTS = frozenset(
     {
@@ -306,6 +336,36 @@ def _pnpm_workspace_packages(path: Path) -> tuple[str, ...]:
         elif in_packages_block and stripped and not raw_line.startswith(" "):
             break
     return tuple(packages)
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    data: object = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(data, dict)
+    return data
+
+
+def _typescript_source_files(root: Path) -> tuple[Path, ...]:
+    if not root.exists():
+        return ()
+    return tuple(
+        sorted(
+            path for suffix in ("*.ts", "*.tsx") for path in root.rglob(suffix) if path.is_file()
+        )
+    )
+
+
+def _typescript_import_modules(path: Path) -> tuple[tuple[str, int], ...]:
+    imports: list[tuple[str, int]] = []
+    import_re = re.compile(
+        r"""^\s*(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?["']([^"']+)["']"""
+    )
+    dynamic_import_re = re.compile(r"""\bimport\(\s*["']([^"']+)["']\s*\)""")
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        static_match = import_re.match(line)
+        if static_match is not None:
+            imports.append((static_match.group(1), line_number))
+        imports.extend((match.group(1), line_number) for match in dynamic_import_re.finditer(line))
+    return tuple(imports)
 
 
 def _metadata_violations(
@@ -687,6 +747,74 @@ def test_frontend_package_is_not_upstream_of_canonical_python_contracts() -> Non
                 detail="TypeScript contracts package exists outside the Node workspace config",
             )
         )
+
+    _assert_no_violations(tuple(violations))
+
+
+def test_web_bootstrap_remains_outer_frontend_boundary() -> None:
+    if not WEB_PACKAGE.exists():
+        return
+
+    root_pyproject = _read_toml(REPO_ROOT / "pyproject.toml")
+    python_workspace_members = tuple(root_pyproject["tool"]["uv"]["workspace"]["members"])
+    node_workspaces = _pnpm_workspace_packages(REPO_ROOT / "pnpm-workspace.yaml")
+    package_json = _read_json(WEB_PACKAGE / "package.json")
+    dependencies = set(package_json.get("dependencies", {}))
+    dev_dependencies = set(package_json.get("devDependencies", {}))
+    violations: list[Violation] = []
+
+    if package_json.get("name") != "@curiosos/web":
+        violations.append(
+            Violation(
+                rule=WEB_BOUNDARY_RULE,
+                file=WEB_PACKAGE / "package.json",
+                dependency="@curiosos/web",
+                detail="web application package must keep the authorized package identity",
+            )
+        )
+    if "apps/web" in python_workspace_members:
+        violations.append(
+            Violation(
+                rule=WEB_BOUNDARY_RULE,
+                file=REPO_ROOT / "pyproject.toml",
+                dependency="apps/web",
+                detail="web application must not be registered in the Python workspace",
+            )
+        )
+    if not any(workspace in {"apps/*", "apps/web"} for workspace in node_workspaces):
+        violations.append(
+            Violation(
+                rule=WEB_BOUNDARY_RULE,
+                file=REPO_ROOT / "pnpm-workspace.yaml",
+                dependency="apps/web",
+                detail="web application package is not registered in the Node workspace",
+            )
+        )
+
+    unexpected_dependencies = (dependencies | dev_dependencies) - WEB_ALLOWED_DEPENDENCIES
+    for dependency in sorted(unexpected_dependencies):
+        violations.append(
+            Violation(
+                rule=WEB_BOUNDARY_RULE,
+                file=WEB_PACKAGE / "package.json",
+                dependency=dependency,
+                detail="unexpected web bootstrap dependency",
+            )
+        )
+
+    for source_file in _typescript_source_files(WEB_SOURCE):
+        for module, line_number in _typescript_import_modules(source_file):
+            for forbidden in WEB_FORBIDDEN_SOURCE_IMPORTS:
+                if _module_matches(module, forbidden):
+                    violations.append(
+                        Violation(
+                            rule=WEB_BOUNDARY_RULE,
+                            file=source_file,
+                            dependency=forbidden,
+                            lineno=line_number,
+                            detail=f"imports backend/internal module {module!r}",
+                        )
+                    )
 
     _assert_no_violations(tuple(violations))
 

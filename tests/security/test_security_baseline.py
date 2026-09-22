@@ -168,6 +168,7 @@ ALLOWED_TOP_LEVEL_PATHS = frozenset(
 ALLOWED_APP_ROOTS = frozenset(
     {
         "apps/api",
+        "apps/web",
     }
 )
 ALLOWED_PACKAGE_ROOTS = frozenset(
@@ -215,6 +216,7 @@ SECRET_FIELD_ALLOWLIST = {
 SECURITY_SCAN_ROOTS = (
     "apps/api/src",
     "apps/api/tests",
+    "apps/web",
     "docs",
     "infrastructure",
     "packages/python/curios_config/src",
@@ -243,6 +245,8 @@ SECURITY_SCAN_ROOT_FILES = frozenset(
 SECURITY_SCAN_SUFFIXES = frozenset(
     {
         ".env.example",
+        ".css",
+        ".html",
         ".js",
         ".json",
         ".md",
@@ -250,6 +254,7 @@ SECURITY_SCAN_SUFFIXES = frozenset(
         ".py",
         ".toml",
         ".ts",
+        ".tsx",
         ".txt",
         ".yaml",
         ".yml",
@@ -889,7 +894,7 @@ def test_core_context_and_services_do_not_implement_security_authority_engines()
     _assert_no_security_failure(result.value == (), "CoreServices changed default behavior")
 
 
-def test_later_task_security_provider_runtime_surfaces_match_authorized_boot022_boundary() -> None:
+def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = (
         _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
