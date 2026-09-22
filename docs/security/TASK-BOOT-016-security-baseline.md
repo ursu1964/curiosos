@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-016-SECURITY-BASELINE
 title: TASK-BOOT-016 Security Baseline Tests
-lifecycle: IMPLEMENTED
+lifecycle: FROZEN
 artifact_type: security_baseline
 authority: implementation_agent
 task: TASK-BOOT-016
@@ -56,3 +56,12 @@ SECURITY_FAILURE
   source/configuration/documentation surfaces relevant to the current bootstrap
   baseline. It excludes generated, cache, dependency, VCS, and untracked
   historical material.
+
+## Validation
+
+Independent PG-07B revalidation accepted this security baseline after the
+corrective implementation in commit
+`93f7c6ffabeaca4b7ce24ff4e18746e11e672eb6`.
+
+The accepted baseline remains a deterministic M0 test/check foundation only.
+It does not implement security runtime behavior or begin PG-08 provider work.

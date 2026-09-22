@@ -70,7 +70,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-013 | VALIDATED, FROZEN | Independent review accepted the configuration, security, effect, and policy contracts in commit `6679224e6684a8b7be885a6685020308ff0313e3`; integrated with TASK-BOOT-011 without embedding governance records into work or agent runtime contracts. |
 | TASK-BOOT-014 | VALIDATED, FROZEN | Independent review accepted the repository-level contract/schema verification foundation in commit `20b27f31c17b09708885e7447ef2bde2ab93a865`; formal generated JSON Schema remains a later derived representation. |
 | TASK-BOOT-015 | VALIDATED, FROZEN | Independent review accepted the architecture conformance checks in commit `12bb41da9695ef35ca69e99d24a132972a348edb`; violations map to `ARCHITECTURE_FAILURE`. |
-| TASK-BOOT-016 | TESTED | Security baseline tests were implemented and corrected in `tests/security/test_security_baseline.py`; independent validation/freeze remains pending. |
+| TASK-BOOT-016 | VALIDATED, FROZEN | Independent PG-07B revalidation accepted the corrected security baseline tests in commit `93f7c6ffabeaca4b7ce24ff4e18746e11e672eb6`; PG-07B is closed. |
 | TASK-BOOT-017 | VALIDATED, FROZEN | Independent review accepted the core package foundation in commit `56428d8fcdd8b67ab822691e96c0a9a44bf39642`; `curios_core` preserves inward dependency direction and does not implement deferred runtime engines. |
 
 ## Outstanding BOOT Acceptance Verification Items

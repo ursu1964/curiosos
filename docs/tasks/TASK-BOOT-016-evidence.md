@@ -1,7 +1,7 @@
 ---
 id: TASK-BOOT-016-EVIDENCE
 title: TASK-BOOT-016 Security Baseline Tests Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: evidence
 authority: implementation_agent
 task: TASK-BOOT-016
@@ -17,6 +17,8 @@ task: TASK-BOOT-016
 | 2 | IMPLEMENTED | Repository-level security baseline tests and security documentation were added for TASK-BOOT-016 scope. |
 | 3 | TESTED | Required deterministic checks were run after implementation; see check evidence below. |
 | 4 | CORRECTED | PG-07B validation found false-negative weaknesses in repository secret scanning, semantic secret-field detection, core security-runtime boundary checks, and PG-08 surface detection. TASK-BOOT-016 tests were strengthened without adding runtime implementation. |
+| 5 | VALIDATED | Independent PG-07B revalidation accepted the corrected TASK-BOOT-016 baseline. |
+| 6 | FROZEN | The BOOT task ledger records TASK-BOOT-016 as `VALIDATED, FROZEN`; PG-07B is closed. |
 
 ## Implementation Summary
 
@@ -70,7 +72,21 @@ runtime implementation files were modified.
 | Diff whitespace | Passed: `git diff --check`. |
 | Scope review | Passed: changes are limited to `tests/security/**`, `docs/security/**`, TASK-BOOT-016 evidence, and the TASK-BOOT-016 status-ledger row. No contract/core implementation, provider, API, frontend, Docker, CI, dependency, or TASK-BOOT-018+ implementation files were modified. |
 
+## Independent Revalidation
+
+Independent PG-07B revalidation was performed against corrective commit
+`93f7c6ffabeaca4b7ce24ff4e18746e11e672eb6`.
+
+| Revalidation Area | Result |
+| --- | --- |
+| Acceptance matrix | Passed: all mandatory TASK-BOOT-016 criteria were satisfied. |
+| Prior failure A: secret leakage | Passed: tracked current-stage source, configuration, and documentation surfaces are scanned deterministically; approved placeholders are distinguished from secret-shaped values. |
+| Prior failure B: secret-value fields | Passed: semantic secret/credential/token field detection rejects representative variants while preserving frozen `SecretReference` metadata/reference fields. |
+| Prior failure C: core security-runtime boundary | Passed: `curios_core` source topology, public exports, `CoreContext`, `CoreServices`, and dependency direction remain bounded and do not implement policy, authority, or secret-resolution engines. |
+| Prior failure D: PG-08 absence | Passed: current-stage tracked top-level paths, package roots, and workspace members match the authorized topology; provider/runtime surfaces remain absent. |
+| Mechanical verification | Passed: TOML validation, `uv lock --check`, locked sync, Ruff, Ruff format check, mypy, targeted tests, full pytest, and `git diff --check`. |
+| Scope review | Passed: no contract/core production changes, provider runtime, API/frontend, CI, dependency, or TASK-BOOT-018+ implementation was introduced. |
+
 ## Final Status
 
-`TASK-BOOT-016` is `TESTED`. This task does not self-declare `VALIDATED` or
-`FROZEN`.
+`TASK-BOOT-016` is `VALIDATED, FROZEN` after independent PG-07B revalidation.
