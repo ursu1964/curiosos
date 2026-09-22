@@ -25,6 +25,7 @@ Each task authorizes only its explicit new surface.
 Current tracked roots remain the frozen BOOT roots:
 
 - existing BOOT Python packages;
+- `packages/python/curios_persistence/**` for TASK-M0-002 only;
 - existing BOOT TypeScript package;
 - `apps/api`;
 - `apps/web`;
@@ -34,6 +35,9 @@ Current tracked roots remain the frozen BOOT roots:
 TASK-M0-001 does not add new runtime package roots, app roots, broad test roots,
 service roots, provider roots, or `.github` surfaces.
 
+TASK-M0-002 narrowly authorizes the planned `curios_persistence` package root
+and keeps policy/runtime package roots blocked until their owning tasks.
+
 ## Planned But Not Yet Authorized M0 Surfaces
 
 The security tests now record planned M0 surfaces by task so future tasks can
@@ -41,7 +45,6 @@ authorize them narrowly:
 
 | Task | Planned Surface |
 | --- | --- |
-| TASK-M0-002 | `packages/python/curios_persistence/**` |
 | TASK-M0-003 | `packages/python/curios_policy/**` |
 | TASK-M0-004 through TASK-M0-007 | `packages/python/curios_runtime/**` |
 | TASK-M0-010 | `tests/integration/**` additions beyond frozen BOOT integration tests |

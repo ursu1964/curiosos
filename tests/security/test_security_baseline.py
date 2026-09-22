@@ -144,6 +144,9 @@ M0_PLANNED_PACKAGE_ROOTS_BY_TASK = {
     "TASK-M0-006": frozenset({"packages/python/curios_runtime"}),
     "TASK-M0-007": frozenset({"packages/python/curios_runtime"}),
 }
+M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK = {
+    "TASK-M0-002": frozenset({"packages/python/curios_persistence"}),
+}
 M0_PLANNED_APP_ROOTS_BY_TASK = {
     "TASK-M0-008": frozenset({"apps/api"}),
     "TASK-M0-009": frozenset({"apps/web"}),
@@ -152,7 +155,9 @@ M0_PLANNED_TEST_ROOTS_BY_TASK = {
     "TASK-M0-010": frozenset({"tests/integration"}),
     "TASK-M0-012": frozenset({"tests/acceptance"}),
 }
-M0_DEFERRED_PACKAGE_ROOTS = frozenset().union(*M0_PLANNED_PACKAGE_ROOTS_BY_TASK.values())
+M0_DEFERRED_PACKAGE_ROOTS = frozenset().union(
+    *M0_PLANNED_PACKAGE_ROOTS_BY_TASK.values()
+) - frozenset().union(*M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK.values())
 M0_DEFERRED_TOP_LEVEL_ROOTS = frozenset({"runtime", "services", "providers"})
 M1_PLUS_EXAMPLE_PACKAGE_ROOTS = frozenset(
     {
@@ -216,6 +221,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
         "packages/python/curios_core",
         "packages/python/curios_ollama",
         "packages/python/curios_observability",
+        "packages/python/curios_persistence",
         "packages/python/curios_postgres_provider",
         "packages/typescript/curios-contracts",
     }
@@ -263,6 +269,7 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_core/src",
     "packages/python/curios_observability/src",
     "packages/python/curios_ollama/src",
+    "packages/python/curios_persistence/src",
     "packages/python/curios_postgres_provider/src",
     "packages/typescript/curios-contracts/src",
     "tests/acceptance",
@@ -1006,7 +1013,10 @@ def test_m0_app_topology_does_not_broaden_beyond_authorized_boot_apps() -> None:
     assert _unauthorized_app_roots(simulated_roots) == {"apps/admin", "apps/agent-console"}
 
 
-def test_m0_planned_surface_registry_is_task_scoped_and_not_currently_authorized() -> None:
+def test_m0_planned_surface_registry_is_task_scoped_and_only_m0_002_authorized() -> None:
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-002"] == {
+        "packages/python/curios_persistence"
+    }
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
@@ -1072,6 +1082,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
             "packages/python/curios_core",
             "packages/python/curios_ollama",
             "packages/python/curios_observability",
+            "packages/python/curios_persistence",
             "packages/python/curios_postgres_provider",
         },
         f"unexpected Python workspace member(s): {sorted(python_workspace_members)}",
