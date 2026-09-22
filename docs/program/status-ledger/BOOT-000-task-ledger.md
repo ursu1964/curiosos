@@ -76,6 +76,7 @@ No task is `IMPLEMENTED`, `TESTED`, or `VALIDATED` until execution evidence and 
 | TASK-BOOT-019 | VALIDATED, FROZEN | Independent PG-08C validation accepted the PostgreSQL provider boundary and Docker-backed readiness evidence; see `docs/tasks/PG-08C-validation-evidence.md`. |
 | TASK-BOOT-020 | VALIDATED, FROZEN | Independent PG-08C validation accepted the deterministic Ollama provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
 | TASK-BOOT-021 | VALIDATED, FROZEN | Independent PG-08C validation accepted the telemetry provider boundary; see `docs/tasks/PG-08C-validation-evidence.md`. |
+| TASK-BOOT-022 | IMPLEMENTED, TESTED | Implementation-agent evidence records the minimal FastAPI service composition boundary in `docs/tasks/TASK-BOOT-022-evidence.md`; independent validation remains pending. |
 
 ## Outstanding BOOT Acceptance Verification Items
 

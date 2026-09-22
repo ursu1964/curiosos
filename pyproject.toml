@@ -19,6 +19,7 @@ default-groups = ["dev"]
 
 [tool.uv.workspace]
 members = [
+  "apps/api",
   "packages/python/curios_contracts",
   "packages/python/curios_core",
   "packages/python/curios_config",
@@ -46,6 +47,7 @@ markers = [
   "integration: Docker-backed integration tests.",
 ]
 pythonpath = [
+  "apps/api/src",
   "packages/python/curios_contracts/src",
   "packages/python/curios_core/src",
   "packages/python/curios_observability/src",

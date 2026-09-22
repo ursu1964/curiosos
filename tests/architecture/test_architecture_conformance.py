@@ -15,6 +15,8 @@ CORE_PACKAGE = REPO_ROOT / "packages/python/curios_core"
 CORE_SOURCE = CORE_PACKAGE / "src/curios_core"
 TYPESCRIPT_CONTRACTS_PACKAGE = REPO_ROOT / "packages/typescript/curios-contracts"
 TYPESCRIPT_CONTRACTS_WORKSPACE = "packages/typescript/curios-contracts"
+API_PACKAGE = REPO_ROOT / "apps/api"
+API_SOURCE = API_PACKAGE / "src/curios_api"
 
 ARCHITECTURE_FAILURE = "ARCHITECTURE_FAILURE"
 
@@ -27,6 +29,7 @@ CANONICAL_PROVIDER_TYPE_RULE = "provider-native types must not appear in canonic
 OBJECT_REFERENCE_RULE = "ObjectReference is the single generic reference abstraction"
 FRONTEND_DIRECTION_RULE = "TypeScript package must not be upstream of canonical semantics"
 INFRASTRUCTURE_RULE = "canonical domain packages must not import tooling or infrastructure"
+API_BOUNDARY_RULE = "FastAPI service composition must remain an outer application boundary"
 
 FASTAPI_IMPORTS = frozenset({"fastapi", "starlette"})
 SQLALCHEMY_IMPORTS = frozenset({"alembic", "sqlalchemy", "sqlmodel"})
@@ -405,6 +408,59 @@ def test_curios_core_source_and_metadata_have_no_outward_dependencies() -> None:
     )
 
     _assert_no_violations(violations)
+
+
+def test_fastapi_service_composition_remains_outer_boundary() -> None:
+    if not API_SOURCE.exists():
+        return
+
+    root_pyproject = _read_toml(REPO_ROOT / "pyproject.toml")
+    python_workspace_members = tuple(root_pyproject["tool"]["uv"]["workspace"]["members"])
+    api_dependencies = frozenset(_project_dependencies(API_PACKAGE / "pyproject.toml"))
+    direct_provider_native_imports = frozenset(
+        {
+            *SQLALCHEMY_IMPORTS,
+            *POSTGRES_IMPORTS,
+            *OLLAMA_PROVIDER_SDK_IMPORTS,
+            *OTEL_IMPLEMENTATION_IMPORTS,
+            "pydantic",
+        }
+    )
+    violations: list[Violation] = []
+
+    if "apps/api" not in python_workspace_members:
+        violations.append(
+            Violation(
+                rule=API_BOUNDARY_RULE,
+                file=REPO_ROOT / "pyproject.toml",
+                dependency="apps/api",
+                detail="FastAPI application package is not registered in the uv workspace",
+            )
+        )
+    if "fastapi" not in api_dependencies:
+        violations.append(
+            Violation(
+                rule=API_BOUNDARY_RULE,
+                file=API_PACKAGE / "pyproject.toml",
+                dependency="fastapi",
+                detail="FastAPI dependency must be owned by the outer application package",
+            )
+        )
+
+    for import_use in _imports(_python_files(API_SOURCE)):
+        for forbidden in direct_provider_native_imports:
+            if _module_matches(import_use.module, forbidden):
+                violations.append(
+                    Violation(
+                        rule=API_BOUNDARY_RULE,
+                        file=import_use.file,
+                        dependency=forbidden,
+                        lineno=import_use.lineno,
+                        detail=f"direct provider/framework-native import {import_use.module!r}",
+                    )
+                )
+
+    _assert_no_violations(tuple(violations))
 
 
 def test_canonical_contract_classes_are_not_sqlalchemy_orm_models() -> None:

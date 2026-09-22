@@ -32,7 +32,7 @@ runtime security engines, or PG-08 provider work.
 | Security contracts remain provider/framework/runtime independent. | `test_security_contract_source_has_no_runtime_security_imports` |
 | Local development configuration examples stay CURIOS-prefixed and placeholder-oriented. | `test_local_docker_configuration_examples_remain_placeholder_and_curios_prefixed` |
 | `CoreContext` and `CoreServices` do not become authority, policy, or secret-resolution engines. | `test_core_context_and_services_do_not_implement_security_authority_engines` |
-| PG-08 provider/runtime surfaces remain absent. | `test_later_task_security_provider_runtime_surfaces_remain_absent` |
+| Current-stage provider/API/runtime surfaces match the authorized topology. | `test_later_task_security_provider_runtime_surfaces_match_authorized_boot022_boundary` |
 
 ## Failure Class
 
@@ -64,4 +64,7 @@ corrective implementation in commit
 `93f7c6ffabeaca4b7ce24ff4e18746e11e672eb6`.
 
 The accepted baseline remains a deterministic M0 test/check foundation only.
-It does not implement security runtime behavior or begin PG-08 provider work.
+Later authorized tasks may update the topology invariant narrowly as each
+surface becomes part of the current bootstrap stage. TASK-BOOT-022 authorizes
+only `apps/api` as the API application surface; it does not implement security
+runtime behavior.

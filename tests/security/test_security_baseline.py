@@ -131,7 +131,6 @@ CORE_FORBIDDEN_SECURITY_METHOD_PARTS = frozenset(
     }
 )
 LATER_TASK_PATHS = (
-    "apps",
     "services",
     "providers",
     "packages/python/curios_postgres",
@@ -148,6 +147,7 @@ ALLOWED_TOP_LEVEL_PATHS = frozenset(
         ".gitignore",
         ".prettierignore",
         "README.md",
+        "apps",
         "docs",
         "eslint.config.mjs",
         "infrastructure",
@@ -162,6 +162,11 @@ ALLOWED_TOP_LEVEL_PATHS = frozenset(
         "tsconfig.base.json",
         "tsconfig.json",
         "uv.lock",
+    }
+)
+ALLOWED_APP_ROOTS = frozenset(
+    {
+        "apps/api",
     }
 )
 ALLOWED_PACKAGE_ROOTS = frozenset(
@@ -207,6 +212,8 @@ SECRET_FIELD_ALLOWLIST = {
     )
 }
 SECURITY_SCAN_ROOTS = (
+    "apps/api/src",
+    "apps/api/tests",
     "docs",
     "infrastructure",
     "packages/python/curios_config/src",
@@ -543,6 +550,15 @@ def _tracked_package_roots() -> frozenset[str]:
     return frozenset(roots)
 
 
+def _tracked_app_roots() -> frozenset[str]:
+    roots: set[str] = set()
+    for path in _tracked_files():
+        parts = path.relative_to(REPO_ROOT).parts
+        if len(parts) >= 2 and parts[0] == "apps":
+            roots.add("/".join(parts[:2]))
+    return frozenset(roots)
+
+
 def _tracked_integration_tests() -> frozenset[str]:
     return frozenset(
         path.relative_to(REPO_ROOT).as_posix()
@@ -872,12 +888,13 @@ def test_core_context_and_services_do_not_implement_security_authority_engines()
     _assert_no_security_failure(result.value == (), "CoreServices changed default behavior")
 
 
-def test_later_task_security_provider_runtime_surfaces_match_authorized_boot019_boundary() -> None:
+def test_later_task_security_provider_runtime_surfaces_match_authorized_boot022_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = (
         _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
     )
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
+    unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
     root_pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     python_workspace_members = frozenset(root_pyproject["tool"]["uv"]["workspace"]["members"])
@@ -897,12 +914,17 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_boot019_
         f"unexpected tracked top-level path(s): {sorted(unexpected_top_level)}",
     )
     _assert_no_security_failure(
+        not unexpected_apps,
+        f"unexpected tracked application root(s): {sorted(unexpected_apps)}",
+    )
+    _assert_no_security_failure(
         not unexpected_packages,
         f"unexpected tracked package root(s): {sorted(unexpected_packages)}",
     )
     _assert_no_security_failure(
         python_workspace_members
         == {
+            "apps/api",
             "packages/python/curios_config",
             "packages/python/curios_contracts",
             "packages/python/curios_core",

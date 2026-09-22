@@ -1,0 +1,26 @@
+[project]
+name = "curios-api"
+version = "0.0.0"
+description = "FastAPI service composition boundary for Curios bootstrap."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "curios-config",
+  "curios-contracts",
+  "curios-core",
+  "curios-observability",
+  "curios-ollama",
+  "curios-postgres-provider",
+  "fastapi>=0.118.0",
+]
+
+[tool.uv.sources]
+curios-config = { workspace = true }
+curios-contracts = { workspace = true }
+curios-core = { workspace = true }
+curios-observability = { workspace = true }
+curios-ollama = { workspace = true }
+curios-postgres-provider = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"
