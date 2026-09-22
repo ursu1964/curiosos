@@ -1,7 +1,7 @@
 ---
 id: M0-STATUS-LEDGER
 title: M0 Status Ledger
-lifecycle: SPECIFIED
+lifecycle: FROZEN
 artifact_type: status_ledger
 authority: program_planning
 milestone_id: M0
@@ -14,13 +14,13 @@ date: 2026-09-22
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | CORRECTED / AWAITING REVALIDATION | M0 executable program has been corrected after failed readiness validation. No M0 implementation task has started. |
+| M0 | PLANNING VALIDATED / FROZEN | M0 executable program passed independent readiness revalidation. No M0 implementation task has started. |
 
 ## Task Status
 
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | PLANNED | First proposed execution unit; blocked until independent M0 readiness revalidation passes. |
+| TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | READY | First authorized execution unit after independent M0 readiness revalidation passed. |
 | TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | BLOCKED | Requires TASK-M0-001 topology authorization. |
 | TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | BLOCKED | Requires TASK-M0-001 topology authorization. |
 | TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | BLOCKED | Requires topology authorization and persistence foundation. |
@@ -42,6 +42,8 @@ date: 2026-09-22
 - `CORRECTED / AWAITING REVALIDATION`: planning artifacts were corrected after
   failed readiness validation and require independent revalidation before any
   implementation task becomes ready.
+- `PLANNING VALIDATED / FROZEN`: milestone planning authority is accepted and
+  frozen for execution control; implementation tasks still advance separately.
 - `READY`: all prerequisites are satisfied and implementation may begin after
   explicit task authorization.
 - `BLOCKED`: the task depends on incomplete upstream M0 work.

@@ -1,7 +1,7 @@
 ---
 id: M0-TASK-PACK
 title: M0 Atomic Task Pack
-lifecycle: SPECIFIED
+lifecycle: FROZEN
 artifact_type: task_pack
 authority: program_planning
 milestone_id: M0

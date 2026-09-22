@@ -1,7 +1,7 @@
 ---
 id: M0-000A-EVIDENCE
 title: M0-000A M0 Milestone Definition and Executable Task Pack Evidence
-lifecycle: SPECIFIED
+lifecycle: VALIDATED
 artifact_type: planning_evidence
 authority: program_planning
 task_id: M0-000A
@@ -47,15 +47,21 @@ M0 planning proposes one first executable unit:
 
 `TASK-M0-001 — M0 Topology and Guardrail Transition`
 
-After the initial M0 readiness validation, execution is not yet authorized.
-The validation identified planning defects in DAG parallelization, task
-decomposition completeness, and premature authorization language. This
-corrective update resolves those defects and leaves M0 awaiting independent
-readiness revalidation.
+The initial M0 readiness validation failed. It identified planning defects in
+DAG parallelization, task decomposition completeness, and premature
+authorization language. A corrective update resolved those defects.
 
-If readiness revalidation passes, TASK-M0-001 becomes the first authorized
-execution unit. No other M0 implementation task is ready until TASK-M0-001 is
-validated, frozen, and integrated.
+Independent readiness revalidation passed after the corrective update.
+TASK-M0-001 is now the first authorized execution unit. No other M0
+implementation task is ready until TASK-M0-001 is validated, frozen, and
+integrated.
+
+## Lifecycle State
+
+- M0 planning: `VALIDATED, FROZEN`.
+- TASK-M0-001: `READY`.
+- TASK-M0-002 through TASK-M0-014: `BLOCKED`.
+- M0 implementation: not started.
 
 ## Scope Protection
 

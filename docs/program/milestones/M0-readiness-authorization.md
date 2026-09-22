@@ -1,7 +1,7 @@
 ---
 id: M0-READINESS-AUTHORIZATION
 title: M0 Readiness and First Execution Authorization
-lifecycle: SPECIFIED
+lifecycle: FROZEN
 artifact_type: readiness_record
 authority: program_planning
 milestone_id: M0
@@ -10,24 +10,23 @@ date: 2026-09-22
 
 # M0 Readiness and First Execution Authorization
 
-## Readiness State
+## Readiness Decision
 
-M0 EXECUTION IS NOT YET AUTHORIZED.
+M0 READINESS REVALIDATION: PASS
 
-The first M0 readiness validation failed because the initial task pack and DAG
-were internally inconsistent. This artifact now records the corrected proposed
-first execution unit and the transition required before implementation may
-begin.
-
-If independent M0 readiness revalidation passes, the first authorized execution
-unit is:
+M0 EXECUTION AUTHORIZED:
 
 `TASK-M0-001 — M0 Topology and Guardrail Transition`
 
-No M0 implementation task may start until M0 readiness validation passes.
-After that, only TASK-M0-001 may start. No later M0 implementation task may
-start until TASK-M0-001 is implemented, tested, independently validated,
-frozen, and integrated.
+The first M0 readiness validation failed because the initial task pack and DAG
+were internally inconsistent. The corrected M0 execution program has now passed
+independent readiness revalidation and is the authoritative executable M0
+program.
+
+Only TASK-M0-001 may start from the frozen BOOT baseline plus validated/frozen
+M0 planning authority. No later M0 implementation task may start until
+TASK-M0-001 is implemented, tested, independently validated, frozen, and
+integrated.
 
 ## Prerequisites
 
@@ -40,9 +39,9 @@ frozen, and integrated.
 | M0 DAG exists | SATISFIED by `docs/program/milestones/M0-implementation-dag.md` |
 | M0 status ledger exists | SATISFIED by `docs/program/status-ledger/M0-status-ledger.md` |
 | P1-P6 traceability limits documented | SATISFIED by `docs/program/milestones/M0-p1-p6-traceability.md` |
-| Independent M0 readiness revalidation | REQUIRED BEFORE EXECUTION |
+| Independent M0 readiness revalidation | PASSED |
 
-## Conditional First Task Scope
+## First Task Scope
 
 TASK-M0-001 may create or modify only the surfaces needed to authorize M0
 topology and guardrails:
@@ -107,14 +106,13 @@ M0-000A draft/corrected planning
   -> TASK-M0-001 READY/AUTHORIZED
 ```
 
-Until that transition passes, TASK-M0-001 remains `PLANNED` and TASK-M0-002
-through TASK-M0-014 remain `BLOCKED`.
+That transition has passed. TASK-M0-001 is `READY`; TASK-M0-002 through
+TASK-M0-014 remain `BLOCKED`.
 
 ## Authorization Limits
 
 This record does not authorize:
 
-- TASK-M0-001 before independent M0 readiness revalidation passes.
 - TASK-M0-002 or later.
 - post-M0 or M1 work.
 - runtime/product implementation outside TASK-M0-001 scope.

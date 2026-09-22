@@ -1,7 +1,7 @@
 ---
 id: MILESTONE-M0-DEFINITION
 title: M0 Milestone Definition
-lifecycle: SPECIFIED
+lifecycle: FROZEN
 artifact_type: milestone_definition
 authority: program_planning
 milestone_id: M0
@@ -24,7 +24,7 @@ date: 2026-09-22
 | TASK-BOOT-025 and TASK-BOOT-026 gates | FROZEN AUTHORITY | Provide CI and BOOT acceptance patterns for M0 quality gates. |
 | TASK-BOOT-027 independent verification | FROZEN AUTHORITY | Establishes that the BOOT baseline is fit as the starting point for M0 planning. |
 | Historical P1-P6 and Phase 0 references | HISTORICAL DESIGN INPUT | Mentioned as authority sources but not tracked as executable artifacts; cannot be promoted directly into M0 tasks without reconciliation. |
-| M0 vertical slices and task inventory in this artifact set | DERIVED PROPOSAL | A concrete executable program derived from frozen BOOT boundaries. Becomes M0 planning authority only after review/approval. |
+| M0 vertical slices and task inventory in this artifact set | FROZEN M0 PLANNING AUTHORITY | A concrete executable program derived from frozen BOOT boundaries and accepted by independent M0 readiness revalidation. |
 | Full cognitive graph runtime, multi-agent orchestration, DataLab, self-improvement, production IAM, cloud infrastructure, external brokers, live LLM quality gates | NOT AUTHORIZED / DEFERRED | Explicitly excluded from BOOT and not included in M0. |
 
 ## Milestone

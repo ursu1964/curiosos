@@ -1,7 +1,7 @@
 ---
 id: M0-P1-P6-TRACEABILITY
 title: M0 P1-P6 Traceability Record
-lifecycle: SPECIFIED
+lifecycle: FROZEN
 artifact_type: traceability_record
 authority: program_planning
 milestone_id: M0

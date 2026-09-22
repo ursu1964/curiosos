@@ -1,7 +1,7 @@
 ---
 id: MILESTONE-M0-IMPLEMENTATION-DAG
 title: M0 Implementation DAG
-lifecycle: SPECIFIED
+lifecycle: FROZEN
 artifact_type: implementation_dag
 authority: program_planning
 milestone_id: M0
