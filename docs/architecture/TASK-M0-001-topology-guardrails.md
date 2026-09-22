@@ -23,11 +23,12 @@ M0 implementation packages are outer implementation surfaces. They must not
 become dependencies of `curios_contracts` or `curios_core`.
 
 The initial M0 implementation package roots are planned but not currently
-authorized as tracked package roots:
+authorized as tracked package roots, except TASK-M0-002's persistence package
+after the TASK-M0-002 transition:
 
 | Task | Planned Surface |
 | --- | --- |
-| TASK-M0-002 | `packages/python/curios_persistence/**` |
+| TASK-M0-002 | `packages/python/curios_persistence/**` (authorized by TASK-M0-002) |
 | TASK-M0-003 | `packages/python/curios_policy/**` |
 | TASK-M0-004 through TASK-M0-007 | `packages/python/curios_runtime/**` |
 

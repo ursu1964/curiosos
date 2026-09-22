@@ -14,14 +14,14 @@ date: 2026-09-22
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | PLANNING VALIDATED / FROZEN | M0 executable program passed independent readiness revalidation. No M0 implementation task has started. |
+| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-001 is frozen and TASK-M0-002 is implemented/tested pending independent validation. |
 
 ## Task Status
 
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | VALIDATED, FROZEN | Independent validation accepted the M0 topology/security/architecture guardrail transition. |
-| TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | READY | TASK-M0-001 is validated/frozen; may begin after TASK-M0-001 is integrated into the main M0 baseline. |
+| TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | IMPLEMENTED, TESTED | PostgreSQL runtime persistence package, in-package Alembic migration, primitive transaction boundary, and isolated LOCAL_DOCKER integration checks are complete pending independent validation. |
 | TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | READY | TASK-M0-001 is validated/frozen; may begin after TASK-M0-001 is integrated into the main M0 baseline. |
 | TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | BLOCKED | Requires topology authorization and persistence foundation. |
 | TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | BLOCKED | Requires persistence foundation. |
