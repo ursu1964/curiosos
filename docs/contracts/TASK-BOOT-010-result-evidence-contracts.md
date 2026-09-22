@@ -1,7 +1,7 @@
 ---
 id: CONTRACT-BOOT-010-RESULT-EVIDENCE
 title: Result, Error, Artifact, Evidence, and Verification Contracts
-lifecycle: IMPLEMENTED
+lifecycle: FROZEN
 artifact_type: contract
 authority: authoritative
 task: TASK-BOOT-010
@@ -36,6 +36,11 @@ Supported kinds are `project`, `application`, `milestone`, `workstream`, `work`,
 
 The reference preserves namespace meaning without implementing the full object
 hierarchy for the referenced object.
+
+Canonical M0 baseline decision: `ObjectReference(kind, ref_id)` is the
+authoritative generic Curios object/reference contract. Independently developed
+alternatives, including TASK-BOOT-012's `Reference(ref_type, ref_id)`, are not
+authoritative unless reconciled against `ObjectReference` before validation.
 
 ## CONTRACT-BOOT-010-ERR-001 ContractError
 
