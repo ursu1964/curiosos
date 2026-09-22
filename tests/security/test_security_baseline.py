@@ -7,7 +7,7 @@ import subprocess
 import tomllib
 from dataclasses import fields
 from pathlib import Path
-from typing import get_type_hints
+from typing import Any, cast, get_type_hints
 
 import pytest
 from contract_fixtures import UTC_LATER, UTC_NOW, fixed_id, human_principal
@@ -136,6 +136,33 @@ LATER_TASK_PATHS = (
     "packages/python/curios_postgres",
     "packages/python/curios_telemetry",
 )
+M0_PLANNED_PACKAGE_ROOTS_BY_TASK = {
+    "TASK-M0-002": frozenset({"packages/python/curios_persistence"}),
+    "TASK-M0-003": frozenset({"packages/python/curios_policy"}),
+    "TASK-M0-004": frozenset({"packages/python/curios_runtime"}),
+    "TASK-M0-005": frozenset({"packages/python/curios_runtime"}),
+    "TASK-M0-006": frozenset({"packages/python/curios_runtime"}),
+    "TASK-M0-007": frozenset({"packages/python/curios_runtime"}),
+}
+M0_PLANNED_APP_ROOTS_BY_TASK = {
+    "TASK-M0-008": frozenset({"apps/api"}),
+    "TASK-M0-009": frozenset({"apps/web"}),
+}
+M0_PLANNED_TEST_ROOTS_BY_TASK = {
+    "TASK-M0-010": frozenset({"tests/integration"}),
+    "TASK-M0-012": frozenset({"tests/acceptance"}),
+}
+M0_DEFERRED_PACKAGE_ROOTS = frozenset().union(*M0_PLANNED_PACKAGE_ROOTS_BY_TASK.values())
+M0_DEFERRED_TOP_LEVEL_ROOTS = frozenset({"runtime", "services", "providers"})
+M1_PLUS_EXAMPLE_PACKAGE_ROOTS = frozenset(
+    {
+        "packages/python/curios_agent_runtime",
+        "packages/python/curios_datalab",
+        "packages/python/curios_knowledge",
+        "packages/python/curios_model_router",
+        "packages/python/curios_secret_resolver",
+    }
+)
 AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
     {
         "tests/integration/test_api_integration.py",
@@ -212,7 +239,7 @@ ALLOWED_CORE_EXPORTS = frozenset(
         "__version__",
     }
 )
-SECRET_FIELD_ALLOWLIST = {
+SECRET_FIELD_ALLOWLIST: dict[type[Any], frozenset[str]] = {
     SecretReference: frozenset(
         {
             "key",
@@ -549,7 +576,7 @@ def _secret_scan_violations_for_text(path: Path, text: str) -> tuple[str, ...]:
     return tuple(violations)
 
 
-def _secret_field_violations(contract: type[object]) -> tuple[str, ...]:
+def _secret_field_violations(contract: type[Any]) -> tuple[str, ...]:
     allowed_fields = SECRET_FIELD_ALLOWLIST.get(contract, frozenset())
     violations: list[str] = []
     for field in fields(contract):
@@ -608,6 +635,14 @@ def _tracked_github_paths() -> frozenset[str]:
 
 def _unauthorized_github_paths(paths: frozenset[str]) -> frozenset[str]:
     return paths - AUTHORIZED_GITHUB_PATHS
+
+
+def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
+    return paths - ALLOWED_PACKAGE_ROOTS
+
+
+def _unauthorized_app_roots(paths: frozenset[str]) -> frozenset[str]:
+    return paths - ALLOWED_APP_ROOTS
 
 
 def _core_source_files() -> frozenset[str]:
@@ -727,7 +762,7 @@ def test_unknown_policy_for_governed_effects_is_not_authorizing_or_rewritten() -
         "UNKNOWN must not be rewritten as DENY",
     )
     _assert_no_security_failure(
-        set(serialized["requested_effects"]) == set(GOVERNED_EFFECT_VALUES),  # type: ignore[arg-type]
+        set(cast(tuple[str, ...], serialized["requested_effects"])) == set(GOVERNED_EFFECT_VALUES),
         "governed effect set was not represented in policy decision evidence",
     )
 
@@ -848,7 +883,7 @@ def test_secret_field_detector_rejects_semantic_secret_value_variants(field_name
     # detector exercises real dataclass field metadata rather than raw strings.
     from dataclasses import dataclass
 
-    synthetic_dataclass = dataclass(frozen=True)(synthetic)
+    synthetic_dataclass: type[Any] = dataclass(frozen=True)(synthetic)
 
     assert _secret_field_violations(synthetic_dataclass)
 
@@ -946,7 +981,39 @@ def test_github_topology_detector_allows_only_task_boot_025_workflow() -> None:
     assert not _unauthorized_github_paths(frozenset({".github/workflows/quality-gates.yml"}))
 
 
-def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_boundary() -> None:
+@pytest.mark.parametrize(
+    "package_root",
+    tuple(sorted(M0_DEFERRED_PACKAGE_ROOTS | M1_PLUS_EXAMPLE_PACKAGE_ROOTS)),
+)
+def test_m0_package_topology_rejects_unvalidated_future_runtime_surfaces(
+    package_root: str,
+) -> None:
+    simulated_roots = ALLOWED_PACKAGE_ROOTS | {package_root}
+
+    assert _unauthorized_package_roots(simulated_roots) == {package_root}
+
+
+@pytest.mark.parametrize("top_level_root", tuple(sorted(M0_DEFERRED_TOP_LEVEL_ROOTS)))
+def test_m0_top_level_topology_rejects_broad_runtime_roots(top_level_root: str) -> None:
+    simulated_roots = ALLOWED_TOP_LEVEL_PATHS | {top_level_root}
+
+    assert simulated_roots - ALLOWED_TOP_LEVEL_PATHS == {top_level_root}
+
+
+def test_m0_app_topology_does_not_broaden_beyond_authorized_boot_apps() -> None:
+    simulated_roots = ALLOWED_APP_ROOTS | {"apps/admin", "apps/agent-console"}
+
+    assert _unauthorized_app_roots(simulated_roots) == {"apps/admin", "apps/agent-console"}
+
+
+def test_m0_planned_surface_registry_is_task_scoped_and_not_currently_authorized() -> None:
+    assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
+    assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
+    assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
+    assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
+
+
+def test_later_task_security_provider_runtime_surfaces_match_authorized_current_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = (
         _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
@@ -956,6 +1023,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
     unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
+    unexpected_m0_package_roots = _tracked_package_roots() & M0_DEFERRED_PACKAGE_ROOTS
     root_pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     python_workspace_members = frozenset(root_pyproject["tool"]["uv"]["workspace"]["members"])
     node_workspaces = _pnpm_workspace_packages(REPO_ROOT / "pnpm-workspace.yaml")
@@ -989,6 +1057,11 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_
     _assert_no_security_failure(
         not unexpected_packages,
         f"unexpected tracked package root(s): {sorted(unexpected_packages)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_m0_package_roots,
+        "M0 package root(s) appeared before their specific task authorization: "
+        f"{sorted(unexpected_m0_package_roots)}",
     )
     _assert_no_security_failure(
         python_workspace_members

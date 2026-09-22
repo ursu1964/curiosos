@@ -20,7 +20,7 @@ date: 2026-09-22
 
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | READY | First authorized execution unit after independent M0 readiness revalidation passed. |
+| TASK-M0-001 | M0 Topology and Guardrail Transition | BOOT-000, M0-000A, M0-READINESS | PG-M0-01 | IMPLEMENTED, TESTED | Topology/security/architecture guardrails implemented and deterministic verification passed. Independent validation is still required before freeze. |
 | TASK-M0-002 | PostgreSQL Runtime Persistence Foundation | TASK-M0-001 | PG-M0-02A | BLOCKED | Requires TASK-M0-001 topology authorization. |
 | TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | BLOCKED | Requires TASK-M0-001 topology authorization. |
 | TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | BLOCKED | Requires topology authorization and persistence foundation. |
