@@ -142,6 +142,11 @@ AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
         "tests/integration/test_postgres_provider_integration.py",
     }
 )
+AUTHORIZED_GITHUB_PATHS = frozenset(
+    {
+        ".github/workflows/quality-gates.yml",
+    }
+)
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
         ".github",
@@ -579,6 +584,18 @@ def _tracked_top_level_paths() -> frozenset[str]:
     return frozenset(path.relative_to(REPO_ROOT).parts[0] for path in _tracked_files())
 
 
+def _tracked_github_paths() -> frozenset[str]:
+    return frozenset(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in _tracked_files()
+        if path.relative_to(REPO_ROOT).as_posix().startswith(".github/")
+    )
+
+
+def _unauthorized_github_paths(paths: frozenset[str]) -> frozenset[str]:
+    return paths - AUTHORIZED_GITHUB_PATHS
+
+
 def _core_source_files() -> frozenset[str]:
     return frozenset(
         path.relative_to(CORE_SOURCE).as_posix()
@@ -896,12 +913,32 @@ def test_core_context_and_services_do_not_implement_security_authority_engines()
     _assert_no_security_failure(result.value == (), "CoreServices changed default behavior")
 
 
+@pytest.mark.parametrize(
+    "tracked_paths",
+    (
+        frozenset({".github/ISSUE_TEMPLATE/example.md"}),
+        frozenset({".github/dependabot.yml"}),
+        frozenset({".github/workflows/another-workflow.yml"}),
+        frozenset({".github/workflows/quality-gates.yml", ".github/CODEOWNERS"}),
+    ),
+)
+def test_github_topology_detector_rejects_unauthorized_surfaces(
+    tracked_paths: frozenset[str],
+) -> None:
+    assert _unauthorized_github_paths(tracked_paths) == tracked_paths - AUTHORIZED_GITHUB_PATHS
+
+
+def test_github_topology_detector_allows_only_task_boot_025_workflow() -> None:
+    assert not _unauthorized_github_paths(frozenset({".github/workflows/quality-gates.yml"}))
+
+
 def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = (
         _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
     )
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
+    unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
     unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
     root_pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
@@ -920,6 +957,10 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_boot024_
     _assert_no_security_failure(
         not unexpected_top_level,
         f"unexpected tracked top-level path(s): {sorted(unexpected_top_level)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_github_paths,
+        f"unexpected tracked .github path(s): {sorted(unexpected_github_paths)}",
     )
     _assert_no_security_failure(
         not unexpected_apps,

@@ -17,6 +17,7 @@ date: 2026-09-22
 | 1 | IMPLEMENTING | Work began on branch `task/boot-025-ci-quality-gates` from baseline `27d571fd6e08ab94950054da9741ea78c42dd56e`. |
 | 2 | IMPLEMENTED | GitHub Actions quality-gate workflow, narrow security topology transition, and ledger/evidence documentation were added. |
 | 3 | TESTED | Required local/static workflow checks and repository verification passed; see verification evidence below. |
+| 4 | CORRECTED | After PG-11 validation identified a `.github` topology false negative, security topology tests were strengthened to authorize only `.github/workflows/quality-gates.yml`. |
 
 TASK-BOOT-025 is not self-declared `VALIDATED` or `FROZEN`.
 
@@ -33,6 +34,8 @@ Supporting governance surface:
 
 - `tests/security/test_security_baseline.py` authorizes the exact CI workflow
   surface and includes `.github/workflows` in tracked secret scanning.
+- A corrective security topology check rejects tracked `.github/**` content
+  outside `.github/workflows/quality-gates.yml`.
 - `docs/program/status-ledger/BOOT-000-task-ledger.md` records
   TASK-BOOT-025 as `IMPLEMENTED, TESTED`.
 
@@ -132,6 +135,39 @@ test execution.
 | `pnpm --dir apps/web typecheck` | Passed. |
 | `pnpm --dir apps/web build` | Passed. |
 | Workflow YAML Prettier check | Passed. |
+| `git diff --check` | Passed. |
+
+## Corrective Implementation
+
+Independent PG-11 validation failed because `.github` was allowed as a tracked
+top-level path while only `.github/workflows` was included in secret scanning.
+That allowed unauthorized tracked `.github` content outside the workflow
+surface to evade the topology invariant.
+
+Corrective behavior:
+
+- Authorized `.github` surface is exactly
+  `.github/workflows/quality-gates.yml`.
+- Tracked `.github` paths are compared against an explicit current-stage
+  allowlist.
+- Representative unauthorized paths are covered by adversarial detector tests:
+  `.github/ISSUE_TEMPLATE/example.md`, `.github/dependabot.yml`,
+  `.github/workflows/another-workflow.yml`, and `.github/CODEOWNERS`.
+- `.github/workflows` remains included in tracked secret scanning.
+- Existing provider, API, web, secret-field, and core-authority protections
+  remain intact.
+
+Corrective verification:
+
+| Check | Result |
+| --- | --- |
+| Security tests | Passed: 25 tests. |
+| Architecture tests | Passed: 13 tests. |
+| Workflow YAML Prettier check | Passed. |
+| Ruff check | Passed. |
+| Ruff format check | Passed: 124 files already formatted. |
+| mypy strict baseline | Passed: no issues found in 39 source files. |
+| Full pytest suite | Passed: 221 tests, 2 expected dependency warnings. |
 | `git diff --check` | Passed. |
 
 ## Scope Compliance
