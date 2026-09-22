@@ -135,10 +135,13 @@ LATER_TASK_PATHS = (
     "services",
     "providers",
     "packages/python/curios_config",
-    "packages/python/curios_postgres",
     "packages/python/curios_telemetry",
     "packages/python/curios_ollama",
-    "tests/integration",
+)
+AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
+    {
+        "tests/integration/test_postgres_provider_integration.py",
+    }
 )
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
@@ -167,6 +170,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
         "packages/python/curios_contracts",
         "packages/python/curios_core",
         "packages/python/curios_observability",
+        "packages/python/curios_postgres_provider",
         "packages/typescript/curios-contracts",
     }
 )
@@ -207,6 +211,7 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_contracts/src",
     "packages/python/curios_core/src",
     "packages/python/curios_observability/src",
+    "packages/python/curios_postgres_provider/src",
     "packages/typescript/curios-contracts/src",
 )
 SECURITY_SCAN_ROOT_FILES = frozenset(
@@ -535,6 +540,14 @@ def _tracked_package_roots() -> frozenset[str]:
     return frozenset(roots)
 
 
+def _tracked_integration_tests() -> frozenset[str]:
+    return frozenset(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in _tracked_files()
+        if path.relative_to(REPO_ROOT).as_posix().startswith("tests/integration/")
+    )
+
+
 def _tracked_top_level_paths() -> frozenset[str]:
     return frozenset(path.relative_to(REPO_ROOT).parts[0] for path in _tracked_files())
 
@@ -856,8 +869,11 @@ def test_core_context_and_services_do_not_implement_security_authority_engines()
     _assert_no_security_failure(result.value == (), "CoreServices changed default behavior")
 
 
-def test_later_task_security_provider_runtime_surfaces_remain_absent() -> None:
+def test_later_task_security_provider_runtime_surfaces_match_authorized_boot019_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
+    unexpected_integration_tests = (
+        _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
+    )
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
     root_pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
@@ -866,7 +882,12 @@ def test_later_task_security_provider_runtime_surfaces_remain_absent() -> None:
 
     _assert_no_security_failure(
         not existing,
-        f"TASK-BOOT-018+ path(s) unexpectedly exist: {existing}",
+        f"deferred provider/API/runtime path(s) unexpectedly exist: {existing}",
+    )
+    _assert_no_security_failure(
+        not unexpected_integration_tests,
+        "unexpected integration test path(s) outside TASK-BOOT-019: "
+        f"{sorted(unexpected_integration_tests)}",
     )
     _assert_no_security_failure(
         not unexpected_top_level,
@@ -882,6 +903,7 @@ def test_later_task_security_provider_runtime_surfaces_remain_absent() -> None:
             "packages/python/curios_contracts",
             "packages/python/curios_core",
             "packages/python/curios_observability",
+            "packages/python/curios_postgres_provider",
         },
         f"unexpected Python workspace member(s): {sorted(python_workspace_members)}",
     )
