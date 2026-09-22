@@ -1,0 +1,19 @@
+{
+  "name": "@curiosos/curios-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript package boundary for frozen Curios contract representations.",
+  "types": "./src/index.ts",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

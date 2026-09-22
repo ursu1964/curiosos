@@ -10,7 +10,7 @@
   },
   "scripts": {
     "check": "pnpm typecheck && pnpm lint && pnpm format:check",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc -b --noEmit",
     "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx --max-warnings=0",
     "format:check": "prettier --check \"**/*.{js,mjs,cjs,ts,tsx,json,yaml,yml}\""
   },
