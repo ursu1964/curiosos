@@ -34,6 +34,8 @@ minimal M0 work console over that API contract.
 TASK-M0-010 authorizes the exact integration test that composes the frozen
 runtime, API, web/API boundary, and PostgreSQL persistence surfaces without
 adding product behavior.
+TASK-M0-012 authorizes the exact M0 acceptance test that proves milestone-level
+vertical-slice behavior without changing production semantics.
 
 | Task | Planned Surface |
 | --- | --- |
@@ -46,6 +48,7 @@ adding product behavior.
 | TASK-M0-008 | `apps/api/src/curios_api/composition.py`, `apps/api/src/curios_api/service.py`, and exact API endpoint tests only (authorized by TASK-M0-008) |
 | TASK-M0-009 | `apps/web/src/App.tsx`, `App.css`, `App.test.tsx`, `apiBoundary.ts`, and `main.tsx` only (authorized by TASK-M0-009) |
 | TASK-M0-010 | `tests/integration/test_m0_vertical_slice_integration.py` only (authorized by TASK-M0-010) |
+| TASK-M0-012 | `tests/acceptance/test_m0_acceptance.py` only (authorized by TASK-M0-012) |
 
 TASK-M0-001 establishes architecture tests that already block inward imports or
 metadata dependencies from contracts/core to those implementation packages.
@@ -66,6 +69,9 @@ security topology before adding implementation.
   responses and displays recorded runtime truth only.
 - TASK-M0-010 integration tests compose frozen boundaries as tests only; no
   production package depends on test helpers or gains new semantics.
+- TASK-M0-012 acceptance tests observe frozen runtime/API/web/CI/security truth
+  as tests only; no production package depends on acceptance helpers or gains
+  new semantics.
 
 ## Deferred Architecture
 
