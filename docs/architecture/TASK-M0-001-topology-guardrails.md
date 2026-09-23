@@ -27,6 +27,8 @@ authorized as tracked package roots, except the currently validated M0 package
 transitions: TASK-M0-002 persistence, TASK-M0-003 policy, TASK-M0-004
 event/evidence runtime store, TASK-M0-005 work repository, TASK-M0-006
 single-step runtime service, and TASK-M0-007 provider-inventory executor:
+TASK-M0-008 also authorizes the existing FastAPI composition/service modules
+as an outer HTTP translation surface for the M0 work endpoint contract.
 
 | Task | Planned Surface |
 | --- | --- |
@@ -36,6 +38,7 @@ single-step runtime service, and TASK-M0-007 provider-inventory executor:
 | TASK-M0-005 | `packages/python/curios_runtime/**` work repository modules only (authorized by TASK-M0-005) |
 | TASK-M0-006 | `packages/python/curios_runtime/**` single-step runtime service module only (authorized by TASK-M0-006) |
 | TASK-M0-007 | `packages/python/curios_runtime/**` provider-inventory executor module only (authorized by TASK-M0-007) |
+| TASK-M0-008 | `apps/api/src/curios_api/composition.py`, `apps/api/src/curios_api/service.py`, and exact API endpoint tests only (authorized by TASK-M0-008) |
 
 TASK-M0-001 establishes architecture tests that already block inward imports or
 metadata dependencies from contracts/core to those implementation packages.
@@ -51,7 +54,9 @@ security topology before adding implementation.
 - Provider packages, FastAPI, and the web remain outer surfaces.
 - `ObjectReference` remains the single generic reference abstraction.
 - No new canonical contract, generic reference, scheduler, arbitrary executor,
-  API route, or web console is introduced by the M0-007 transition.
+  web console, scheduler, or arbitrary runtime route is introduced by the
+  M0-008 transition. The new API routes translate frozen runtime/repository
+  facts at the outer boundary only.
 
 ## Deferred Architecture
 
