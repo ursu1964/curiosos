@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-010-EVIDENCE
 title: TASK-M0-010 M0 Integration Test Foundation Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-010
@@ -123,7 +123,8 @@ Repository verification performed:
 
 ## Lifecycle
 
-TASK-M0-010 is `IMPLEMENTED, TESTED`.
+TASK-M0-010 is `VALIDATED, FROZEN`.
 
-It is not `VALIDATED` or `FROZEN`. Independent validation must decide whether
-TASK-M0-010 can freeze and whether TASK-M0-011 may become ready.
+Independent validation accepted the deterministic M0 integration test
+foundation. A validation/freeze commit is required and must be integrated into
+`main` before TASK-M0-011 can become ready.
