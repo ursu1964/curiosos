@@ -57,6 +57,13 @@ authority inventory. A future task must explicitly update that inventory before
 adding public contract declarations, schema fields, enum/vocabulary members,
 type aliases, factories/functions, or package-level exports.
 
+The same fail-closed transition applies to existing executable outer
+boundaries. TASK-M1-001 freezes current FastAPI application route authority and
+current web network/control authority so M1 behavior cannot be introduced by
+editing an already-authorized file. TASK-M1-013 must transition API
+route/method authority deliberately. TASK-M1-014 must transition web
+API-boundary and visible/control authority deliberately.
+
 ## Preserved Architecture
 
 - `curios_contracts` remains canonical semantic authority.
@@ -89,14 +96,25 @@ frozen to the bounded package grammar, so conditional, fallback, nested, and
 dynamic export mechanisms are outside current authority. Planned M1 concepts
 remain registered as future ownership only.
 
+Security tests also freeze the current application-owned FastAPI routes by
+path, method, route name, endpoint owner, and schema visibility. FastAPI
+framework documentation routes are classified separately. Web tests freeze the
+current API-boundary exports, backend path/method literals, App imports from
+the boundary, current user/control string authority, and the rule that direct
+network primitives do not appear in `App.tsx`. Existing `curios_core` and
+`curios_runtime` modules have explicit public declaration/member inventories to
+block hidden cognitive, DAG, agent, capability, routing, or model-generation
+authority inside already-authorized files.
+
 TASK-M1-001 does not authorize:
 
 - new cognitive contract files;
 - new cognitive contract classes, enums, type aliases, factories, fields, or
   package exports inside existing contract files;
 - new runtime modules;
+- new public runtime/core authority inside existing modules;
 - new executor or tool framework modules;
 - scheduler/DAG production runtime;
 - model generation or router optimization;
-- API or web M1 surfaces;
+- API route/method or web network/control M1 surfaces;
 - M1 integration, CI, acceptance, verification, or freeze implementation.

@@ -43,6 +43,13 @@ existing source files may not gain new public canonical declarations, public
 schema fields, vocabulary members, public factories/functions, type aliases, or
 package-level exports until an owning task explicitly transitions the inventory.
 
+Existing outer-boundary semantic authority is frozen too. The current FastAPI
+application-owned route inventory is exact until TASK-M1-013 transitions it.
+The current web API boundary, network-call surface, and visible/control
+authority are exact until TASK-M1-014 transitions them. Existing
+`curios_core` and `curios_runtime` files may not gain new public executable
+authority or public class members without an owning task transition.
+
 ## Planned But Not Yet Authorized M1 Surfaces
 
 | Task | Planned Surface Category |
@@ -81,8 +88,16 @@ including:
 - arbitrary M1 package roots;
 - new `curios_runtime` modules for DAG, agent, executor, model-profile,
   routing, runner, or verification behavior;
+- new public `curios_runtime` or `curios_core` declarations and public class
+  members hidden inside already-authorized files;
 - new M1 API source or API test files;
+- new FastAPI route/path/method authority inside already-authorized API files,
+  independent of whether decorators, `add_api_route`, `api_route`, or router
+  inclusion create the route;
 - new M1 web source files;
+- new web API-boundary exports, paths, methods, future backend path literals,
+  direct network primitives outside the boundary, or visible/control authority
+  inside already-authorized web files;
 - new M1 integration or acceptance tests;
 - any additional `.github` content beyond the frozen quality-gates workflow.
 
@@ -101,6 +116,14 @@ forms are rejected fail-closed so conditional imports, try/fallback imports,
 dynamic exports, and `__getattr__` cannot manufacture package authority.
 Private implementation helpers that remain private by name are not treated as
 new canonical authority, but re-exporting a private helper is blocked.
+
+The FastAPI authority guard constructs the app and compares application-owned
+`APIRoute` entries to an explicit frozen BOOT+M0 inventory. Framework-owned
+OpenAPI/docs routes are classified separately as infrastructure. The web guard
+uses explicit structural inventories of API-boundary exports, allowed
+route/method literals, App API-boundary imports, and current user/control
+strings; it is not a raw source hash, but it is fail-closed for premature M1
+product controls and backend calls.
 
 ## Future Contract Transition
 

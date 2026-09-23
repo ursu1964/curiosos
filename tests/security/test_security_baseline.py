@@ -51,6 +51,9 @@ from yaml.nodes import MappingNode
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_SOURCE = REPO_ROOT / "packages/python/curios_contracts/src/curios_contracts"
 CORE_SOURCE = REPO_ROOT / "packages/python/curios_core/src/curios_core"
+RUNTIME_SOURCE = REPO_ROOT / "packages/python/curios_runtime/src/curios_runtime"
+API_SOURCE = REPO_ROOT / "apps/api/src/curios_api"
+WEB_SOURCE = REPO_ROOT / "apps/web/src"
 QUALITY_GATES_WORKFLOW = REPO_ROOT / ".github/workflows/quality-gates.yml"
 LOCAL_DOCKER_ENV_EXAMPLE = REPO_ROOT / "infrastructure/local/docker/.env.example"
 ROOT_PACKAGE_FILES = (
@@ -202,6 +205,432 @@ M0_AUTHORIZED_WEB_SOURCE_FILES_BY_TASK = {
     ),
 }
 M0_AUTHORIZED_WEB_SOURCE_FILES = frozenset().union(*M0_AUTHORIZED_WEB_SOURCE_FILES_BY_TASK.values())
+FROZEN_FASTAPI_APPLICATION_ROUTES = (
+    (
+        "/health/live",
+        ("GET",),
+        "health_live",
+        "curios_api.service",
+        "create_application.<locals>.health_live",
+        True,
+    ),
+    (
+        "/health/ready",
+        ("GET",),
+        "health_ready",
+        "curios_api.service",
+        "create_application.<locals>.health_ready",
+        True,
+    ),
+    (
+        "/providers",
+        ("GET",),
+        "providers",
+        "curios_api.service",
+        "create_application.<locals>.providers",
+        True,
+    ),
+    (
+        "/work/provider-inventory",
+        ("POST",),
+        "create_provider_inventory_work",
+        "curios_api.service",
+        "create_application.<locals>.create_provider_inventory_work",
+        True,
+    ),
+    (
+        "/work/{work_id}",
+        ("GET",),
+        "get_work",
+        "curios_api.service",
+        "create_application.<locals>.get_work",
+        True,
+    ),
+    (
+        "/work/{work_id}/run",
+        ("POST",),
+        "run_work_once",
+        "curios_api.service",
+        "create_application.<locals>.run_work_once",
+        True,
+    ),
+    (
+        "/work/{work_id}/executions/{execution_id}",
+        ("GET",),
+        "get_execution",
+        "curios_api.service",
+        "create_application.<locals>.get_execution",
+        True,
+    ),
+    (
+        "/work/{work_id}/events",
+        ("GET",),
+        "list_work_events",
+        "curios_api.service",
+        "create_application.<locals>.list_work_events",
+        True,
+    ),
+    (
+        "/work/{work_id}/evidence",
+        ("GET",),
+        "list_work_evidence",
+        "curios_api.service",
+        "create_application.<locals>.list_work_evidence",
+        True,
+    ),
+)
+FROZEN_FASTAPI_FRAMEWORK_ROUTES = (
+    ("/openapi.json", ("GET", "HEAD"), "openapi", False),
+    ("/docs", ("GET", "HEAD"), "swagger_ui_html", False),
+    ("/docs/oauth2-redirect", ("GET", "HEAD"), "swagger_ui_redirect", False),
+    ("/redoc", ("GET", "HEAD"), "redoc_html", False),
+)
+FROZEN_WEB_API_BOUNDARY_PATHS = (
+    "/health/live",
+    "/health/ready",
+    "/providers",
+    "/work/provider-inventory",
+    "/work/{work_id}",
+    "/work/{work_id}/run",
+    "/work/{work_id}/executions/{execution_id}",
+    "/work/{work_id}/events",
+    "/work/{work_id}/evidence",
+)
+FROZEN_WEB_API_BOUNDARY_PATH_LITERALS = (
+    "/health/live",
+    "/health/ready",
+    "/providers",
+    "/work/provider-inventory",
+    "/work/{work_id}",
+    "/work/{work_id}/run",
+    "/work/{work_id}/executions/{execution_id}",
+    "/work/{work_id}/events",
+    "/work/{work_id}/evidence",
+    "/",
+    "/work/${encodeURIComponent(workId)}",
+    "/work/${encodeURIComponent(workId)}/run",
+    "/work/${encodeURIComponent(workId)}/executions/${encodeURIComponent(\n    executionId,\n  )}",
+    "/work/${encodeURIComponent(workId)}/events",
+    "/work/${encodeURIComponent(workId)}/evidence",
+    "/work/provider-inventory",
+)
+FROZEN_WEB_API_BOUNDARY_METHODS = ("POST", "POST")
+FROZEN_WEB_API_BOUNDARY_EXPORTS = (
+    "apiBoundaryPaths",
+    "ApiBoundaryPath",
+    "WorkState",
+    "ExecutionState",
+    "RuntimeStatus",
+    "WorkItemPayload",
+    "ExecutionPayload",
+    "RuntimeEventPayload",
+    "EvidencePayload",
+    "ObjectReferencePayload",
+    "ProviderDescriptorPayload",
+    "ProviderInventoryValue",
+    "ResultPayload",
+    "WorkResponse",
+    "ExecutionResponse",
+    "WorkRunResponse",
+    "EventsResponse",
+    "EvidenceResponse",
+    "ApiErrorDetail",
+    "ApiFailure",
+    "ApiResult",
+    "apiBoundaryUrl",
+    "workPath",
+    "runWorkPath",
+    "executionPath",
+    "eventsPath",
+    "evidencePath",
+    "createProviderInventoryWork",
+    "runProviderInventoryWork",
+    "readWork",
+    "readExecution",
+    "listWorkEvents",
+    "listWorkEvidence",
+)
+FROZEN_WEB_APP_API_BOUNDARY_IMPORTS = (
+    "apiBoundaryPaths",
+    "createProviderInventoryWork",
+    "listWorkEvidence",
+    "listWorkEvents",
+    "readExecution",
+    "readWork",
+    "runProviderInventoryWork",
+    "ApiFailure",
+    "EvidencePayload",
+    "ExecutionPayload",
+    "ProviderDescriptorPayload",
+    "RuntimeEventPayload",
+    "RuntimeStatus",
+    "WorkItemPayload",
+)
+FROZEN_WEB_APP_EXPORTS = ("App",)
+FROZEN_WEB_APP_STRING_LITERALS = (
+    "@curiosos/curios-contracts",
+    "react",
+    "./App.css",
+    "./apiBoundary",
+    "create",
+    "run",
+    "refresh",
+    "No provider-inventory work has been submitted.",
+    "create",
+    "Provider-inventory work created.",
+    "run",
+    "refresh",
+    "Recorded runtime truth refreshed.",
+    "work-console",
+    "web-shell",
+    "work-console__header",
+    "work-console-title",
+    "work-console__eyebrow",
+    "work-console-title",
+    "work-console__summary",
+    "work-console__contract",
+    "work-console__toolbar",
+    "operation-title",
+    "operation-title",
+    "work-console__actions",
+    "create",
+    "button",
+    "create",
+    "Creating...",
+    "Create Work",
+    "button",
+    "run",
+    "Running...",
+    "Run",
+    "button",
+    "refresh",
+    "Refreshing...",
+    "Refresh",
+    "polite",
+    "work-console__status",
+    "status",
+    "work-console__alert",
+    "assertive",
+    "alert",
+    " ",
+    "work-console__grid",
+    "M0 runtime truth",
+    "Work",
+    "none",
+    "none",
+    "provider_inventory",
+    "Execution",
+    "none",
+    "none",
+    "Runtime status",
+    "none",
+    "Provider Inventory",
+    "work-console__empty",
+    "work-console__list",
+    "Events",
+    "No runtime events recorded.",
+    "Evidence",
+    "No evidence recorded.",
+    "API Boundary",
+    "work-console__routes",
+    "Frozen M0 API routes",
+    "work-console__panel",
+    "work-console__definition-list",
+    "work-console__empty",
+    "work-console__list",
+    "COMPLETED",
+    "Provider inventory completed and recorded.",
+    "BLOCKED",
+    "Provider inventory was blocked by policy.",
+    "Provider inventory failed with a bounded runtime result.",
+    "HTTP_${String(failure.status)}",
+    "The API returned a bounded failure.",
+    "${code}: ${message}",
+    'panel-${title.toLowerCase().replaceAll(" ", "-")}',
+)
+WEB_NETWORK_PRIMITIVES = (
+    "fetch(",
+    "XMLHttpRequest",
+    "WebSocket",
+    "EventSource",
+    "navigator.sendBeacon",
+)
+FUTURE_WEB_BACKEND_PATH_TOKENS = (
+    "/agent",
+    "/agents",
+    "/chat",
+    "/cognitive",
+    "/completion",
+    "/dag",
+    "/datalab",
+    "/inference",
+    "/memory",
+    "/model",
+    "/routing",
+    "/scheduler",
+)
+FROZEN_CORE_DECLARATIONS_BY_MODULE = {
+    "__init__.py": (),
+    "application.py": (("CoreServices", "class"),),
+    "context.py": (("CoreContext", "class"),),
+    "ports/__init__.py": (),
+    "ports/providers.py": (
+        ("ProviderDescriptorsResult", "type_alias"),
+        ("ProviderCatalog", "class"),
+    ),
+}
+FROZEN_CORE_CLASS_MEMBERS_BY_MODULE = {
+    "application.py": {
+        "CoreServices": (
+            ("provider_catalog", "annotation"),
+            ("list_provider_descriptors", "method"),
+        )
+    },
+    "context.py": {"CoreContext": (("observability", "annotation"), ("authority", "annotation"))},
+    "ports/providers.py": {"ProviderCatalog": (("list_provider_descriptors", "method"),)},
+}
+FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
+    "__init__.py": (),
+    "event_evidence_store.py": (
+        ("RuntimeStoreErrorCode", "class"),
+        ("RuntimeStoreError", "class"),
+        ("EventEvidenceRuntimeStore", "class"),
+    ),
+    "provider_inventory_executor.py": (("ProviderInventoryExecutor", "class"),),
+    "single_step_runtime.py": (
+        ("SingleStepRuntimeErrorCode", "class"),
+        ("SingleStepRuntimeStatus", "class"),
+        ("SingleStepRuntimeError", "class"),
+        ("SingleStepRuntimeRequest", "class"),
+        ("SingleStepExecutionRequest", "class"),
+        ("SingleStepExecutionOutcome", "class"),
+        ("SingleStepExecutor", "class"),
+        ("SingleStepRuntimeResult", "class"),
+        ("SingleStepRuntimeService", "class"),
+    ),
+    "work_repository.py": (
+        ("WORK_ITEM_TRANSITIONS", "annotation"),
+        ("EXECUTION_TRANSITIONS", "annotation"),
+        ("RepositoryErrorCode", "class"),
+        ("RepositoryError", "class"),
+        ("StoredWorkItem", "class"),
+        ("StoredExecutionRecord", "class"),
+        ("M0WorkRepository", "class"),
+        ("transition_work_item", "function"),
+        ("transition_execution_record", "function"),
+    ),
+}
+FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
+    "event_evidence_store.py": {
+        "RuntimeStoreErrorCode": (
+            ("CONFLICT", "assignment"),
+            ("CORRUPT_RECORD", "assignment"),
+            ("NOT_FOUND", "assignment"),
+            ("PERSISTENCE_FAILURE", "assignment"),
+        ),
+        "RuntimeStoreError": (("to_json_compatible", "method"),),
+        "EventEvidenceRuntimeStore": (
+            ("persistence_store", "annotation"),
+            ("append_event", "method"),
+            ("get_event", "method"),
+            ("require_event", "method"),
+            ("list_events", "method"),
+            ("append_evidence", "method"),
+            ("get_evidence", "method"),
+            ("require_evidence", "method"),
+            ("list_evidence", "method"),
+            ("append_verification", "method"),
+            ("get_verification", "method"),
+            ("require_verification", "method"),
+            ("list_verifications", "method"),
+        ),
+    },
+    "provider_inventory_executor.py": {
+        "ProviderInventoryExecutor": (
+            ("provider_catalogs", "annotation"),
+            ("execute", "method"),
+        )
+    },
+    "single_step_runtime.py": {
+        "SingleStepRuntimeErrorCode": (
+            ("CONFLICT", "assignment"),
+            ("EXECUTOR_FAILURE", "assignment"),
+            ("ILLEGAL_STATE", "assignment"),
+            ("INVALID_EXECUTOR_RESULT", "assignment"),
+            ("NOT_FOUND", "assignment"),
+            ("POLICY_FAILURE", "assignment"),
+            ("POLICY_NOT_AUTHORIZED", "assignment"),
+            ("REPOSITORY_FAILURE", "assignment"),
+            ("RUNTIME_STORE_FAILURE", "assignment"),
+        ),
+        "SingleStepRuntimeStatus": (
+            ("COMPLETED", "assignment"),
+            ("FAILED", "assignment"),
+            ("BLOCKED", "assignment"),
+        ),
+        "SingleStepRuntimeError": (("to_json_compatible", "method"),),
+        "SingleStepRuntimeRequest": (
+            ("work_id", "annotation"),
+            ("principal", "annotation"),
+            ("producer_ref", "annotation"),
+            ("executor_ref", "annotation"),
+            ("scope", "annotation"),
+            ("resource_refs", "annotation"),
+            ("requested_effects", "annotation"),
+            ("policy_state_known", "annotation"),
+            ("observability_context", "annotation"),
+            ("occurred_at", "annotation"),
+            ("execution_id", "annotation"),
+        ),
+        "SingleStepExecutionRequest": (
+            ("work", "annotation"),
+            ("execution", "annotation"),
+            ("policy_decision", "annotation"),
+            ("observability_context", "annotation"),
+        ),
+        "SingleStepExecutionOutcome": (
+            ("result", "annotation"),
+            ("evidence_refs", "annotation"),
+        ),
+        "SingleStepExecutor": (("execute", "method"),),
+        "SingleStepRuntimeResult": (
+            ("status", "annotation"),
+            ("work", "annotation"),
+            ("policy_decision", "annotation"),
+            ("execution", "annotation"),
+            ("executor_result", "annotation"),
+            ("events", "annotation"),
+            ("evidence_refs", "annotation"),
+            ("recording_errors", "annotation"),
+        ),
+        "SingleStepRuntimeService": (
+            ("work_repository", "annotation"),
+            ("event_store", "annotation"),
+            ("policy_evaluator", "annotation"),
+            ("executor", "annotation"),
+            ("run_once", "method"),
+        ),
+    },
+    "work_repository.py": {
+        "RepositoryErrorCode": (
+            ("CONFLICT", "assignment"),
+            ("ILLEGAL_TRANSITION", "assignment"),
+            ("NOT_FOUND", "assignment"),
+            ("PERSISTENCE_FAILURE", "assignment"),
+        ),
+        "RepositoryError": (("to_json_compatible", "method"),),
+        "StoredWorkItem": (("item", "annotation"), ("version", "annotation")),
+        "StoredExecutionRecord": (("record", "annotation"), ("version", "annotation")),
+        "M0WorkRepository": (
+            ("create_work", "method"),
+            ("read_work", "method"),
+            ("transition_work", "method"),
+            ("create_execution", "method"),
+            ("read_execution", "method"),
+            ("transition_execution", "method"),
+        ),
+    },
+}
 M0_PLANNED_TEST_ROOTS_BY_TASK = {
     "TASK-M0-010": frozenset({"tests/integration"}),
     "TASK-M0-012": frozenset({"tests/acceptance"}),
@@ -1535,17 +1964,29 @@ def _contract_module_authority_violations(
     source: str,
 ) -> tuple[str, ...]:
     tree = _parse_contract_text(module_name, source)
+    return _python_module_authority_violations(
+        module_name,
+        tree,
+        FROZEN_CONTRACT_DECLARATIONS_BY_MODULE[module_name],
+        FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE.get(module_name, {}),
+    )
+
+
+def _python_module_authority_violations(
+    module_name: str,
+    tree: ast.Module,
+    expected_declarations: tuple[tuple[str, str], ...],
+    expected_members_by_class: dict[str, tuple[tuple[str, str], ...]],
+) -> tuple[str, ...]:
     violations: list[str] = []
 
     actual_declarations = _public_contract_declarations(tree)
-    expected_declarations = FROZEN_CONTRACT_DECLARATIONS_BY_MODULE[module_name]
     if actual_declarations != expected_declarations:
         violations.append(
-            f"{module_name} declarations changed: expected {expected_declarations!r}; "
+            f"{module_name} public declarations changed: expected {expected_declarations!r}; "
             f"got {actual_declarations!r}"
         )
 
-    expected_members_by_class = FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE.get(module_name, {})
     if expected_members_by_class:
         actual_members_by_class = _public_class_member_declarations(tree)
         for class_name, expected_members in expected_members_by_class.items():
@@ -1556,6 +1997,247 @@ def _contract_module_authority_violations(
                     f"expected {expected_members!r}; got {actual_members!r}"
                 )
 
+    return tuple(violations)
+
+
+def _core_runtime_module_authority_violations(
+    source_root: Path,
+    module_name: str,
+    source: str,
+    expected_declarations_by_module: dict[str, tuple[tuple[str, str], ...]],
+    expected_class_members_by_module: dict[str, dict[str, tuple[tuple[str, str], ...]]],
+) -> tuple[str, ...]:
+    del source_root
+    tree = _parse_contract_text(module_name, source)
+    return _python_module_authority_violations(
+        module_name,
+        tree,
+        expected_declarations_by_module[module_name],
+        expected_class_members_by_module.get(module_name, {}),
+    )
+
+
+def _fastapi_application_route_authority(
+    app: object,
+) -> tuple[
+    tuple[str, tuple[str, ...], str, str, str, bool],
+    ...,
+]:
+    from fastapi.routing import APIRoute
+
+    routes: list[tuple[str, tuple[str, ...], str, str, str, bool]] = []
+    for route in getattr(app, "routes", ()):
+        if not isinstance(route, APIRoute):
+            continue
+        endpoint = route.endpoint
+        routes.append(
+            (
+                route.path,
+                tuple(sorted(route.methods or ())),
+                route.name,
+                getattr(endpoint, "__module__", ""),
+                getattr(endpoint, "__qualname__", ""),
+                route.include_in_schema,
+            )
+        )
+    return tuple(routes)
+
+
+def _fastapi_framework_route_authority(
+    app: object,
+) -> tuple[tuple[str, tuple[str, ...], str, bool], ...]:
+    from fastapi.routing import APIRoute
+
+    return tuple(
+        (
+            getattr(route, "path", ""),
+            tuple(sorted(getattr(route, "methods", ()) or ())),
+            getattr(route, "name", ""),
+            bool(getattr(route, "include_in_schema", False)),
+        )
+        for route in getattr(app, "routes", ())
+        if not isinstance(route, APIRoute)
+    )
+
+
+def _fastapi_route_authority_violations(
+    app: object | None = None,
+    *,
+    application_routes: tuple[tuple[str, tuple[str, ...], str, str, str, bool], ...] | None = None,
+    framework_routes: tuple[tuple[str, tuple[str, ...], str, bool], ...] | None = None,
+) -> tuple[str, ...]:
+    if app is None and application_routes is None and framework_routes is None:
+        from curios_api import create_api_composition, create_application
+
+        app = create_application(create_api_composition())
+    if application_routes is None:
+        assert app is not None
+        application_routes = _fastapi_application_route_authority(app)
+    if framework_routes is None:
+        if app is None:
+            framework_routes = FROZEN_FASTAPI_FRAMEWORK_ROUTES
+        else:
+            framework_routes = _fastapi_framework_route_authority(app)
+
+    violations: list[str] = []
+    if application_routes != FROZEN_FASTAPI_APPLICATION_ROUTES:
+        violations.append(
+            "FastAPI application route authority changed: expected "
+            f"{FROZEN_FASTAPI_APPLICATION_ROUTES!r}; got {application_routes!r}"
+        )
+    if framework_routes != FROZEN_FASTAPI_FRAMEWORK_ROUTES:
+        violations.append(
+            "FastAPI framework route classification changed: expected "
+            f"{FROZEN_FASTAPI_FRAMEWORK_ROUTES!r}; got {framework_routes!r}"
+        )
+    return tuple(violations)
+
+
+def _typescript_string_literals(source: str) -> tuple[str, ...]:
+    return tuple(
+        match.group(2) for match in re.finditer(r"([\"'`])((?:\\.|(?!\1).)*?)\1", source, re.DOTALL)
+    )
+
+
+def _typescript_exports(source: str) -> tuple[str, ...]:
+    return tuple(
+        match.group(1)
+        for match in re.finditer(
+            r"\bexport\s+(?:async\s+)?(?:function|interface|type|const)\s+"
+            r"([A-Za-z_][A-Za-z0-9_]*)",
+            source,
+        )
+    )
+
+
+def _typescript_string_array_const(source: str, const_name: str) -> tuple[str, ...]:
+    match = re.search(
+        rf"\bexport\s+const\s+{re.escape(const_name)}\s*=\s*\[(?P<body>.*?)\]\s*as\s+const",
+        source,
+        flags=re.DOTALL,
+    )
+    if match is None:
+        return ()
+    return _typescript_string_literals(match.group("body"))
+
+
+def _typescript_method_literals(source: str) -> tuple[str, ...]:
+    return tuple(
+        match.group(2) for match in re.finditer(r"\bmethod\s*:\s*([\"'])([^\"']+)\1", source)
+    )
+
+
+def _typescript_api_boundary_imports(source: str) -> tuple[str, ...]:
+    matches = re.finditer(
+        r"\bimport\s*{(?P<body>.*?)}\s*from\s*([\"'])(?P<module>[^\"']+)\2",
+        source,
+        flags=re.DOTALL,
+    )
+    match = next(
+        (candidate for candidate in matches if candidate.group("module") == "./apiBoundary"),
+        None,
+    )
+    if match is None:
+        return ()
+    imports: list[str] = []
+    for item in match.group("body").split(","):
+        name = item.strip()
+        if not name:
+            continue
+        if name.startswith("type "):
+            name = name.removeprefix("type ").strip()
+        imports.append(name.split(maxsplit=1)[0])
+    return tuple(imports)
+
+
+def _path_like_web_literals(source: str) -> tuple[str, ...]:
+    return tuple(value for value in _typescript_string_literals(source) if value.startswith("/"))
+
+
+def _network_primitive_hits(source: str, *, allow_fetch: bool) -> tuple[str, ...]:
+    hits: list[str] = []
+    for primitive in WEB_NETWORK_PRIMITIVES:
+        if allow_fetch and primitive == "fetch(":
+            continue
+        if primitive in source:
+            hits.append(primitive)
+    return tuple(hits)
+
+
+def _future_backend_path_hits(source: str) -> tuple[str, ...]:
+    literals = _typescript_string_literals(source)
+    return tuple(
+        literal
+        for literal in literals
+        if any(token in literal.lower() for token in FUTURE_WEB_BACKEND_PATH_TOKENS)
+    )
+
+
+def _web_api_boundary_authority_violations(source: str) -> tuple[str, ...]:
+    violations: list[str] = []
+    exports = _typescript_exports(source)
+    if exports != FROZEN_WEB_API_BOUNDARY_EXPORTS:
+        violations.append(
+            f"web API boundary exports changed: expected {FROZEN_WEB_API_BOUNDARY_EXPORTS!r}; "
+            f"got {exports!r}"
+        )
+    paths = _typescript_string_array_const(source, "apiBoundaryPaths")
+    if paths != FROZEN_WEB_API_BOUNDARY_PATHS:
+        violations.append(
+            f"web API boundary paths changed: expected {FROZEN_WEB_API_BOUNDARY_PATHS!r}; "
+            f"got {paths!r}"
+        )
+    path_literals = _path_like_web_literals(source)
+    if path_literals != FROZEN_WEB_API_BOUNDARY_PATH_LITERALS:
+        violations.append(
+            "web API boundary path literal authority changed: expected "
+            f"{FROZEN_WEB_API_BOUNDARY_PATH_LITERALS!r}; got {path_literals!r}"
+        )
+    methods = _typescript_method_literals(source)
+    if methods != FROZEN_WEB_API_BOUNDARY_METHODS:
+        violations.append(
+            f"web API boundary HTTP methods changed: expected {FROZEN_WEB_API_BOUNDARY_METHODS!r}; "
+            f"got {methods!r}"
+        )
+    fetch_count = source.count("fetch(")
+    if fetch_count != 1:
+        violations.append(
+            f"web API boundary must contain exactly one fetch call; got {fetch_count}"
+        )
+    network_hits = _network_primitive_hits(source, allow_fetch=True)
+    if network_hits:
+        violations.append(f"web API boundary unauthorized network primitive(s): {network_hits!r}")
+    future_hits = _future_backend_path_hits(source)
+    if future_hits:
+        violations.append(f"web API boundary future backend path literal(s): {future_hits!r}")
+    return tuple(violations)
+
+
+def _web_app_authority_violations(source: str) -> tuple[str, ...]:
+    violations: list[str] = []
+    exports = _typescript_exports(source)
+    if exports != FROZEN_WEB_APP_EXPORTS:
+        violations.append(
+            f"web App exports changed: expected {FROZEN_WEB_APP_EXPORTS!r}; got {exports!r}"
+        )
+    imports = _typescript_api_boundary_imports(source)
+    if imports != FROZEN_WEB_APP_API_BOUNDARY_IMPORTS:
+        violations.append(
+            "web App API-boundary imports changed: expected "
+            f"{FROZEN_WEB_APP_API_BOUNDARY_IMPORTS!r}; got {imports!r}"
+        )
+    literals = _typescript_string_literals(source)
+    if literals != FROZEN_WEB_APP_STRING_LITERALS:
+        violations.append(
+            "web App user/control string authority changed: expected "
+            f"{FROZEN_WEB_APP_STRING_LITERALS!r}; got {literals!r}"
+        )
+    network_hits = _network_primitive_hits(source, allow_fetch=False)
+    if network_hits:
+        violations.append(f"web App unauthorized direct network primitive(s): {network_hits!r}")
+    future_hits = _future_backend_path_hits(source)
+    if future_hits:
+        violations.append(f"web App future backend path literal(s): {future_hits!r}")
     return tuple(violations)
 
 
@@ -4323,6 +5005,359 @@ def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contr
     } == M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS
     planned_new_names = frozenset().union(*M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK.values())
     assert planned_new_names.isdisjoint(FROZEN_CONTRACT_PACKAGE_EXPORTS)
+
+
+def test_fastapi_application_route_authority_matches_frozen_boot_m0_inventory() -> None:
+    violations = _fastapi_route_authority_violations()
+
+    _assert_no_security_failure(
+        not violations,
+        f"FastAPI route authority changed: {list(violations)}",
+    )
+
+
+def test_fastapi_known_cognitive_route_bypass_is_executable_but_rejected() -> None:
+    from curios_api import create_api_composition, create_application
+    from fastapi.testclient import TestClient
+
+    app = create_application(create_api_composition())
+
+    @app.get("/cognitive/intents")
+    async def list_intents() -> dict[str, object]:
+        return {"intents": []}
+
+    assert TestClient(app).get("/cognitive/intents").json() == {"intents": []}
+    assert _fastapi_route_authority_violations(app)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "cognitive_post",
+        "new_method_existing_path",
+        "second_path_for_existing_handler",
+        "same_path_second_endpoint",
+        "add_api_route",
+        "api_route_multi_method",
+        "included_router",
+        "trailing_slash_variant",
+        "parameterized_cognitive_path",
+    ),
+)
+def test_fastapi_route_authority_rejects_unowned_route_expansion(mutation: str) -> None:
+    from curios_api import create_api_composition, create_application
+    from fastapi import APIRouter
+
+    app = create_application(create_api_composition())
+
+    async def handler() -> dict[str, object]:
+        return {"ok": True}
+
+    if mutation == "cognitive_post":
+        app.post("/cognitive/intents")(handler)
+    elif mutation == "new_method_existing_path":
+        app.post("/providers")(handler)
+    elif mutation == "second_path_for_existing_handler":
+        app.get("/provider-list")(handler)
+    elif mutation == "same_path_second_endpoint":
+        app.get("/providers")(handler)
+    elif mutation == "add_api_route":
+        app.add_api_route("/cognitive/intents", handler, methods=["GET"])
+    elif mutation == "api_route_multi_method":
+        app.api_route("/cognitive/intents", methods=["GET", "POST"])(handler)
+    elif mutation == "included_router":
+        router = APIRouter()
+        router.add_api_route("/cognitive/intents", handler, methods=["GET"])
+        app.include_router(router)
+    elif mutation == "trailing_slash_variant":
+        app.get("/providers/")(handler)
+    elif mutation == "parameterized_cognitive_path":
+        app.get("/cognitive/intents/{intent_id}")(handler)
+
+    assert _fastapi_route_authority_violations(app), mutation
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "remove_required_route",
+        "rename_required_route",
+        "change_required_method",
+    ),
+)
+def test_fastapi_route_authority_rejects_route_removal_or_mutation(mutation: str) -> None:
+    routes = list(FROZEN_FASTAPI_APPLICATION_ROUTES)
+    if mutation == "remove_required_route":
+        routes = [route for route in routes if route[0] != "/providers"]
+    elif mutation == "rename_required_route":
+        routes[2] = (
+            "/provider-list",
+            routes[2][1],
+            routes[2][2],
+            routes[2][3],
+            routes[2][4],
+            routes[2][5],
+        )
+    elif mutation == "change_required_method":
+        routes[2] = (
+            routes[2][0],
+            ("POST",),
+            routes[2][2],
+            routes[2][3],
+            routes[2][4],
+            routes[2][5],
+        )
+
+    assert _fastapi_route_authority_violations(application_routes=tuple(routes))
+
+
+def test_web_api_boundary_authority_matches_frozen_boot_m0_inventory() -> None:
+    violations = _web_api_boundary_authority_violations(
+        (WEB_SOURCE / "apiBoundary.ts").read_text(encoding="utf-8")
+    )
+
+    _assert_no_security_failure(
+        not violations,
+        f"web API boundary authority changed: {list(violations)}",
+    )
+
+
+def test_web_app_authority_matches_frozen_boot_m0_inventory() -> None:
+    violations = _web_app_authority_violations((WEB_SOURCE / "App.tsx").read_text(encoding="utf-8"))
+
+    _assert_no_security_failure(
+        not violations,
+        f"web App authority changed: {list(violations)}",
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "snippet"),
+    (
+        ("direct_cognitive_fetch", 'void fetch("/cognitive/intents");\n'),
+        ("direct_constructed_cognitive_fetch", 'void fetch("/cognitive" + "/intents");\n'),
+        ("direct_unrelated_fetch", 'void fetch("/admin/tools");\n'),
+        ("websocket", 'const socket = new WebSocket("/cognitive/intents");\n'),
+        ("eventsource", 'const source = new EventSource("/cognitive/intents");\n'),
+        (
+            "cognitive_control",
+            'const label = "Cognitive Intents";\nconst action = "Load Intents";\n',
+        ),
+        ("dag_control", 'const label = "DAG Runner";\nconst action = "Run DAG";\n'),
+        ("agent_control", 'const label = "Agent Console";\nconst action = "Assign Agent";\n'),
+        ("model_router_control", 'const label = "Model Router";\nconst action = "Route Model";\n'),
+        ("backend_triggering_control", 'const action = "Launch Tool";\n'),
+    ),
+)
+def test_web_app_authority_rejects_premature_network_and_control_surface(
+    mutation: str,
+    snippet: str,
+) -> None:
+    source = (WEB_SOURCE / "App.tsx").read_text(encoding="utf-8")
+    mutated_source = f"{source}\n{snippet}"
+
+    assert _web_app_authority_violations(mutated_source), mutation
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "new_cognitive_api_function",
+        "changed_method",
+        "arbitrary_backend_path",
+        "websocket",
+        "eventsource",
+    ),
+)
+def test_web_api_boundary_authority_rejects_premature_backend_surface(
+    mutation: str,
+) -> None:
+    source = (WEB_SOURCE / "apiBoundary.ts").read_text(encoding="utf-8")
+    mutations = {
+        "new_cognitive_api_function": source
+        + "\nexport async function listIntents(): Promise<ApiResult<unknown>> {\n"
+        + '  return requestJson("/cognitive/intents" as ApiBoundaryPath);\n'
+        + "}\n",
+        "changed_method": source.replace('method: "POST"', 'method: "DELETE"', 1),
+        "arbitrary_backend_path": source
+        + "\nexport async function adminTools(): Promise<ApiResult<unknown>> {\n"
+        + '  return requestJson("/admin/tools" as ApiBoundaryPath);\n'
+        + "}\n",
+        "websocket": source + '\nconst socket = new WebSocket("/cognitive/intents");\n',
+        "eventsource": source + '\nconst source = new EventSource("/cognitive/intents");\n',
+    }
+
+    assert _web_api_boundary_authority_violations(mutations[mutation]), mutation
+
+
+@pytest.mark.parametrize(
+    ("source_root", "expected_declarations_by_module", "expected_class_members_by_module"),
+    (
+        (CORE_SOURCE, FROZEN_CORE_DECLARATIONS_BY_MODULE, FROZEN_CORE_CLASS_MEMBERS_BY_MODULE),
+        (
+            RUNTIME_SOURCE,
+            FROZEN_RUNTIME_DECLARATIONS_BY_MODULE,
+            FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE,
+        ),
+    ),
+)
+def test_core_runtime_existing_module_authority_matches_frozen_inventory(
+    source_root: Path,
+    expected_declarations_by_module: dict[str, tuple[tuple[str, str], ...]],
+    expected_class_members_by_module: dict[str, dict[str, tuple[tuple[str, str], ...]]],
+) -> None:
+    actual_modules = {
+        path.relative_to(source_root).as_posix()
+        for path in source_root.rglob("*.py")
+        if path.name != "py.typed"
+    }
+    assert actual_modules == set(expected_declarations_by_module)
+    violations = tuple(
+        violation
+        for module_name in sorted(expected_declarations_by_module)
+        for violation in _core_runtime_module_authority_violations(
+            source_root,
+            module_name,
+            (source_root / module_name).read_text(encoding="utf-8"),
+            expected_declarations_by_module,
+            expected_class_members_by_module,
+        )
+    )
+
+    _assert_no_security_failure(
+        not violations,
+        f"core/runtime public authority changed: {list(violations)}",
+    )
+
+
+@pytest.mark.parametrize(
+    ("source_root", "module_name", "snippet"),
+    (
+        (
+            RUNTIME_SOURCE,
+            "single_step_runtime.py",
+            """
+
+            def decompose_intent() -> object:
+                return object()
+            """,
+        ),
+        (
+            RUNTIME_SOURCE,
+            "work_repository.py",
+            """
+
+            DAG_SCHEDULER_AUTHORITY: tuple[str, ...] = ("DAG",)
+            """,
+        ),
+        (
+            RUNTIME_SOURCE,
+            "provider_inventory_executor.py",
+            """
+
+            class CapabilityResolver:
+                pass
+            """,
+        ),
+        (
+            CORE_SOURCE,
+            "application.py",
+            """
+
+            def route_model_profile() -> object:
+                return object()
+            """,
+        ),
+        (
+            CORE_SOURCE,
+            "ports/providers.py",
+            """
+
+            class AgentAssignmentPort:
+                pass
+            """,
+        ),
+    ),
+)
+def test_core_runtime_existing_files_reject_premature_public_semantic_authority(
+    source_root: Path,
+    module_name: str,
+    snippet: str,
+) -> None:
+    source = (source_root / module_name).read_text(encoding="utf-8")
+    mutated_source = f"{source}\n{textwrap.dedent(snippet)}"
+    expected_declarations = (
+        FROZEN_CORE_DECLARATIONS_BY_MODULE
+        if source_root == CORE_SOURCE
+        else FROZEN_RUNTIME_DECLARATIONS_BY_MODULE
+    )
+    expected_members = (
+        FROZEN_CORE_CLASS_MEMBERS_BY_MODULE
+        if source_root == CORE_SOURCE
+        else FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE
+    )
+
+    assert _core_runtime_module_authority_violations(
+        source_root,
+        module_name,
+        mutated_source,
+        expected_declarations,
+        expected_members,
+    )
+
+
+@pytest.mark.parametrize(
+    ("source_root", "module_name", "original", "replacement"),
+    (
+        (
+            RUNTIME_SOURCE,
+            "single_step_runtime.py",
+            "    def run_once("
+            "self, request: SingleStepRuntimeRequest"
+            ") -> SingleStepRuntimeResult:\n",
+            "    def run_dag(self) -> object:\n"
+            "        return object()\n\n"
+            "    def run_once("
+            "self, request: SingleStepRuntimeRequest"
+            ") -> SingleStepRuntimeResult:\n",
+        ),
+        (
+            CORE_SOURCE,
+            "application.py",
+            "    def list_provider_descriptors(\n",
+            "    def assign_agent(self) -> object:\n"
+            "        return object()\n\n"
+            "    def list_provider_descriptors(\n",
+        ),
+    ),
+)
+def test_core_runtime_existing_classes_reject_new_public_methods(
+    source_root: Path,
+    module_name: str,
+    original: str,
+    replacement: str,
+) -> None:
+    source = (source_root / module_name).read_text(encoding="utf-8")
+    assert original in source
+    mutated_source = source.replace(original, replacement, 1)
+    expected_declarations = (
+        FROZEN_CORE_DECLARATIONS_BY_MODULE
+        if source_root == CORE_SOURCE
+        else FROZEN_RUNTIME_DECLARATIONS_BY_MODULE
+    )
+    expected_members = (
+        FROZEN_CORE_CLASS_MEMBERS_BY_MODULE
+        if source_root == CORE_SOURCE
+        else FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE
+    )
+
+    assert _core_runtime_module_authority_violations(
+        source_root,
+        module_name,
+        mutated_source,
+        expected_declarations,
+        expected_members,
+    )
 
 
 def test_curios_contracts_canonical_declarations_match_frozen_inventory() -> None:

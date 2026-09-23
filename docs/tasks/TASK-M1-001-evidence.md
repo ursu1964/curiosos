@@ -42,7 +42,7 @@ execution unit from that baseline.
 | Keep agent/execution separate | PASS | TASK-M1-001 adds no agent semantics; architecture/security tests reject premature agent runtime/lifecycle surfaces. |
 | Keep model scope bounded | PASS | Model generation, inference, router optimization, and live quality gates remain blocked by topology examples and workflow checks. |
 | Keep DAG scheduler separate | PASS | M1 bounded DAG surfaces remain planned only; production scheduler/orchestration examples remain blocked. |
-| Preserve API/web exactness | PASS | M1 API/web examples are rejected until TASK-M1-013 and TASK-M1-014 authorize exact files. |
+| Preserve API/web exactness | PASS | M1 API/web examples are rejected until TASK-M1-013 and TASK-M1-014 authorize exact files and semantic route/network/control authority. |
 | Preserve test-surface exactness | PASS | M1 integration and acceptance examples are rejected until TASK-M1-015 and TASK-M1-017. |
 | Preserve CI exactness | PASS | `.github/workflows/quality-gates.yml` remains the only authorized GitHub path; workflow content unchanged. |
 | Update lifecycle truthfully | PASS | TASK-M1-001 is recorded as `IMPLEMENTED, TESTED`; TASK-M1-002 through TASK-M1-019 remain `BLOCKED`. |
@@ -148,6 +148,46 @@ imports, and later `__all__` mutation.
 The confirmed conditional import bypass is now rejected by the package
 initializer statement-sequence guard.
 
+## Fourth Independent Validation Failure, Blocked Partial Correction, And Correction
+
+Independent revalidation of corrected candidate
+`f978bcd30c7e5fddb01f2f584ef98f13ecfc5872` found that TASK-M1-001 still froze
+API filenames rather than API route authority. Adding the following route
+inside the already-authorized `apps/api/src/curios_api/service.py` created an
+executable premature M1 API surface while security, architecture, API, and
+integration checks stayed green:
+
+```python
+@app.get("/cognitive/intents")
+async def list_intents() -> JsonObject:
+    return {"intents": []}
+```
+
+An API-only Correction 4 was blocked because the required analogue review found
+the same class of defect in the already-authorized web root. Adding a visible
+`Cognitive Intents` control to `apps/web/src/App.tsx` and calling
+`fetch("/cognitive/intents")` created premature M1 UI/network authority while
+web tests, typecheck, security, architecture, acceptance, and integration
+checks stayed green.
+
+This correction freezes semantic authority at the existing outer boundaries:
+
+- exact application-owned FastAPI route authority, including path, method,
+  route name, endpoint module/qualname, and schema visibility;
+- framework-owned FastAPI docs/OpenAPI routes are classified separately as
+  infrastructure, not application authority;
+- exact web API-boundary path, method, export, and path-literal authority;
+- exact current web `App.tsx` API-boundary imports, exported component, and
+  user/control string authority;
+- direct web network primitives outside `apiBoundary.ts` remain unauthorized;
+- `curios_core` and `curios_runtime` existing modules now have explicit public
+  declaration and class-member inventories so new cognitive, DAG, agent,
+  capability, routing, or model-generation authority cannot be hidden in an
+  already-authorized Python file.
+
+The confirmed API and web bypasses are rejected by the new route and web
+authority guards.
+
 ## Adversarial Coverage
 
 The guardrail tests reject representative premature additions for:
@@ -162,6 +202,16 @@ The guardrail tests reject representative premature additions for:
 - conditional, try/fallback, nested, and dynamic package-initializer exports;
 - unexpected package-initializer executable statement shapes and `__all__`
   mutation;
+- new FastAPI route/path/method authority, regardless of whether it is created
+  by decorators, `add_api_route`, `api_route`, or `include_router`;
+- FastAPI route removal, path rename, or method mutation;
+- direct web `fetch`, WebSocket, EventSource, or sendBeacon usage outside the
+  frozen API boundary;
+- new web API-boundary exports, paths, HTTP methods, or future backend path
+  literals;
+- new visible/control string authority in the frozen M0 web app;
+- new public `curios_core` or `curios_runtime` declarations and public class
+  members in already-authorized modules;
 - TypeScript contract files;
 - M1 package roots;
 - DAG/agent/executor/model/routing/runner/verification runtime modules;
@@ -181,6 +231,11 @@ TASK-M1-002 owns future `Intent`, `Objective`, `Problem`, `Assumption`,
 `Decision`, and `Plan` canonical contract transitions. TASK-M1-004 owns future
 bounded work-DAG records. TASK-M1-009 owns model/profile discovery records.
 TASK-M1-010 owns routing decision records.
+
+TASK-M1-013 owns the future M1 API route-authority transition. TASK-M1-014 owns
+the future M1 web network/control-authority transition. Planning those surfaces
+does not authorize any current route, method, API call, control, label, or
+network behavior.
 
 Those planned concepts remain unauthorized today. The owning future task must
 deliberately update the frozen declaration/export inventory when it transitions
@@ -207,6 +262,9 @@ CI workflow content, API behavior, web behavior, or runtime implementation.
 | Canonical-authority bypass replay | Passed: temporary exported `Intent` probe was rejected by declaration and export inventories. |
 | Alias export bypass replay | Passed: temporary `WorkItem as Intent` package import was importable but rejected by lossless export inventory. |
 | Conditional initializer bypass replay | Passed: temporary conditional `WorkItem as Intent` import was importable but rejected by statement-sequence guard. |
+| API route-authority bypass replay | Passed: temporary `GET /cognitive/intents` route was executable but rejected by exact route inventory. |
+| Web analogue bypass replay | Passed: temporary cognitive control/network snippets were rejected by App and API-boundary authority inventories. |
+| Boundary semantic-authority targeted suite | Passed: `40` passed, 2 known dependency warnings. |
 | Initializer/export adversarial matrix | Passed: `58` passed. |
 | Canonical-authority targeted suite | Passed: `76` passed, `237` deselected. |
 | Security and architecture focused suite | Passed: `346 passed` (`313` security, `33` architecture). |
