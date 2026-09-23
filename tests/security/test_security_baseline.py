@@ -246,6 +246,124 @@ AUTHORIZED_GITHUB_PATHS = frozenset(
     }
 )
 AUTHORIZED_WORKFLOW_PERMISSIONS = {"contents": "read"}
+AUTHORIZED_WORKFLOW_TRIGGERS = {
+    "push": {"branches": ["**"]},
+    "pull_request": "",
+}
+M0_INTEGRATION_GATE_COMMAND = (
+    "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
+)
+REQUIRED_WORKFLOW_RUN_STEPS = (
+    (
+        "python",
+        "Validate TOML manifests",
+        """
+        python - <<'PY'
+        from pathlib import Path
+        import tomllib
+
+        for path in sorted(Path(".").rglob("pyproject.toml")):
+            tomllib.loads(path.read_text(encoding="utf-8"))
+        PY
+        """,
+    ),
+    ("python", "Check uv lock consistency", "uv lock --check"),
+    ("python", "Install locked Python workspace", "uv sync --locked --all-groups --all-packages"),
+    (
+        "python",
+        "Validate LOCAL_DOCKER PostgreSQL compose config",
+        """
+        docker compose
+        --env-file infrastructure/local/docker/.env.example
+        -f infrastructure/local/docker/compose.yaml
+        config --quiet
+        """,
+    ),
+    ("python", "Ruff lint", "uv run ruff check ."),
+    ("python", "Ruff format check", "uv run ruff format --check ."),
+    ("python", "mypy strict baseline", "uv run mypy apps/api/src packages/python/*/src"),
+    (
+        "python",
+        "Package-local Python tests",
+        """
+        uv run pytest
+        apps/api/tests
+        packages/python/curios_contracts/tests
+        packages/python/curios_core/tests
+        packages/python/curios_config/tests
+        packages/python/curios_postgres_provider/tests
+        packages/python/curios_ollama/tests
+        packages/python/curios_observability/tests
+        -q
+        """,
+    ),
+    (
+        "python",
+        "M0 runtime, persistence, and policy package tests",
+        """
+        uv run pytest
+        packages/python/curios_persistence/tests
+        packages/python/curios_policy/tests
+        packages/python/curios_runtime/tests
+        -m "not integration"
+        -q
+        """,
+    ),
+    (
+        "python",
+        "Repository contract and schema tests",
+        "uv run pytest tests/contract tests/schema -q",
+    ),
+    ("python", "Architecture tests", "uv run pytest tests/architecture -q"),
+    ("python", "Security tests", "uv run pytest tests/security -q"),
+    (
+        "python",
+        "API integration tests",
+        "uv run pytest tests/integration/test_api_integration.py -q",
+    ),
+    (
+        "python",
+        "PostgreSQL provider integration test",
+        "uv run pytest tests/integration/test_postgres_provider_integration.py -q",
+    ),
+    (
+        "python",
+        "M0 PostgreSQL integration tests",
+        """
+        uv run pytest
+        packages/python/curios_persistence/tests/test_postgres_persistence_integration.py
+        packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py
+        packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py
+        -q
+        """,
+    ),
+    (
+        "python",
+        "M0 integration tests",
+        M0_INTEGRATION_GATE_COMMAND,
+    ),
+    ("python", "BOOT acceptance tests", "uv run pytest tests/acceptance -q"),
+    ("python", "Full pytest suite", "uv run pytest -q"),
+    (
+        "frontend",
+        "Enable pinned pnpm",
+        """
+        corepack enable
+        corepack prepare pnpm@12.5.1 --activate
+        """,
+    ),
+    ("frontend", "Install locked Node workspace", "pnpm install --frozen-lockfile"),
+    ("frontend", "Repository frontend checks", "pnpm check"),
+    ("frontend", "apps/web tests", "pnpm --dir apps/web test"),
+    ("frontend", "apps/web typecheck", "pnpm --dir apps/web typecheck"),
+    ("frontend", "apps/web production build", "pnpm --dir apps/web build"),
+    ("repository", "Diff whitespace", "git diff --check"),
+)
+REQUIRED_WORKFLOW_JOB_NAMES = frozenset(job_name for job_name, _, _ in REQUIRED_WORKFLOW_RUN_STEPS)
+PROHIBITED_REQUIRED_JOB_KEYS = frozenset(
+    {"if", "continue-on-error", "strategy", "needs", "defaults"}
+)
+PROHIBITED_REQUIRED_STEP_KEYS = frozenset({"if", "continue-on-error"})
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
         ".github",
@@ -819,6 +937,91 @@ def _workflow_permission_violations(workflow: dict[str, object]) -> tuple[str, .
     return tuple(violations)
 
 
+def _workflow_trigger_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    triggers = workflow.get("on")
+    if triggers != AUTHORIZED_WORKFLOW_TRIGGERS:
+        return (
+            f"workflow triggers must be exactly {AUTHORIZED_WORKFLOW_TRIGGERS!r}; got {triggers!r}",
+        )
+    return ()
+
+
+def _normalized_workflow_run(run: object) -> str | None:
+    if not isinstance(run, str):
+        return None
+    return " ".join(run.split())
+
+
+def _workflow_required_gate_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    violations: list[str] = []
+
+    jobs = workflow.get("jobs")
+    if not isinstance(jobs, dict):
+        return (f"jobs must be a mapping; got {jobs!r}",)
+
+    for job_name in sorted(REQUIRED_WORKFLOW_JOB_NAMES):
+        job_config = jobs.get(job_name)
+        if not isinstance(job_config, dict):
+            violations.append(f"required job {job_name!r} must be present as a mapping")
+            continue
+        for prohibited_key in sorted(PROHIBITED_REQUIRED_JOB_KEYS):
+            if prohibited_key in job_config:
+                violations.append(
+                    f"required job {job_name!r} uses unauthorized key "
+                    f"{prohibited_key!r}: {job_config[prohibited_key]!r}"
+                )
+        steps = job_config.get("steps")
+        if not isinstance(steps, list):
+            violations.append(f"required job {job_name!r} steps must be a list")
+            continue
+        for step in steps:
+            if not isinstance(step, dict):
+                violations.append(f"required job {job_name!r} has non-mapping step {step!r}")
+
+    for job_name, step_name, expected_run in REQUIRED_WORKFLOW_RUN_STEPS:
+        expected_normalized_run = _normalized_workflow_run(textwrap.dedent(expected_run))
+        job_config = jobs.get(job_name)
+        if not isinstance(job_config, dict):
+            continue
+        steps = job_config.get("steps")
+        if not isinstance(steps, list):
+            continue
+
+        matching_steps = [
+            step for step in steps if isinstance(step, dict) and step.get("name") == step_name
+        ]
+        if len(matching_steps) != 1:
+            violations.append(
+                f"required step {job_name!r}/{step_name!r} must appear exactly once; "
+                f"got {len(matching_steps)}"
+            )
+            continue
+
+        step = matching_steps[0]
+        for prohibited_key in sorted(PROHIBITED_REQUIRED_STEP_KEYS):
+            if prohibited_key in step:
+                violations.append(
+                    f"required step {job_name!r}/{step_name!r} uses unauthorized key "
+                    f"{prohibited_key!r}: {step[prohibited_key]!r}"
+                )
+        actual_normalized_run = _normalized_workflow_run(step.get("run"))
+        if actual_normalized_run != expected_normalized_run:
+            violations.append(
+                f"required step {job_name!r}/{step_name!r} run changed: "
+                f"expected {expected_normalized_run!r}; got {actual_normalized_run!r}"
+            )
+
+    return tuple(violations)
+
+
+def _workflow_security_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    return (
+        *_workflow_permission_violations(workflow),
+        *_workflow_trigger_violations(workflow),
+        *_workflow_required_gate_violations(workflow),
+    )
+
+
 def _tracked_runtime_source_files() -> frozenset[str]:
     runtime_source = REPO_ROOT / "packages/python/curios_runtime/src/curios_runtime"
     return frozenset(
@@ -1229,6 +1432,8 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
     normalized_workflow = _normalized_workflow_text()
     action_refs = _workflow_action_refs()
     permission_violations = _workflow_permission_violations(workflow)
+    trigger_violations = _workflow_trigger_violations(workflow)
+    required_gate_violations = _workflow_required_gate_violations(workflow)
 
     _assert_no_security_failure(action_refs != (), "quality-gates workflow has no actions")
     for action_ref in action_refs:
@@ -1237,60 +1442,23 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
             f"GitHub action is not pinned to a full immutable SHA: {action_ref}",
         )
 
-    expected_commands = (
-        "uv lock --check",
-        "uv sync --locked --all-groups --all-packages",
-        "docker compose --env-file infrastructure/local/docker/.env.example "
-        "-f infrastructure/local/docker/compose.yaml config --quiet",
-        "uv run ruff check .",
-        "uv run ruff format --check .",
-        "uv run mypy apps/api/src packages/python/*/src",
-        "uv run pytest apps/api/tests packages/python/curios_contracts/tests "
-        "packages/python/curios_core/tests packages/python/curios_config/tests "
-        "packages/python/curios_postgres_provider/tests packages/python/curios_ollama/tests "
-        "packages/python/curios_observability/tests -q",
-        "uv run pytest packages/python/curios_persistence/tests "
-        "packages/python/curios_policy/tests packages/python/curios_runtime/tests "
-        '-m "not integration" -q',
-        "uv run pytest tests/contract tests/schema -q",
-        "uv run pytest tests/architecture -q",
-        "uv run pytest tests/security -q",
-        "uv run pytest tests/integration/test_api_integration.py -q",
-        "uv run pytest tests/integration/test_postgres_provider_integration.py -q",
-        "uv run pytest "
-        "packages/python/curios_persistence/tests/test_postgres_persistence_integration.py "
-        "packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py "
-        "packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py -q",
-        "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q",
-        "uv run pytest tests/acceptance -q",
-        "uv run pytest -q",
-        "pnpm install --frozen-lockfile",
-        "pnpm check",
-        "pnpm --dir apps/web test",
-        "pnpm --dir apps/web typecheck",
-        "pnpm --dir apps/web build",
-        "git diff --check",
-    )
-    for command in expected_commands:
-        _assert_no_security_failure(
-            command in normalized_workflow, f"CI command missing: {command}"
-        )
-
     _assert_no_security_failure(
         not permission_violations,
         f"workflow permissions changed: {list(permission_violations)}",
     )
-    _assert_no_security_failure("pull_request:" in workflow_text, "pull request trigger missing")
-    _assert_no_security_failure("push:" in workflow_text, "push trigger missing")
+    _assert_no_security_failure(
+        not trigger_violations,
+        f"workflow triggers changed: {list(trigger_violations)}",
+    )
+    _assert_no_security_failure(
+        not required_gate_violations,
+        f"workflow required quality gates changed: {list(required_gate_violations)}",
+    )
     for prohibited in (
-        "workflow_dispatch",
-        "schedule:",
         "release:",
         "deployment",
         "environment:",
         "secrets.",
-        "continue-on-error",
-        "|| true",
         "ollama serve",
         "docker compose up -d ollama",
         "down -v",
@@ -1320,6 +1488,504 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
         m0_integration_index < boot_acceptance_index < full_pytest_index,
         "M0 integration must run before acceptance and full pytest",
     )
+
+
+def _security_violations_for_workflow_text(workflow_text: str) -> tuple[str, ...]:
+    workflow = _parse_quality_gate_workflow(workflow_text)
+    return _workflow_security_violations(workflow)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "A_current_valid_push_and_pull_request",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+    ),
+)
+def test_quality_gate_trigger_detector_accepts_only_frozen_trigger_model(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+    assert not _workflow_trigger_violations(workflow), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "B_push_only",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "C_pull_request_only",
+            """
+            name: Quality Gates
+            on:
+              pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "D_repository_dispatch",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              repository_dispatch:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "E_workflow_run",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              workflow_run:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "F_schedule",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              schedule:
+                - cron: "0 * * * *"
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "G_workflow_dispatch",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              workflow_dispatch:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "H_pull_request_target",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              pull_request_target:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "I_release",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              release:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "J_unknown_trigger",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              frobnicate:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "K_missing_on",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "L_scalar_on",
+            """
+            name: Quality Gates
+            on: push
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "M_sequence_on",
+            """
+            name: Quality Gates
+            on:
+              - push
+              - pull_request
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "wrong_push_branch_filter",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - main
+              pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+    ),
+)
+def test_quality_gate_trigger_detector_rejects_non_frozen_trigger_models(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+    assert _workflow_trigger_violations(workflow), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "N_duplicate_trigger_key",
+            """
+            name: Quality Gates
+            on:
+              push:
+              push:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "O_trigger_supplied_via_anchor_alias",
+            """
+            name: Quality Gates
+            trigger: &trigger
+              push:
+                branches:
+                  - "**"
+              pull_request:
+            on: *trigger
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "O_trigger_supplied_via_merge",
+            """
+            name: Quality Gates
+            on:
+              <<:
+                push:
+                  branches:
+                    - "**"
+                pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+    ),
+)
+def test_quality_gate_trigger_parser_rejects_ambiguous_trigger_yaml(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    with pytest.raises(AssertionError):
+        _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+
+@pytest.mark.parametrize(
+    ("case_id", "replacement"),
+    (
+        (
+            "B_remove_gate",
+            "",
+        ),
+        (
+            "C_replace_path",
+            "      - name: M0 integration tests\n"
+            "        run: uv run pytest tests/integration/test_m0_other.py -q\n\n",
+        ),
+        (
+            "D_add_if_false",
+            "      - name: M0 integration tests\n"
+            "        if: false\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "E_continue_on_error",
+            "      - name: M0 integration tests\n"
+            "        continue-on-error: true\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "F_prepend_set_plus_e",
+            "      - name: M0 integration tests\n"
+            "        run: |\n"
+            "          set +e\n"
+            f"          {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "G_append_or_true",
+            "      - name: M0 integration tests\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND} || true\n\n",
+        ),
+        (
+            "H_append_semicolon_true",
+            "      - name: M0 integration tests\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND} ; true\n\n",
+        ),
+        (
+            "I_append_exit_zero",
+            "      - name: M0 integration tests\n"
+            "        run: |\n"
+            f"          {M0_INTEGRATION_GATE_COMMAND}\n"
+            "          exit 0\n\n",
+        ),
+        (
+            "J_wrap_failure_swallowing_shell",
+            "      - name: M0 integration tests\n"
+            "        run: |\n"
+            f"          if ! {M0_INTEGRATION_GATE_COMMAND}; then\n"
+            "            echo ignored\n"
+            "          fi\n\n",
+        ),
+        (
+            "K_unauthorized_conditional_step",
+            "      - name: M0 integration tests\n"
+            "        if: github.event_name == 'workflow_dispatch'\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "L_duplicate_safe_and_bypassed_gate",
+            "      - name: M0 integration tests\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n"
+            "      - name: M0 integration tests\n"
+            "        if: false\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+    ),
+)
+def test_quality_gate_required_m0_integration_step_rejects_bypass_variants(
+    case_id: str,
+    replacement: str,
+) -> None:
+    original = (
+        "      - name: M0 integration tests\n"
+        "        run: uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q\n\n"
+    )
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+def test_quality_gate_required_m0_integration_step_accepts_exact_current_gate() -> None:
+    assert not _security_violations_for_workflow_text(_quality_gates_workflow_text())
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "repository_dispatch_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  repository_dispatch:\n",
+        ),
+        (
+            "workflow_run_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  workflow_run:\n",
+        ),
+        (
+            "schedule_trigger",
+            "  pull_request:\n",
+            '  pull_request:\n  schedule:\n    - cron: "0 * * * *"\n',
+        ),
+        (
+            "workflow_dispatch_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  workflow_dispatch:\n",
+        ),
+        (
+            "pull_request_target_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  pull_request_target:\n",
+        ),
+    ),
+)
+def test_quality_gate_workflow_rejects_extra_trigger_mutations(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "architecture_if_false",
+            "      - name: Architecture tests\n        run: uv run pytest tests/architecture -q\n",
+            "      - name: Architecture tests\n"
+            "        if: false\n"
+            "        run: uv run pytest tests/architecture -q\n",
+        ),
+        (
+            "security_or_true",
+            "      - name: Security tests\n        run: uv run pytest tests/security -q\n",
+            "      - name: Security tests\n        run: uv run pytest tests/security -q || true\n",
+        ),
+        (
+            "boot_acceptance_continue_on_error",
+            "      - name: BOOT acceptance tests\n        run: uv run pytest tests/acceptance -q\n",
+            "      - name: BOOT acceptance tests\n"
+            "        continue-on-error: true\n"
+            "        run: uv run pytest tests/acceptance -q\n",
+        ),
+        (
+            "frontend_tests_exit_zero",
+            "      - name: apps/web tests\n        run: pnpm --dir apps/web test\n",
+            "      - name: apps/web tests\n        run: pnpm --dir apps/web test; exit 0\n",
+        ),
+    ),
+)
+def test_quality_gate_required_steps_reject_representative_bypass_variants(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "python_job_if_false",
+            "  python:\n    name: Python, Backend, Providers, Integration\n",
+            "  python:\n    if: false\n    name: Python, Backend, Providers, Integration\n",
+        ),
+        (
+            "python_job_continue_on_error",
+            "  python:\n    name: Python, Backend, Providers, Integration\n",
+            "  python:\n"
+            "    continue-on-error: true\n"
+            "    name: Python, Backend, Providers, Integration\n",
+        ),
+        (
+            "frontend_job_defaults",
+            "  frontend:\n    name: Frontend\n",
+            "  frontend:\n    defaults:\n      run:\n        shell: bash {0}\n    name: Frontend\n",
+        ),
+    ),
+)
+def test_quality_gate_required_jobs_reject_bypass_variants(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+def test_quality_gate_workflow_action_pin_detector_rejects_floating_action(
+    tmp_path: Path,
+) -> None:
+    workflow_path = tmp_path / "quality-gates.yml"
+    workflow_path.write_text(
+        _quality_gates_workflow_text().replace(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/checkout@v4",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    original_workflow_path = QUALITY_GATES_WORKFLOW
+    try:
+        globals()["QUALITY_GATES_WORKFLOW"] = workflow_path
+        with pytest.raises(AssertionError, match="not pinned to a full immutable SHA"):
+            test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
+    finally:
+        globals()["QUALITY_GATES_WORKFLOW"] = original_workflow_path
 
 
 @pytest.mark.parametrize(

@@ -213,6 +213,37 @@ Third corrective behavior added:
   J-M, the previous permission cases A-T, valid workflow case U, formatting
   variants, flow-style mappings, CRLF, and malformed security structures.
 
+Fourth independent revalidation of corrective candidate
+`eff5b0b7f2e60408517af3020584b069982414b3` confirmed the YAML and permission
+hardening but found remaining structural workflow-audit false negatives:
+
+- adding `repository_dispatch` to the workflow trigger set passed because the
+  test only required textual `push` and `pull_request` presence;
+- adding `workflow_run` likewise passed;
+- adding `if: false` to the explicit TASK-M0-010 integration gate passed
+  because the command text remained present;
+- adding `set +e` inside the explicit TASK-M0-010 gate also passed because the
+  command text remained present.
+
+Fourth corrective behavior added:
+
+- enforce the exact frozen trigger mapping structurally:
+  `push` with `branches: ["**"]` and `pull_request` only;
+- reject missing, scalar, sequence, duplicate, merge/alias, malformed, or
+  additional trigger definitions, including dispatch, scheduled, release,
+  workflow-run, and pull-request-target triggers;
+- define a structural required-gate model by owning job, step name, and exact
+  normalized run script for the frozen Python, PostgreSQL, M0, frontend, and
+  repository hygiene quality gates;
+- require every protected quality-gate step to appear exactly once, without
+  `if` or `continue-on-error`;
+- require every protected quality-gate job to avoid `if`, `continue-on-error`,
+  `strategy`, `needs`, and shell `defaults` that could alter blocking behavior;
+- reject failure-suppression attempts such as `set +e`, `|| true`, `; true`,
+  `exit 0`, failure-swallowing shell wrappers, conditional-only execution, and
+  duplicate safe/unsafe gate definitions by exact run-script comparison and
+  duplicate step-name detection.
+
 ## PostgreSQL Strategy
 
 CI continues to use the frozen PostgreSQL 18 `LOCAL_DOCKER` service in
@@ -254,15 +285,15 @@ cloud infrastructure, or deployment credential.
 | M0 runtime/persistence/policy package tests | PASS: 128 passed, 4 deselected. |
 | Contract/schema tests | PASS: 15 passed. |
 | Architecture tests | PASS: 16 passed. |
-| Security tests | PASS: 114 passed. |
-| Parser adversarial matrices | PASS: 53 targeted cases passed, including duplicate A-I, merge/anchor J-M, previous permission A-T, valid current workflow U, formatting variants, comments between duplicate definitions, and malformed structures. |
+| Security tests | PASS: 156 passed. |
+| Parser, trigger, and gate adversarial matrices | PASS: 95 targeted cases passed, including trigger exactness, M0 gate bypasses, representative required-gate bypasses, job-level bypasses, action-pin mutation, duplicate A-I, merge/anchor J-M, previous permission A-T, valid workflow U, formatting variants, comments between duplicate definitions, and malformed structures. |
 | Actual workflow YAML parse | PASS: parsed as a mapping with string `on` key, permissions `contents: read`, jobs `frontend`, `python`, and `repository`, and no permission violations. |
 | API integration tests | PASS: 6 passed, 2 known dependency warnings. |
 | PostgreSQL provider integration test | PASS: 1 passed. |
 | M0 PostgreSQL integration tests | PASS: 4 passed. |
 | TASK-M0-010 integration tests | PASS: 2 passed, 2 known dependency warnings. |
 | BOOT acceptance tests | PASS: 6 passed, 2 known dependency warnings. |
-| Full pytest | PASS: 437 passed, 2 known dependency warnings. |
+| Full pytest | PASS: 502 passed, 2 known dependency warnings. |
 | PostgreSQL clean stop/volume preservation | PASS: Compose showed no running `postgres` container and `curios-local-docker_postgres_data` remained present. |
 | `pnpm install --frozen-lockfile` | PASS. |
 | `pnpm check` | PASS. |
