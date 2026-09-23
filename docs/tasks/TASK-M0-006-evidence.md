@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-006-EVIDENCE
 title: TASK-M0-006 Single-Step Work Runtime Service Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-006
@@ -27,7 +27,8 @@ already frozen policy, work repository, and event/evidence store boundaries.
 - package export and dependency metadata for `curios-runtime`
 - narrow security/architecture guardrail updates authorizing only the
   TASK-M0-006 runtime-service module
-- M0 ledger transition to `IMPLEMENTED, TESTED`
+- M0 ledger transition to `IMPLEMENTED, TESTED`, followed by independent
+  revalidation to `VALIDATED, FROZEN`
 
 No production contract, persistence schema, policy rule, work transition graph,
 provider implementation, API route, web surface, scheduler, queue, retry engine,
@@ -212,7 +213,13 @@ and anyio `BlockingPortal` alias deprecation warning.
 
 ## Lifecycle
 
-TASK-M0-006 is `IMPLEMENTED, TESTED`.
+TASK-M0-006 was implemented and tested by the implementation agent, corrected
+after independent validation found post-executor partial-failure consistency
+defects, then independently revalidated at candidate
+`728bb380b5bcb99af911008236b3e7272423266a`.
 
-It is not `VALIDATED` or `FROZEN`. Independent validation must decide whether
-TASK-M0-006 can freeze and whether TASK-M0-007 may become ready.
+TASK-M0-006 is `VALIDATED, FROZEN`.
+
+TASK-M0-007 remains `BLOCKED` until this validation/freeze commit is integrated
+into `main`; after integration, the frozen DAG permits TASK-M0-007 to become
+`READY`.
