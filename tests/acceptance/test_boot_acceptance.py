@@ -226,9 +226,13 @@ def test_acceptance_test_surface_is_narrowly_authorized_by_security_topology() -
         for path in (REPO_ROOT / "tests/acceptance").rglob("*.py")
     )
 
-    assert acceptance_paths == {"tests/acceptance/test_boot_acceptance.py"}
+    assert acceptance_paths == {
+        "tests/acceptance/test_boot_acceptance.py",
+        "tests/acceptance/test_m0_acceptance.py",
+    }
     security_text = SECURITY_BASELINE_PATH.read_text(encoding="utf-8")
     assert '"tests/acceptance/test_boot_acceptance.py"' in security_text
+    assert '"tests/acceptance/test_m0_acceptance.py"' in security_text
     assert '"tests/acceptance"' in security_text
 
 

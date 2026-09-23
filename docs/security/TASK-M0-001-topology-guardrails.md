@@ -41,6 +41,7 @@ Current tracked roots remain the frozen BOOT roots:
   `apps/web/src/main.tsx` for TASK-M0-009 only;
 - exact `tests/integration/test_m0_vertical_slice_integration.py` for
   TASK-M0-010 only;
+- exact `tests/acceptance/test_m0_acceptance.py` for TASK-M0-012 only;
 - existing BOOT TypeScript package;
 - exact `.github/workflows/quality-gates.yml`;
 - exact BOOT integration and acceptance tests.
@@ -58,9 +59,10 @@ inventory executor module under that root. TASK-M0-008 authorizes only the
 existing API composition/service modules and the M0 API work endpoint test
 surface. TASK-M0-009 authorizes only the minimal web work console source files
 and deterministic package-local tests. TASK-M0-010 authorizes only the exact
-M0 vertical-slice integration test file. Arbitrary API modules, arbitrary web
-pages, arbitrary integration tests, arbitrary tool executors, and broader
-runtime/service roots remain blocked until their owning tasks.
+M0 vertical-slice integration test file. TASK-M0-012 authorizes only the exact
+M0 acceptance test file. Arbitrary API modules, arbitrary web pages, arbitrary
+integration tests, arbitrary acceptance tests, arbitrary tool executors, and
+broader runtime/service roots remain blocked until their owning tasks.
 
 ## Planned But Not Yet Authorized M0 Surfaces
 
@@ -69,7 +71,8 @@ authorize them narrowly:
 
 | Task | Planned Surface |
 | --- | --- |
-| TASK-M0-012 | `tests/acceptance/**` additions beyond frozen BOOT acceptance tests |
+| TASK-M0-013 | verification records under `docs/tasks/**` and `docs/program/status-ledger/**` |
+| TASK-M0-014 | final freeze records under `docs/program/milestones/**`, `docs/program/status-ledger/**`, and `docs/tasks/**` |
 
 Those planned surfaces remain blocked until their specific tasks are
 implemented, tested, independently validated, frozen, and integrated according
@@ -97,6 +100,7 @@ The security topology tests reject:
   them;
 - future `apps/web` source files before their owning task authorizes them;
 - future integration test files before their owning task authorizes them;
+- future acceptance test files before their owning task authorizes them;
 - plausible M1+ package names such as agent runtime, DataLab, knowledge,
   model-router, and secret-resolver packages;
 - broad top-level runtime/service/provider roots;

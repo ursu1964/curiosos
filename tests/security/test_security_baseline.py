@@ -240,6 +240,14 @@ AUTHORIZED_BOOT026_ACCEPTANCE_TESTS = frozenset(
         "tests/acceptance/test_boot_acceptance.py",
     }
 )
+AUTHORIZED_M0_ACCEPTANCE_TESTS_BY_TASK = {
+    "TASK-M0-012": frozenset(
+        {
+            "tests/acceptance/test_m0_acceptance.py",
+        }
+    ),
+}
+AUTHORIZED_M0_ACCEPTANCE_TESTS = frozenset().union(*AUTHORIZED_M0_ACCEPTANCE_TESTS_BY_TASK.values())
 AUTHORIZED_GITHUB_PATHS = frozenset(
     {
         ".github/workflows/quality-gates.yml",
@@ -1187,6 +1195,10 @@ def _unauthorized_web_source_files(paths: frozenset[str]) -> frozenset[str]:
 
 def _unauthorized_integration_tests(paths: frozenset[str]) -> frozenset[str]:
     return paths - AUTHORIZED_BOOT019_INTEGRATION_TESTS - AUTHORIZED_M0_INTEGRATION_TESTS
+
+
+def _unauthorized_acceptance_tests(paths: frozenset[str]) -> frozenset[str]:
+    return paths - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS - AUTHORIZED_M0_ACCEPTANCE_TESTS
 
 
 def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
@@ -3216,6 +3228,10 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert AUTHORIZED_M0_INTEGRATION_TESTS_BY_TASK["TASK-M0-010"] == {
         "tests/integration/test_m0_vertical_slice_integration.py"
     }
+    assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-012"] == {"tests/acceptance"}
+    assert AUTHORIZED_M0_ACCEPTANCE_TESTS_BY_TASK["TASK-M0-012"] == {
+        "tests/acceptance/test_m0_acceptance.py"
+    }
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
 
 
@@ -3311,10 +3327,30 @@ def test_m0_integration_topology_rejects_unvalidated_future_integration_surfaces
     assert _unauthorized_integration_tests(simulated_files) == {integration_file}
 
 
+@pytest.mark.parametrize(
+    "acceptance_file",
+    (
+        "tests/acceptance/test_m0_scheduler_acceptance.py",
+        "tests/acceptance/test_m0_agent_runtime_acceptance.py",
+        "tests/acceptance/test_m0_model_router_acceptance.py",
+        "tests/acceptance/test_m0_datalab_acceptance.py",
+        "tests/acceptance/test_m0_final_freeze.py",
+    ),
+)
+def test_m0_acceptance_topology_rejects_unvalidated_future_acceptance_surfaces(
+    acceptance_file: str,
+) -> None:
+    simulated_files = (
+        AUTHORIZED_BOOT026_ACCEPTANCE_TESTS | AUTHORIZED_M0_ACCEPTANCE_TESTS | {acceptance_file}
+    )
+
+    assert _unauthorized_acceptance_tests(simulated_files) == {acceptance_file}
+
+
 def test_later_task_security_provider_runtime_surfaces_match_authorized_current_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = _unauthorized_integration_tests(_tracked_integration_tests())
-    unexpected_acceptance_tests = _tracked_acceptance_tests() - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS
+    unexpected_acceptance_tests = _unauthorized_acceptance_tests(_tracked_acceptance_tests())
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
     unexpected_runtime_files = _unauthorized_runtime_source_files(_tracked_runtime_source_files())
@@ -3339,7 +3375,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     )
     _assert_no_security_failure(
         not unexpected_acceptance_tests,
-        "unexpected acceptance test path(s) outside TASK-BOOT-026: "
+        "unexpected acceptance test path(s) outside authorized BOOT/M0 acceptance tests: "
         f"{sorted(unexpected_acceptance_tests)}",
     )
     _assert_no_security_failure(
