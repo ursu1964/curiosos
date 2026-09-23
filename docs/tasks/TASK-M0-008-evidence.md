@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-008-EVIDENCE
 title: TASK-M0-008 M0 API Work Endpoints Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-008
@@ -150,7 +150,8 @@ Focused implementation verification:
 
 ## Lifecycle
 
-TASK-M0-008 is `IMPLEMENTED, TESTED`.
+TASK-M0-008 is `VALIDATED, FROZEN` after independent validation at candidate
+`9d859b5f6541432c6ef2482225f19f78536b93ad`.
 
-It is not `VALIDATED` or `FROZEN`. Independent validation must decide whether
-TASK-M0-008 can freeze and whether TASK-M0-009 may become ready.
+The validation/freeze commit must be integrated into `main` before
+TASK-M0-009 can become ready.
