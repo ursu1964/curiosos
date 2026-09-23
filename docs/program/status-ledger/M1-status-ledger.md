@@ -21,7 +21,7 @@ date: 2026-09-23
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | M1-000A | M1 Milestone Definition and Executable Task Pack | M0 final freeze | PG-M1-00 | VALIDATED, FROZEN | Independent readiness validation accepted the M1 execution program. |
-| TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | READY | First authorized M1 implementation unit after readiness PASS. |
+| TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | IMPLEMENTED, TESTED | M1 topology/security/architecture guardrails were implemented; independent validation remains required. |
 | TASK-M1-002 | Cognitive Intent and Problem Contracts | TASK-M1-001 | PG-M1-02A | BLOCKED | Requires topology guardrails. |
 | TASK-M1-003 | Deterministic Intent Decomposition | TASK-M1-002 | PG-M1-02B | BLOCKED | Requires cognitive contracts. |
 | TASK-M1-004 | Work DAG Records and State | TASK-M1-002 | PG-M1-02B | BLOCKED | Requires cognitive contracts. |

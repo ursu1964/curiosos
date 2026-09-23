@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 CONTRACTS_PACKAGE = REPO_ROOT / "packages/python/curios_contracts"
@@ -72,6 +74,18 @@ M0_IMPLEMENTATION_IMPORTS = frozenset(
         "curios_runtime",
     }
 )
+M1_IMPLEMENTATION_IMPORTS = frozenset(
+    {
+        "curios_agents",
+        "curios_capability",
+        "curios_cognitive",
+        "curios_dag",
+        "curios_executor",
+        "curios_model_profiles",
+        "curios_routing",
+        "curios_verification_loop",
+    }
+)
 WEB_ALLOWED_DEPENDENCIES = frozenset(
     {
         "@curiosos/curios-contracts",
@@ -128,6 +142,7 @@ CONTRACTS_FORBIDDEN_IMPORTS = frozenset(
     {
         "curios_core",
         *M0_IMPLEMENTATION_IMPORTS,
+        *M1_IMPLEMENTATION_IMPORTS,
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -142,6 +157,7 @@ CONTRACTS_FORBIDDEN_IMPORTS = frozenset(
 CORE_FORBIDDEN_IMPORTS = frozenset(
     {
         *M0_IMPLEMENTATION_IMPORTS,
+        *M1_IMPLEMENTATION_IMPORTS,
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -534,6 +550,79 @@ def test_m0_runtime_surfaces_are_not_inward_dependencies_of_contracts_or_core() 
     )
 
     _assert_no_violations(violations)
+
+
+def test_m1_planned_implementation_roots_are_not_inward_dependencies() -> None:
+    violations = (
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=CONTRACTS_SOURCE,
+            forbidden_imports=M1_IMPLEMENTATION_IMPORTS,
+        ),
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=CORE_SOURCE,
+            forbidden_imports=M1_IMPLEMENTATION_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=CONTRACTS_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=M1_IMPLEMENTATION_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=CORE_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=M1_IMPLEMENTATION_IMPORTS,
+        ),
+    )
+
+    _assert_no_violations(violations)
+
+
+@pytest.mark.parametrize("module", tuple(sorted(M1_IMPLEMENTATION_IMPORTS)))
+def test_m1_inward_dependency_detector_rejects_representative_imports(
+    tmp_path: Path,
+    module: str,
+) -> None:
+    source_root = tmp_path / "src"
+    source_root.mkdir()
+    (source_root / "example.py").write_text(f"import {module}\n", encoding="utf-8")
+
+    violations = _forbidden_import_violations(
+        rule=M0_INWARD_DEPENDENCY_RULE,
+        source_root=source_root,
+        forbidden_imports=M1_IMPLEMENTATION_IMPORTS,
+    )
+
+    assert violations
+
+
+@pytest.mark.parametrize(
+    "dependency",
+    tuple(sorted(import_root.replace("_", "-") for import_root in M1_IMPLEMENTATION_IMPORTS)),
+)
+def test_m1_inward_dependency_detector_rejects_representative_metadata_dependencies(
+    tmp_path: Path,
+    dependency: str,
+) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        f"""
+        [project]
+        name = "example"
+        version = "0.0.0"
+        dependencies = ["{dependency}>=1"]
+        """,
+        encoding="utf-8",
+    )
+
+    violations = _metadata_violations(
+        rule=M0_INWARD_DEPENDENCY_RULE,
+        pyproject_path=pyproject_path,
+        forbidden_dependencies=M1_IMPLEMENTATION_IMPORTS,
+    )
+
+    assert violations
 
 
 def test_minimal_policy_evaluator_remains_outer_and_contract_backed() -> None:

@@ -206,10 +206,59 @@ M0_PLANNED_TEST_ROOTS_BY_TASK = {
     "TASK-M0-010": frozenset({"tests/integration"}),
     "TASK-M0-012": frozenset({"tests/acceptance"}),
 }
+M1_PLANNED_SURFACES_BY_TASK = {
+    "TASK-M1-002": frozenset(
+        {
+            "packages/python/curios_contracts",
+            "packages/typescript/curios-contracts",
+        }
+    ),
+    "TASK-M1-003": frozenset({"M1 cognitive implementation module"}),
+    "TASK-M1-004": frozenset({"M1 DAG runtime/persistence modules"}),
+    "TASK-M1-005": frozenset({"M1 capability resolver module"}),
+    "TASK-M1-006": frozenset({"M1 agent persistence modules"}),
+    "TASK-M1-007": frozenset({"M1 agent lifecycle modules"}),
+    "TASK-M1-008": frozenset({"M1 executor seam modules"}),
+    "TASK-M1-009": frozenset({"M1 model/profile discovery module"}),
+    "TASK-M1-010": frozenset({"M1 routing decision modules"}),
+    "TASK-M1-011": frozenset({"M1 bounded DAG runner modules"}),
+    "TASK-M1-012": frozenset({"M1 verification loop modules"}),
+    "TASK-M1-013": frozenset({"apps/api"}),
+    "TASK-M1-014": frozenset({"apps/web"}),
+    "TASK-M1-015": frozenset({"tests/integration"}),
+    "TASK-M1-016": frozenset({".github/workflows/quality-gates.yml"}),
+    "TASK-M1-017": frozenset({"tests/acceptance"}),
+}
+M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
+    "TASK-M1-001": frozenset(
+        {
+            "docs/architecture/TASK-M1-001-topology-guardrails.md",
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/security/TASK-M1-001-topology-guardrails.md",
+            "docs/tasks/TASK-M1-001-evidence.md",
+            "tests/architecture/test_architecture_conformance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    )
+}
+M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
+M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
 M0_DEFERRED_PACKAGE_ROOTS = frozenset().union(*M0_PLANNED_PACKAGE_ROOTS_BY_TASK.values())
 M0_AUTHORIZED_PACKAGE_ROOTS = frozenset().union(*M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK.values())
 M0_DEFERRED_PACKAGE_ROOTS = M0_DEFERRED_PACKAGE_ROOTS - M0_AUTHORIZED_PACKAGE_ROOTS
 M0_DEFERRED_TOP_LEVEL_ROOTS = frozenset({"runtime", "services", "providers"})
+M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS = frozenset(
+    {
+        "packages/python/curios_agents",
+        "packages/python/curios_capability",
+        "packages/python/curios_cognitive",
+        "packages/python/curios_dag",
+        "packages/python/curios_executor",
+        "packages/python/curios_model_profiles",
+        "packages/python/curios_routing",
+        "packages/python/curios_verification_loop",
+    }
+)
 M1_PLUS_EXAMPLE_PACKAGE_ROOTS = frozenset(
     {
         "packages/python/curios_agent_runtime",
@@ -258,6 +307,33 @@ AUTHORIZED_WORKFLOW_TRIGGERS = {
     "push": {"branches": ["**"]},
     "pull_request": "",
 }
+ALLOWED_CONTRACTS_SOURCE_FILES = frozenset(
+    {
+        "__init__.py",
+        "_validation.py",
+        "agents.py",
+        "artifacts.py",
+        "capabilities.py",
+        "errors.py",
+        "events.py",
+        "evidence.py",
+        "executions.py",
+        "identifiers.py",
+        "lifecycle.py",
+        "observability.py",
+        "providers.py",
+        "py.typed",
+        "references.py",
+        "results.py",
+        "schema_version.py",
+        "security.py",
+        "serialization.py",
+        "temporal.py",
+        "verification.py",
+        "work.py",
+    }
+)
+ALLOWED_TYPESCRIPT_CONTRACTS_SOURCE_FILES = frozenset({"index.ts"})
 M0_INTEGRATION_GATE_COMMAND = (
     "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
 )
@@ -1146,6 +1222,23 @@ def _tracked_runtime_source_files() -> frozenset[str]:
     )
 
 
+def _tracked_contracts_source_files() -> frozenset[str]:
+    return frozenset(
+        path.relative_to(CONTRACTS_SOURCE).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(CONTRACTS_SOURCE)
+    )
+
+
+def _tracked_typescript_contracts_source_files() -> frozenset[str]:
+    typescript_source = REPO_ROOT / "packages/typescript/curios-contracts/src"
+    return frozenset(
+        path.relative_to(typescript_source).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(typescript_source)
+    )
+
+
 def _tracked_api_source_files() -> frozenset[str]:
     api_source = REPO_ROOT / "apps/api/src/curios_api"
     return frozenset(
@@ -1179,6 +1272,14 @@ def _unauthorized_github_paths(paths: frozenset[str]) -> frozenset[str]:
 
 def _unauthorized_runtime_source_files(paths: frozenset[str]) -> frozenset[str]:
     return paths - M0_AUTHORIZED_RUNTIME_SOURCE_FILES
+
+
+def _unauthorized_contracts_source_files(paths: frozenset[str]) -> frozenset[str]:
+    return paths - ALLOWED_CONTRACTS_SOURCE_FILES
+
+
+def _unauthorized_typescript_contracts_source_files(paths: frozenset[str]) -> frozenset[str]:
+    return paths - ALLOWED_TYPESCRIPT_CONTRACTS_SOURCE_FILES
 
 
 def _unauthorized_api_source_files(paths: frozenset[str]) -> frozenset[str]:
@@ -3166,7 +3267,13 @@ def test_quality_gate_permission_detector_rejects_malformed_security_structures(
 
 @pytest.mark.parametrize(
     "package_root",
-    tuple(sorted(M0_DEFERRED_PACKAGE_ROOTS | M1_PLUS_EXAMPLE_PACKAGE_ROOTS)),
+    tuple(
+        sorted(
+            M0_DEFERRED_PACKAGE_ROOTS
+            | M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS
+            | M1_PLUS_EXAMPLE_PACKAGE_ROOTS
+        )
+    ),
 )
 def test_m0_package_topology_rejects_unvalidated_future_runtime_surfaces(
     package_root: str,
@@ -3235,6 +3342,75 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
 
 
+def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> None:
+    assert {
+        "TASK-M1-002",
+        "TASK-M1-003",
+        "TASK-M1-004",
+        "TASK-M1-005",
+        "TASK-M1-006",
+        "TASK-M1-007",
+        "TASK-M1-008",
+        "TASK-M1-009",
+        "TASK-M1-010",
+        "TASK-M1-011",
+        "TASK-M1-012",
+        "TASK-M1-013",
+        "TASK-M1-014",
+        "TASK-M1-015",
+        "TASK-M1-016",
+        "TASK-M1-017",
+    } == M1_PLANNED_SURFACE_TASKS
+    assert {"TASK-M1-001"} == M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
+    assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
+        "packages/python/curios_contracts",
+        "packages/typescript/curios-contracts",
+    }
+    assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-013"] == {"apps/api"}
+    assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-014"] == {"apps/web"}
+    assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-015"] == {"tests/integration"}
+    assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-017"] == {"tests/acceptance"}
+
+
+@pytest.mark.parametrize(
+    "contracts_file",
+    (
+        "intent.py",
+        "cognitive_graph.py",
+        "work_dag.py",
+        "routing.py",
+        "model_profiles.py",
+        "agents/m1_lifecycle.py",
+    ),
+)
+def test_m1_contract_topology_rejects_premature_canonical_authority(
+    contracts_file: str,
+) -> None:
+    simulated_files = ALLOWED_CONTRACTS_SOURCE_FILES | {contracts_file}
+
+    assert _unauthorized_contracts_source_files(simulated_files) == {contracts_file}
+
+
+@pytest.mark.parametrize(
+    "typescript_contracts_file",
+    (
+        "intent.ts",
+        "cognitiveGraph.ts",
+        "workDag.ts",
+        "routing.ts",
+    ),
+)
+def test_m1_typescript_contract_topology_rejects_premature_canonical_authority(
+    typescript_contracts_file: str,
+) -> None:
+    simulated_files = ALLOWED_TYPESCRIPT_CONTRACTS_SOURCE_FILES | {typescript_contracts_file}
+
+    assert _unauthorized_typescript_contracts_source_files(simulated_files) == {
+        typescript_contracts_file
+    }
+
+
 @pytest.mark.parametrize(
     "runtime_file",
     (
@@ -3243,6 +3419,13 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
         "model_router.py",
         "agent_runtime.py",
         "services/workflow.py",
+        "m1_dag_records.py",
+        "m1_agent_lifecycle.py",
+        "m1_executor_seam.py",
+        "m1_model_profiles.py",
+        "m1_routing_decisions.py",
+        "m1_bounded_dag_runner.py",
+        "m1_verification_loop.py",
     ),
 )
 def test_m0_runtime_module_topology_rejects_unvalidated_future_runtime_surfaces(
@@ -3261,6 +3444,12 @@ def test_m0_runtime_module_topology_rejects_unvalidated_future_runtime_surfaces(
         "model_routes.py",
         "work_console.py",
         "routes/provider_tools.py",
+        "m1_cognitive_loop.py",
+        "routes/m1_intents.py",
+        "routes/m1_dags.py",
+        "routes/m1_agents.py",
+        "routes/m1_routing.py",
+        "routes/m1_verification.py",
     ),
 )
 def test_m0_api_source_topology_rejects_unvalidated_future_api_surfaces(
@@ -3277,6 +3466,8 @@ def test_m0_api_source_topology_rejects_unvalidated_future_api_surfaces(
         "test_agent_runtime_endpoints.py",
         "test_scheduler_routes.py",
         "test_model_generation_api.py",
+        "test_m1_cognitive_loop_endpoints.py",
+        "test_m1_intent_routes.py",
     ),
 )
 def test_m0_api_test_topology_rejects_unvalidated_future_api_tests(
@@ -3297,6 +3488,11 @@ def test_m0_api_test_topology_rejects_unvalidated_future_api_tests(
         "SchedulerView.tsx",
         "ToolRunner.tsx",
         "routes/AdminPage.tsx",
+        "M1CognitiveLoop.tsx",
+        "M1DagView.tsx",
+        "M1AgentPanel.tsx",
+        "M1RoutingView.tsx",
+        "M1VerificationPanel.tsx",
     ),
 )
 def test_m0_web_source_topology_rejects_unvalidated_future_web_surfaces(
@@ -3315,6 +3511,9 @@ def test_m0_web_source_topology_rejects_unvalidated_future_web_surfaces(
         "tests/integration/test_m0_model_router_integration.py",
         "tests/integration/test_m0_datalab_integration.py",
         "tests/integration/test_m0_acceptance_suite.py",
+        "tests/integration/test_m1_cognitive_loop_integration.py",
+        "tests/integration/test_m1_parallel_runner_integration.py",
+        "tests/integration/test_m1_model_profile_integration.py",
     ),
 )
 def test_m0_integration_topology_rejects_unvalidated_future_integration_surfaces(
@@ -3335,6 +3534,8 @@ def test_m0_integration_topology_rejects_unvalidated_future_integration_surfaces
         "tests/acceptance/test_m0_model_router_acceptance.py",
         "tests/acceptance/test_m0_datalab_acceptance.py",
         "tests/acceptance/test_m0_final_freeze.py",
+        "tests/acceptance/test_m1_cognitive_loop_acceptance.py",
+        "tests/acceptance/test_m1_final_freeze.py",
     ),
 )
 def test_m0_acceptance_topology_rejects_unvalidated_future_acceptance_surfaces(
@@ -3354,6 +3555,12 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
     unexpected_runtime_files = _unauthorized_runtime_source_files(_tracked_runtime_source_files())
+    unexpected_contracts_source_files = _unauthorized_contracts_source_files(
+        _tracked_contracts_source_files()
+    )
+    unexpected_typescript_contracts_source_files = _unauthorized_typescript_contracts_source_files(
+        _tracked_typescript_contracts_source_files()
+    )
     unexpected_api_source_files = _unauthorized_api_source_files(_tracked_api_source_files())
     unexpected_api_test_files = _unauthorized_api_test_files(_tracked_api_test_files())
     unexpected_web_source_files = _unauthorized_web_source_files(_tracked_web_source_files())
@@ -3389,6 +3596,16 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     _assert_no_security_failure(
         not unexpected_runtime_files,
         f"unexpected tracked curios_runtime source file(s): {sorted(unexpected_runtime_files)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_contracts_source_files,
+        "unexpected tracked curios_contracts source file(s) before TASK-M1-002: "
+        f"{sorted(unexpected_contracts_source_files)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_typescript_contracts_source_files,
+        "unexpected tracked TypeScript contracts source file(s) before TASK-M1-002: "
+        f"{sorted(unexpected_typescript_contracts_source_files)}",
     )
     _assert_no_security_failure(
         not unexpected_api_source_files,
