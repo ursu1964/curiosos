@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-009-EVIDENCE
 title: TASK-M0-009 M0 Web Work Console Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-009
@@ -146,7 +146,8 @@ Repository verification performed:
 
 ## Lifecycle
 
-TASK-M0-009 is `IMPLEMENTED, TESTED`.
+TASK-M0-009 is `VALIDATED, FROZEN` after independent validation at candidate
+`7dfbf04361b5f1ebacabbfc63d7233b896881ed4`.
 
-It is not `VALIDATED` or `FROZEN`. Independent validation must decide whether
-TASK-M0-009 can freeze and whether TASK-M0-010 may become ready.
+The validation/freeze commit must be integrated into `main` before
+TASK-M0-010 can become ready.
