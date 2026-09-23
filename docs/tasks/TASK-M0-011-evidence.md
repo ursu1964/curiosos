@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-011-EVIDENCE
 title: TASK-M0-011 M0 CI Quality Gate Update Evidence
-lifecycle: IMPLEMENTED_TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-011
@@ -349,8 +349,8 @@ represented quality gates.
 
 ## Lifecycle
 
-TASK-M0-011 is `IMPLEMENTED, TESTED`.
+TASK-M0-011 is `VALIDATED, FROZEN`.
 
-This task does not self-declare `VALIDATED` or `FROZEN`. TASK-M0-012,
-TASK-M0-013, and TASK-M0-014 remain blocked until independent validation/freeze
-accepts and integrates TASK-M0-011.
+TASK-M0-012, TASK-M0-013, and TASK-M0-014 remain blocked on this branch.
+TASK-M0-012 becomes ready only after this validation/freeze history is
+integrated into `main`.
