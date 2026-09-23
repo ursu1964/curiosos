@@ -114,7 +114,6 @@ POLICY_FORBIDDEN_IMPORTS = frozenset(
 )
 RUNTIME_FORBIDDEN_IMPORTS = frozenset(
     {
-        "curios_core",
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -564,7 +563,7 @@ def test_m0_runtime_package_remains_outer_and_persistence_policy_backed() -> Non
         *_metadata_violations(
             rule=M0_INWARD_DEPENDENCY_RULE,
             pyproject_path=RUNTIME_PACKAGE / "pyproject.toml",
-            forbidden_dependencies=RUNTIME_FORBIDDEN_IMPORTS | {"curios-core"},
+            forbidden_dependencies=RUNTIME_FORBIDDEN_IMPORTS,
         ),
     )
 

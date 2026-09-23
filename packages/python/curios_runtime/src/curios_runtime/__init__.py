@@ -5,6 +5,7 @@ from curios_runtime.event_evidence_store import (
     RuntimeStoreError,
     RuntimeStoreErrorCode,
 )
+from curios_runtime.provider_inventory_executor import ProviderInventoryExecutor
 from curios_runtime.single_step_runtime import (
     SingleStepExecutionOutcome,
     SingleStepExecutionRequest,
@@ -35,6 +36,7 @@ __all__ = (
     "WORK_ITEM_TRANSITIONS",
     "EventEvidenceRuntimeStore",
     "M0WorkRepository",
+    "ProviderInventoryExecutor",
     "RepositoryError",
     "RepositoryErrorCode",
     "RuntimeStoreError",

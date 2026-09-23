@@ -29,7 +29,8 @@ Current tracked roots remain the frozen BOOT roots:
 - `packages/python/curios_policy/**` for TASK-M0-003 only;
 - `packages/python/curios_runtime/**` event/evidence modules for TASK-M0-004,
   work repository modules for TASK-M0-005, and single-step runtime service
-  module for TASK-M0-006 only;
+  module for TASK-M0-006, and provider-inventory executor module for
+  TASK-M0-007 only;
 - existing BOOT TypeScript package;
 - `apps/api`;
 - `apps/web`;
@@ -44,8 +45,10 @@ TASK-M0-003 narrowly authorizes the planned `curios_policy` package root.
 TASK-M0-004 narrowly authorizes event/evidence runtime store modules under the
 planned `curios_runtime` package root. TASK-M0-005 authorizes work repository
 modules under that root. TASK-M0-006 authorizes only the single-step runtime
-service module under that root. Provider executors, API/web downstream surfaces,
-and broader runtime/service roots remain blocked until their owning tasks.
+service module under that root. TASK-M0-007 authorizes only the provider
+inventory executor module under that root. API/web downstream surfaces, arbitrary
+tool executors, and broader runtime/service roots remain blocked until their
+owning tasks.
 
 ## Planned But Not Yet Authorized M0 Surfaces
 
@@ -54,7 +57,6 @@ authorize them narrowly:
 
 | Task | Planned Surface |
 | --- | --- |
-| TASK-M0-007 | `packages/python/curios_runtime/**` provider-inventory executor modules beyond the TASK-M0-004/005/006 runtime modules |
 | TASK-M0-010 | `tests/integration/**` additions beyond frozen BOOT integration tests |
 | TASK-M0-012 | `tests/acceptance/**` additions beyond frozen BOOT acceptance tests |
 

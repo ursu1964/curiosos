@@ -150,11 +150,13 @@ M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK = {
     "TASK-M0-004": frozenset({"packages/python/curios_runtime"}),
     "TASK-M0-005": frozenset({"packages/python/curios_runtime"}),
     "TASK-M0-006": frozenset({"packages/python/curios_runtime"}),
+    "TASK-M0-007": frozenset({"packages/python/curios_runtime"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M0-004": frozenset({"event_evidence_store.py"}),
     "TASK-M0-005": frozenset({"work_repository.py"}),
     "TASK-M0-006": frozenset({"single_step_runtime.py"}),
+    "TASK-M0-007": frozenset({"provider_inventory_executor.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -1061,7 +1063,11 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-006"] == {"packages/python/curios_runtime"}
     assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-006"] == {"packages/python/curios_runtime"}
     assert M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M0-006"] == {"single_step_runtime.py"}
-    assert "TASK-M0-007" not in M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK
+    assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-007"] == {"packages/python/curios_runtime"}
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-007"] == {"packages/python/curios_runtime"}
+    assert M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M0-007"] == {
+        "provider_inventory_executor.py"
+    }
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
@@ -1071,7 +1077,7 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     "runtime_file",
     (
         "scheduler.py",
-        "provider_inventory_executor.py",
+        "arbitrary_tool_executor.py",
         "model_router.py",
         "agent_runtime.py",
         "services/workflow.py",
