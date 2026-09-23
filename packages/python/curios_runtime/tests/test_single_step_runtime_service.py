@@ -12,6 +12,7 @@ from curios_contracts import (
     EvidenceKind,
     EvidenceReference,
     ExecutionId,
+    ExecutionState,
     Principal,
     ProviderId,
     Result,
@@ -134,6 +135,7 @@ def test_executor_failure_marks_failed_without_native_exception_leakage() -> Non
         RuntimeEventType.EXECUTION_STARTED.value,
         RuntimeEventType.EXECUTION_FAILED.value,
     )
+    assert len(service.executor.requests) == 1  # type: ignore[attr-defined]
 
 
 def test_executor_failure_result_marks_work_failed_and_returns_bounded_result() -> None:
@@ -151,6 +153,11 @@ def test_executor_failure_result_marks_work_failed_and_returns_bounded_result() 
     assert result.work.item.state is WorkItemState.FAILED
     assert result.execution is not None
     assert result.execution.record.state.value == "FAILED"
+    assert tuple(event.event_type for event in result.events) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+        RuntimeEventType.EXECUTION_FAILED.value,
+    )
 
 
 def test_missing_work_translates_repository_absence_without_lower_error_leakage() -> None:
@@ -186,11 +193,321 @@ def test_event_store_failure_prevents_executor_and_preserves_work_state() -> Non
     assert repository.read_work(fixed_id(WorkId)).item.state is WorkItemState.CREATED  # type: ignore[union-attr]
 
 
-def test_non_startable_work_fails_before_executor_invocation() -> None:
+def test_policy_evaluator_failure_is_pre_executor_and_bounded() -> None:
     store = _MemoryPersistenceStore()
     repository = M0WorkRepository(store)
     event_store = EventEvidenceRuntimeStore(store)
-    repository.create_work(_work(state=WorkItemState.COMPLETED))
+    repository.create_work(_work())
+    executor = _Executor()
+    service = SingleStepRuntimeService(
+        work_repository=repository,
+        event_store=event_store,
+        policy_evaluator=_RaisingPolicyEvaluator(RuntimeError("policy native detail")),  # type: ignore[arg-type]
+        executor=executor,
+    )
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.POLICY_FAILURE
+    assert error.value.__cause__ is None
+    assert "policy native detail" not in str(error.value)
+    assert _work_state(repository) is WorkItemState.CREATED
+    assert _execution_state(repository) is None
+    assert _event_types(event_store) == ()
+    assert _evidence_ids(event_store) == ()
+    assert executor.requests == ()
+
+
+def test_policy_event_failure_is_pre_executor_and_preserves_work_state() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_insert_event(RuntimeEventType.POLICY_EVALUATED)
+    executor = _Executor()
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.RUNTIME_STORE_FAILURE
+    assert error.value.__cause__ is None
+    assert _work_state(repository) is WorkItemState.CREATED
+    assert _execution_state(repository) is None
+    assert _event_types(event_store) == ()
+    assert _evidence_ids(event_store) == ()
+    assert executor.requests == ()
+
+
+def test_pre_executor_work_transition_failure_does_not_create_execution() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_replace_work(WorkItemState.READY)
+    executor = _Executor()
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.REPOSITORY_FAILURE
+    assert _work_state(repository) is WorkItemState.CREATED
+    assert _execution_state(repository) is None
+    assert _event_types(event_store) == (RuntimeEventType.POLICY_EVALUATED.value,)
+    assert _evidence_ids(event_store) == ()
+    assert executor.requests == ()
+
+
+def test_pre_executor_execution_creation_failure_leaves_work_running_without_executor() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_insert_execution()
+    executor = _Executor()
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.REPOSITORY_FAILURE
+    assert _work_state(repository) is WorkItemState.RUNNING
+    assert _execution_state(repository) is None
+    assert _event_types(event_store) == (RuntimeEventType.POLICY_EVALUATED.value,)
+    assert _evidence_ids(event_store) == ()
+    assert executor.requests == ()
+
+
+def test_pre_executor_execution_start_failure_leaves_created_execution_without_executor() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_replace_execution(ExecutionState.RUNNING)
+    executor = _Executor()
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.REPOSITORY_FAILURE
+    assert _work_state(repository) is WorkItemState.RUNNING
+    assert _execution_state(repository) is ExecutionState.CREATED
+    assert _event_types(event_store) == (RuntimeEventType.POLICY_EVALUATED.value,)
+    assert _evidence_ids(event_store) == ()
+    assert executor.requests == ()
+
+
+def test_pre_executor_execution_started_event_failure_prevents_executor() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_insert_event(RuntimeEventType.EXECUTION_STARTED)
+    executor = _Executor()
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.RUNTIME_STORE_FAILURE
+    assert _work_state(repository) is WorkItemState.RUNNING
+    assert _execution_state(repository) is ExecutionState.RUNNING
+    assert _event_types(event_store) == (RuntimeEventType.POLICY_EVALUATED.value,)
+    assert _evidence_ids(event_store) == ()
+    assert executor.requests == ()
+
+
+def test_post_executor_success_evidence_append_failure_fails_work_after_effect_success() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    evidence = _evidence()
+    store.fail_insert_evidence()
+    executor = _Executor(SingleStepExecutionOutcome(Result.success(), (evidence,)))
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.RUNTIME_STORE_FAILURE
+    assert error.value.detail["executor_effect"] == "succeeded"
+    assert _work_state(repository) is WorkItemState.FAILED
+    assert _execution_state(repository) is ExecutionState.SUCCEEDED
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+        RuntimeEventType.EXECUTION_FAILED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+def test_post_executor_success_terminal_work_transition_failure_marks_work_failed() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_replace_work(WorkItemState.COMPLETED)
+    executor = _Executor(SingleStepExecutionOutcome(Result.success()))
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.REPOSITORY_FAILURE
+    assert error.value.detail["executor_effect"] == "succeeded"
+    assert _work_state(repository) is WorkItemState.FAILED
+    assert _execution_state(repository) is ExecutionState.SUCCEEDED
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+        RuntimeEventType.EXECUTION_FAILED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+def test_post_executor_success_terminal_execution_transition_failure_marks_failure_truth() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_replace_execution(ExecutionState.SUCCEEDED)
+    executor = _Executor(SingleStepExecutionOutcome(Result.success()))
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.REPOSITORY_FAILURE
+    assert error.value.detail["executor_effect"] == "succeeded"
+    assert _work_state(repository) is WorkItemState.FAILED
+    assert _execution_state(repository) is ExecutionState.FAILED
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+        RuntimeEventType.EXECUTION_FAILED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+def test_success_completion_event_failure_returns_terminal_result_with_warning() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_insert_event(RuntimeEventType.EXECUTION_COMPLETED)
+    executor = _Executor(SingleStepExecutionOutcome(Result.success()))
+    service = _service(repository, event_store, executor)
+
+    result = service.run_once(_request())
+
+    assert result.status is SingleStepRuntimeStatus.COMPLETED
+    assert result.recording_errors[0].code is SingleStepRuntimeErrorCode.RUNTIME_STORE_FAILURE
+    assert _work_state(repository) is WorkItemState.COMPLETED
+    assert _execution_state(repository) is ExecutionState.SUCCEEDED
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+def test_post_executor_failure_work_transition_failure_is_bounded_cleanup_failure() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_replace_work(WorkItemState.FAILED)
+    failure: Result[object] = Result.failure((contract_error(),))
+    executor = _Executor(SingleStepExecutionOutcome(failure))
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.EXECUTOR_FAILURE
+    assert error.value.__cause__ is None
+    assert _work_state(repository) is WorkItemState.RUNNING
+    assert _execution_state(repository) is ExecutionState.FAILED
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+def test_post_executor_failure_execution_transition_failure_is_bounded_cleanup_failure() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_replace_execution(ExecutionState.FAILED)
+    failure: Result[object] = Result.failure((contract_error(),))
+    executor = _Executor(SingleStepExecutionOutcome(failure))
+    service = _service(repository, event_store, executor)
+
+    with pytest.raises(SingleStepRuntimeError) as error:
+        service.run_once(_request())
+
+    assert error.value.code is SingleStepRuntimeErrorCode.EXECUTOR_FAILURE
+    assert error.value.__cause__ is None
+    assert _work_state(repository) is WorkItemState.FAILED
+    assert _execution_state(repository) is ExecutionState.RUNNING
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+def test_post_executor_failure_event_failure_returns_failed_result_with_warning() -> None:
+    store = _AdversarialPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work())
+    store.fail_insert_event(RuntimeEventType.EXECUTION_FAILED)
+    failure: Result[object] = Result.failure((contract_error(),))
+    executor = _Executor(SingleStepExecutionOutcome(failure))
+    service = _service(repository, event_store, executor)
+
+    result = service.run_once(_request())
+
+    assert result.status is SingleStepRuntimeStatus.FAILED
+    assert result.recording_errors[0].code is SingleStepRuntimeErrorCode.RUNTIME_STORE_FAILURE
+    assert _work_state(repository) is WorkItemState.FAILED
+    assert _execution_state(repository) is ExecutionState.FAILED
+    assert _event_types(event_store) == (
+        RuntimeEventType.POLICY_EVALUATED.value,
+        RuntimeEventType.EXECUTION_STARTED.value,
+    )
+    assert _evidence_ids(event_store) == ()
+    assert len(executor.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "state",
+    (
+        WorkItemState.RUNNING,
+        WorkItemState.WAITING,
+        WorkItemState.COMPLETED,
+        WorkItemState.FAILED,
+        WorkItemState.CANCELLED,
+    ),
+)
+def test_non_startable_work_fails_before_executor_invocation(state: WorkItemState) -> None:
+    store = _MemoryPersistenceStore()
+    repository = M0WorkRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+    repository.create_work(_work(state=state))
     executor = _Executor()
     service = _service(repository, event_store, executor)
 
@@ -198,9 +515,9 @@ def test_non_startable_work_fails_before_executor_invocation() -> None:
         service.run_once(_request())
 
     assert error.value.code is SingleStepRuntimeErrorCode.ILLEGAL_STATE
-    assert error.value.detail == {"work_state": "COMPLETED"}
+    assert error.value.detail == {"work_state": state.value}
     assert executor.requests == ()
-    assert repository.read_work(fixed_id(WorkId)).item.state is WorkItemState.COMPLETED  # type: ignore[union-attr]
+    assert repository.read_work(fixed_id(WorkId)).item.state is state  # type: ignore[union-attr]
 
 
 def _service(
@@ -279,8 +596,22 @@ class _Executor:
 class _RaisingExecutor:
     def __init__(self, error: Exception) -> None:
         self._error = error
+        self._requests: list[SingleStepExecutionRequest] = []
+
+    @property
+    def requests(self) -> tuple[SingleStepExecutionRequest, ...]:
+        return tuple(self._requests)
 
     def execute(self, request: SingleStepExecutionRequest) -> SingleStepExecutionOutcome:
+        self._requests.append(request)
+        raise self._error
+
+
+class _RaisingPolicyEvaluator:
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+
+    def evaluate(self, request: object) -> object:
         raise self._error
 
 
@@ -298,6 +629,86 @@ class _FailingInsertStore(_MemoryPersistenceStore):
     @contextmanager
     def transaction(self) -> Iterator[_FailingInsertTransaction]:  # type: ignore[override]
         yield _FailingInsertTransaction(self)
+
+
+class _AdversarialPersistenceStore(_MemoryPersistenceStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self._failures: list[_FailureRule] = []
+
+    @contextmanager
+    def transaction(self) -> Iterator[_AdversarialTransaction]:  # type: ignore[override]
+        yield _AdversarialTransaction(self)
+
+    def fail_insert_event(self, event_type: RuntimeEventType) -> None:
+        self._failures.append(
+            _FailureRule(
+                action="insert",
+                kind=PersistenceRecordKind.EVENT,
+                payload_key="event_type",
+                payload_value=event_type.value,
+            )
+        )
+
+    def fail_insert_evidence(self) -> None:
+        self._failures.append(_FailureRule(action="insert", kind=PersistenceRecordKind.EVIDENCE))
+
+    def fail_insert_execution(self) -> None:
+        self._failures.append(_FailureRule(action="insert", kind=PersistenceRecordKind.EXECUTION))
+
+    def fail_replace_work(self, state: WorkItemState) -> None:
+        self._failures.append(
+            _FailureRule(
+                action="replace",
+                kind=PersistenceRecordKind.WORK,
+                payload_key="state",
+                payload_value=state.value,
+            )
+        )
+
+    def fail_replace_execution(self, state: ExecutionState) -> None:
+        self._failures.append(
+            _FailureRule(
+                action="replace",
+                kind=PersistenceRecordKind.EXECUTION,
+                payload_key="state",
+                payload_value=state.value,
+            )
+        )
+
+    def _maybe_fail(self, action: str, record: PersistenceRecord) -> None:
+        for index, failure in enumerate(self._failures):
+            if failure.matches(action, record):
+                del self._failures[index]
+                raise PersistenceError(
+                    PersistenceErrorCode.CONNECTIVITY,
+                    "injected persistence failure",
+                    retryable=True,
+                    operation=f"{action}_{record.kind.value}",
+                    cause_type="OperationalError",
+                )
+
+
+class _FailureRule:
+    def __init__(
+        self,
+        *,
+        action: str,
+        kind: PersistenceRecordKind,
+        payload_key: str | None = None,
+        payload_value: object | None = None,
+    ) -> None:
+        self.action = action
+        self.kind = kind
+        self.payload_key = payload_key
+        self.payload_value = payload_value
+
+    def matches(self, action: str, record: PersistenceRecord) -> bool:
+        if action != self.action or record.kind is not self.kind:
+            return False
+        if self.payload_key is None:
+            return True
+        return record.payload.get(self.payload_key) == self.payload_value
 
 
 class _MemoryTransaction:
@@ -359,6 +770,41 @@ class _FailingInsertTransaction(_MemoryTransaction):
                 cause_type="OperationalError",
             )
         super().insert_record(record)
+
+
+class _AdversarialTransaction(_MemoryTransaction):
+    def __init__(self, store: _AdversarialPersistenceStore) -> None:
+        super().__init__(store)
+        self._adversarial_store = store
+
+    def insert_record(self, record: PersistenceRecord) -> None:
+        self._adversarial_store._maybe_fail("insert", record)
+        super().insert_record(record)
+
+    def replace_record(self, record: PersistenceRecord, *, expected_payload_sha256: str) -> None:
+        self._adversarial_store._maybe_fail("replace", record)
+        super().replace_record(record, expected_payload_sha256=expected_payload_sha256)
+
+
+def _work_state(repository: M0WorkRepository) -> WorkItemState:
+    stored = repository.read_work(fixed_id(WorkId))
+    assert stored is not None
+    return stored.item.state
+
+
+def _execution_state(repository: M0WorkRepository) -> ExecutionState | None:
+    stored = repository.read_execution(fixed_id(ExecutionId))
+    if stored is None:
+        return None
+    return stored.record.state
+
+
+def _event_types(event_store: EventEvidenceRuntimeStore) -> tuple[str, ...]:
+    return tuple(event.event_type for event in event_store.list_events())
+
+
+def _evidence_ids(event_store: EventEvidenceRuntimeStore) -> tuple[EvidenceId, ...]:
+    return tuple(evidence.evidence_id for evidence in event_store.list_evidence())
 
 
 def _take(values: Iterator[PersistenceRecord], *, limit: int) -> list[PersistenceRecord]:

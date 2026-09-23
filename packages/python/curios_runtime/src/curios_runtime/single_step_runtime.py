@@ -209,6 +209,7 @@ class SingleStepRuntimeResult:
     executor_result: Result[object] | None = None
     events: tuple[EventEnvelope, ...] = ()
     evidence_refs: tuple[EvidenceReference, ...] = ()
+    recording_errors: tuple[SingleStepRuntimeError, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "status", SingleStepRuntimeStatus(self.status))
@@ -231,6 +232,10 @@ class SingleStepRuntimeResult:
         for evidence_ref in self.evidence_refs:
             if not isinstance(evidence_ref, EvidenceReference):
                 msg = "evidence_refs must contain EvidenceReference values"
+                raise TypeError(msg)
+        for error in self.recording_errors:
+            if not isinstance(error, SingleStepRuntimeError):
+                msg = "recording_errors must contain SingleStepRuntimeError values"
                 raise TypeError(msg)
 
 
@@ -303,23 +308,6 @@ class SingleStepRuntimeService:
         except Exception as exc:
             executor_error = exc
         if executor_error is not None:
-            failed_execution, failed_work = self._mark_failed(
-                running_execution,
-                running_work,
-                observed_at,
-            )
-            self._append_event(
-                RuntimeEventType.EXECUTION_FAILED,
-                work=failed_work.item,
-                request=request,
-                occurred_at=observed_at,
-                execution=failed_execution.record,
-                payload={
-                    "work_id": str(failed_work.item.work_id),
-                    "execution_id": str(failed_execution.record.execution_id),
-                    "reason": "executor raised bounded runtime failure",
-                },
-            )
             error = SingleStepRuntimeError(
                 SingleStepRuntimeErrorCode.EXECUTOR_FAILURE,
                 "Single-step executor failed.",
@@ -327,7 +315,18 @@ class SingleStepRuntimeService:
                 retryable=False,
                 detail={"cause_type": type(executor_error).__name__},
             )
-            _raise_runtime_error(error)
+            return self._finalize_executor_failure(
+                primary_error=error,
+                executor_result=None,
+                running_execution=running_execution,
+                running_work=running_work,
+                request=request,
+                occurred_at=observed_at,
+                reason="executor raised bounded runtime failure",
+                prior_events=(policy_event, started_event),
+                policy_decision=policy_decision,
+                evidence_refs=(),
+            )
 
         if not isinstance(execution_outcome, SingleStepExecutionOutcome):
             error = SingleStepRuntimeError(
@@ -335,47 +334,96 @@ class SingleStepRuntimeService:
                 "Single-step executor returned an invalid outcome.",
                 operation="execute",
             )
-            _raise_runtime_error(error)
-
-        if execution_outcome.result.status is ResultStatus.FAILURE:
-            failed_execution, failed_work = self._mark_failed(
-                running_execution,
-                running_work,
-                observed_at,
-            )
-            failed_event = self._append_event(
-                RuntimeEventType.EXECUTION_FAILED,
-                work=failed_work.item,
+            return self._finalize_executor_failure(
+                primary_error=error,
+                executor_result=None,
+                running_execution=running_execution,
+                running_work=running_work,
                 request=request,
                 occurred_at=observed_at,
-                execution=failed_execution.record,
-                payload={
-                    "work_id": str(failed_work.item.work_id),
-                    "execution_id": str(failed_execution.record.execution_id),
-                    "reason": "executor returned failure result",
-                },
-            )
-            return SingleStepRuntimeResult(
-                status=SingleStepRuntimeStatus.FAILED,
-                work=failed_work,
-                execution=failed_execution,
+                reason="executor returned invalid outcome",
+                prior_events=(policy_event, started_event),
                 policy_decision=policy_decision,
+                evidence_refs=(),
+            )
+
+        if execution_outcome.result.status is ResultStatus.FAILURE:
+            return self._finalize_executor_failure(
+                primary_error=None,
                 executor_result=execution_outcome.result,
-                events=(policy_event, started_event, failed_event),
+                running_execution=running_execution,
+                running_work=running_work,
+                request=request,
+                occurred_at=observed_at,
+                reason="executor returned failure result",
+                prior_events=(policy_event, started_event),
+                policy_decision=policy_decision,
                 evidence_refs=execution_outcome.evidence_refs,
             )
 
-        evidence_events = tuple(
-            self._record_evidence(evidence_ref, request, running_work.item, observed_at)
-            for evidence_ref in execution_outcome.evidence_refs
-        )
-        completed_execution = self._transition_execution(
+        evidence_events: list[EventEnvelope] = []
+        for evidence_ref in execution_outcome.evidence_refs:
+            evidence_event, evidence_error = self._try_record_evidence(
+                evidence_ref,
+                request,
+                running_work.item,
+                observed_at,
+            )
+            if evidence_error is not None:
+                self._finalize_post_success_failure(
+                    primary_error=evidence_error,
+                    running_execution=running_execution,
+                    running_work=running_work,
+                    request=request,
+                    occurred_at=observed_at,
+                    reason="executor succeeded but evidence recording failed",
+                )
+            if evidence_event is not None:
+                evidence_events.append(evidence_event)
+
+        completed_execution, execution_error = self._try_transition_execution(
             running_execution,
             ExecutionState.SUCCEEDED,
             observed_at,
         )
-        completed_work = self._transition_work(running_work, WorkItemState.COMPLETED, observed_at)
-        completed_event = self._append_event(
+        if execution_error is not None or completed_execution is None:
+            self._finalize_post_success_failure(
+                primary_error=execution_error
+                or SingleStepRuntimeError(
+                    SingleStepRuntimeErrorCode.REPOSITORY_FAILURE,
+                    "Work runtime repository operation failed.",
+                    operation="transition_execution",
+                ),
+                running_execution=running_execution,
+                running_work=running_work,
+                request=request,
+                occurred_at=observed_at,
+                reason="executor succeeded but execution finalization failed",
+                skip_execution_success=True,
+            )
+
+        completed_work, work_error = self._try_transition_work(
+            running_work,
+            WorkItemState.COMPLETED,
+            observed_at,
+        )
+        if work_error is not None or completed_work is None:
+            self._finalize_post_success_failure(
+                primary_error=work_error
+                or SingleStepRuntimeError(
+                    SingleStepRuntimeErrorCode.REPOSITORY_FAILURE,
+                    "Work runtime repository operation failed.",
+                    operation="transition_work",
+                ),
+                running_execution=completed_execution,
+                running_work=running_work,
+                request=request,
+                occurred_at=observed_at,
+                reason="executor succeeded but work finalization failed",
+                execution_already_succeeded=True,
+            )
+
+        completed_event, recording_error = self._try_append_event(
             RuntimeEventType.EXECUTION_COMPLETED,
             work=completed_work.item,
             request=request,
@@ -387,14 +435,17 @@ class SingleStepRuntimeService:
                 "evidence_count": len(execution_outcome.evidence_refs),
             },
         )
+        recording_errors = (recording_error,) if recording_error is not None else ()
+        completed_events = (completed_event,) if completed_event is not None else ()
         return SingleStepRuntimeResult(
             status=SingleStepRuntimeStatus.COMPLETED,
             work=completed_work,
             execution=completed_execution,
             policy_decision=policy_decision,
             executor_result=execution_outcome.result,
-            events=(policy_event, started_event, *evidence_events, completed_event),
+            events=(policy_event, started_event, *evidence_events, *completed_events),
             evidence_refs=execution_outcome.evidence_refs,
+            recording_errors=recording_errors,
         )
 
     def _read_work(self, work_id: WorkId) -> StoredWorkItem:
@@ -528,15 +579,187 @@ class SingleStepRuntimeService:
             _raise_runtime_error(error)
         return transitioned
 
-    def _mark_failed(
+    def _try_transition_work(
         self,
-        execution: StoredExecutionRecord,
-        work: StoredWorkItem,
+        stored_work: StoredWorkItem,
+        target: WorkItemState,
         occurred_at: UtcTimestamp,
-    ) -> tuple[StoredExecutionRecord, StoredWorkItem]:
-        failed_execution = self._transition_execution(execution, ExecutionState.FAILED, occurred_at)
-        failed_work = self._transition_work(work, WorkItemState.FAILED, occurred_at)
-        return failed_execution, failed_work
+    ) -> tuple[StoredWorkItem | None, SingleStepRuntimeError | None]:
+        try:
+            transitioned = self.work_repository.transition_work(
+                stored_work.item.work_id,
+                target,
+                occurred_at=occurred_at,
+                expected_version=stored_work.version,
+            )
+        except RepositoryError as exc:
+            return None, _error_from_repository(exc, operation="transition_work")
+        return transitioned, None
+
+    def _try_transition_execution(
+        self,
+        stored_execution: StoredExecutionRecord,
+        target: ExecutionState,
+        occurred_at: UtcTimestamp,
+    ) -> tuple[StoredExecutionRecord | None, SingleStepRuntimeError | None]:
+        try:
+            transitioned = self.work_repository.transition_execution(
+                stored_execution.record.execution_id,
+                target,
+                occurred_at=occurred_at,
+                expected_version=stored_execution.version,
+            )
+        except RepositoryError as exc:
+            return None, _error_from_repository(exc, operation="transition_execution")
+        return transitioned, None
+
+    def _finalize_executor_failure(
+        self,
+        *,
+        primary_error: SingleStepRuntimeError | None,
+        executor_result: Result[object] | None,
+        running_execution: StoredExecutionRecord,
+        running_work: StoredWorkItem,
+        request: SingleStepRuntimeRequest,
+        occurred_at: UtcTimestamp,
+        reason: str,
+        prior_events: tuple[EventEnvelope, ...],
+        policy_decision: PolicyDecision,
+        evidence_refs: tuple[EvidenceReference, ...],
+    ) -> SingleStepRuntimeResult:
+        failed_work, work_error = self._try_transition_work(
+            running_work,
+            WorkItemState.FAILED,
+            occurred_at,
+        )
+        failed_execution, execution_error = self._try_transition_execution(
+            running_execution,
+            ExecutionState.FAILED,
+            occurred_at,
+        )
+        cleanup_errors = tuple(
+            error for error in (work_error, execution_error) if error is not None
+        )
+        if cleanup_errors:
+            error = primary_error or SingleStepRuntimeError(
+                SingleStepRuntimeErrorCode.EXECUTOR_FAILURE,
+                "Single-step executor failed and failure finalization was incomplete.",
+                operation="finalize_failure",
+                detail={"executor_result_status": "failure"},
+            )
+            _raise_runtime_error(_with_cleanup_detail(error, cleanup_errors))
+
+        assert failed_work is not None
+        assert failed_execution is not None
+        failed_event, recording_error = self._try_append_event(
+            RuntimeEventType.EXECUTION_FAILED,
+            work=failed_work.item,
+            request=request,
+            occurred_at=occurred_at,
+            execution=failed_execution.record,
+            payload={
+                "work_id": str(failed_work.item.work_id),
+                "execution_id": str(failed_execution.record.execution_id),
+                "reason": reason,
+            },
+        )
+        if primary_error is not None:
+            if recording_error is not None:
+                primary_error = _with_cleanup_detail(primary_error, (recording_error,))
+            _raise_runtime_error(primary_error)
+
+        events = prior_events + ((failed_event,) if failed_event is not None else ())
+        recording_errors = (recording_error,) if recording_error is not None else ()
+        return SingleStepRuntimeResult(
+            status=SingleStepRuntimeStatus.FAILED,
+            work=failed_work,
+            execution=failed_execution,
+            policy_decision=policy_decision,
+            executor_result=executor_result,
+            events=events,
+            evidence_refs=evidence_refs,
+            recording_errors=recording_errors,
+        )
+
+    # Post-executor failures cannot pretend the governed invocation did not
+    # happen. These helpers terminalize work first for executor failures, but
+    # preserve executor-success truth when later evidence/finalization fails.
+    def _finalize_post_success_failure(
+        self,
+        *,
+        primary_error: SingleStepRuntimeError,
+        running_execution: StoredExecutionRecord,
+        running_work: StoredWorkItem,
+        request: SingleStepRuntimeRequest,
+        occurred_at: UtcTimestamp,
+        reason: str,
+        execution_already_succeeded: bool = False,
+        skip_execution_success: bool = False,
+    ) -> NoReturn:
+        terminal_execution: StoredExecutionRecord | None = None
+        cleanup_errors: list[SingleStepRuntimeError] = []
+        if execution_already_succeeded:
+            terminal_execution = running_execution
+        elif skip_execution_success:
+            terminal_execution, execution_failed_error = self._try_transition_execution(
+                running_execution,
+                ExecutionState.FAILED,
+                occurred_at,
+            )
+            if execution_failed_error is not None:
+                cleanup_errors.append(execution_failed_error)
+        else:
+            terminal_execution, execution_success_error = self._try_transition_execution(
+                running_execution,
+                ExecutionState.SUCCEEDED,
+                occurred_at,
+            )
+            if execution_success_error is not None:
+                cleanup_errors.append(execution_success_error)
+                terminal_execution, execution_failed_error = self._try_transition_execution(
+                    running_execution,
+                    ExecutionState.FAILED,
+                    occurred_at,
+                )
+                if execution_failed_error is not None:
+                    cleanup_errors.append(execution_failed_error)
+
+        failed_work, work_error = self._try_transition_work(
+            running_work,
+            WorkItemState.FAILED,
+            occurred_at,
+        )
+        if work_error is not None:
+            cleanup_errors.append(work_error)
+
+        if failed_work is not None and terminal_execution is not None:
+            _, recording_error = self._try_append_event(
+                RuntimeEventType.EXECUTION_FAILED,
+                work=failed_work.item,
+                request=request,
+                occurred_at=occurred_at,
+                execution=terminal_execution.record,
+                payload={
+                    "work_id": str(failed_work.item.work_id),
+                    "execution_id": str(terminal_execution.record.execution_id),
+                    "reason": reason,
+                    "executor_effect": "succeeded",
+                },
+            )
+            if recording_error is not None:
+                cleanup_errors.append(recording_error)
+
+        detail = dict(primary_error.detail)
+        detail["executor_effect"] = "succeeded"
+        detail["finalization_status"] = "incomplete"
+        primary_error = SingleStepRuntimeError(
+            primary_error.code,
+            str(primary_error),
+            operation=primary_error.operation,
+            retryable=primary_error.retryable,
+            detail=detail,
+        )
+        _raise_runtime_error(_with_cleanup_detail(primary_error, tuple(cleanup_errors)))
 
     def _append_event(
         self,
@@ -572,6 +795,29 @@ class SingleStepRuntimeService:
             _raise_runtime_error(error)
         return appended
 
+    def _try_append_event(
+        self,
+        event_type: RuntimeEventType,
+        *,
+        work: WorkItem,
+        request: SingleStepRuntimeRequest,
+        occurred_at: UtcTimestamp,
+        payload: dict[str, object],
+        execution: ExecutionRecord | None = None,
+    ) -> tuple[EventEnvelope | None, SingleStepRuntimeError | None]:
+        try:
+            event = self._append_event(
+                event_type,
+                work=work,
+                request=request,
+                occurred_at=occurred_at,
+                payload=payload,
+                execution=execution,
+            )
+        except SingleStepRuntimeError as exc:
+            return None, exc
+        return event, None
+
     def _record_evidence(
         self,
         evidence_ref: EvidenceReference,
@@ -597,6 +843,19 @@ class SingleStepRuntimeService:
                 "evidence_kind": evidence_ref.kind.value,
             },
         )
+
+    def _try_record_evidence(
+        self,
+        evidence_ref: EvidenceReference,
+        request: SingleStepRuntimeRequest,
+        work: WorkItem,
+        occurred_at: UtcTimestamp,
+    ) -> tuple[EventEnvelope | None, SingleStepRuntimeError | None]:
+        try:
+            event = self._record_evidence(evidence_ref, request, work, occurred_at)
+        except SingleStepRuntimeError as exc:
+            return None, exc
+        return event, None
 
     @staticmethod
     def _require_startable(item: WorkItem) -> None:
@@ -656,6 +915,26 @@ def _error_from_store(exc: RuntimeStoreError, *, operation: str) -> SingleStepRu
         operation=operation,
         retryable=exc.retryable,
         detail={"store_code": exc.code.value, "store_operation": exc.operation},
+    )
+
+
+def _with_cleanup_detail(
+    error: SingleStepRuntimeError,
+    cleanup_errors: tuple[SingleStepRuntimeError, ...],
+) -> SingleStepRuntimeError:
+    if not cleanup_errors:
+        return error
+    detail = dict(error.detail)
+    detail["cleanup_errors"] = tuple(
+        cleanup_error.to_json_compatible() for cleanup_error in cleanup_errors
+    )
+    return SingleStepRuntimeError(
+        error.code,
+        str(error),
+        operation=error.operation,
+        retryable=error.retryable
+        or any(cleanup_error.retryable for cleanup_error in cleanup_errors),
+        detail=detail,
     )
 
 

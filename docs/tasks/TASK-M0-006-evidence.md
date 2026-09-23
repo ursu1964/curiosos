@@ -88,19 +88,75 @@ policy or state-transition tables.
 
 ## Failure and Partial-Failure Semantics
 
-- Missing work raises `SingleStepRuntimeError(NOT_FOUND)`.
-- Non-authorizing policy returns `SingleStepRuntimeResult(BLOCKED)` and does not
-  invoke the executor.
-- Unsupported work states raise `SingleStepRuntimeError(ILLEGAL_STATE)`.
-- Repository errors translate to bounded runtime-service errors.
-- Runtime-store failures translate to bounded runtime-service errors.
-- Executor exceptions mark work/execution failed where possible and raise
-  `SingleStepRuntimeError(EXECUTOR_FAILURE)` without native exception leakage.
-- Executor `Result.failure(...)` marks work/execution failed and returns a
-  bounded failed runtime result.
+Independent TASK-M0-006 validation failed after finding post-executor partial
+failures that could leave persisted truth contradictory or indefinitely
+`RUNNING`. Confirmed failures included evidence append failure after executor
+success, execution success persisted before work completion failed, terminal
+event append failure masking coherent terminal state, and cleanup operations
+masking executor failures.
 
-TASK-M0-006 does not claim distributed transactions across repository and
-event/evidence boundaries.
+The corrected M0 consistency invariant is:
+
+- before executor invocation, failures must not claim a governed effect
+  occurred;
+- after executor invocation, the runtime must persist the most truthful bounded
+  terminal state legal under the frozen work/execution transition graphs;
+- terminal events and evidence events are records of persisted truth, not the
+  authority over already persisted terminal state;
+- lower repository/store/native executor exceptions never cross the runtime
+  boundary unwrapped.
+
+The deterministic partial-failure protocol is:
+
+| Case | Corrected behavior |
+| --- | --- |
+| Pre-executor failure | Fail fast with bounded runtime error; executor is not called; no execution/effect truth is fabricated. |
+| Executor raises | Mark work `FAILED`, then execution `FAILED` where legal; record `execution.failed` where possible; raise `EXECUTOR_FAILURE` without native exception leakage. |
+| Executor returns failure | Mark work `FAILED`, then execution `FAILED` where legal; record `execution.failed` where possible; return failed runtime result when finalization succeeds. |
+| Success evidence append/event failure | Preserve executor-effect truth by terminalizing execution as `SUCCEEDED` where possible; mark work `FAILED`; raise bounded runtime-store error with `executor_effect=succeeded`. |
+| Success execution terminal transition failure | Do not retry success during cleanup; mark execution `FAILED` and work `FAILED` where legal; raise bounded repository error. |
+| Success work terminal transition failure | Preserve already persisted execution `SUCCEEDED`; mark work `FAILED` where legal; raise bounded repository error rather than returning `COMPLETED`. |
+| Terminal event failure | Do not revert terminal state; return terminal result with `recording_errors` containing the bounded event-store failure and omit the missing event from returned events. |
+| Cleanup operation failure | Preserve whatever persisted truth succeeded, attach bounded cleanup details to the runtime error, and never leak `RepositoryError`, `RuntimeStoreError`, or executor-native exceptions. |
+
+TASK-M0-006 still does not claim distributed transactions, retries, a scheduler,
+or generalized recovery machinery across repository and event/evidence
+boundaries.
+
+## Corrected Failure Matrix
+
+The adversarial runtime-service tests now assert final persisted work state,
+execution state, events, evidence, executor call count, result/error, and
+exception boundary behavior for:
+
+| Failure point | Persisted truth/result |
+| --- | --- |
+| Policy evaluator failure | Work remains `CREATED`; no execution, events, evidence, or executor call; bounded `POLICY_FAILURE`. |
+| Policy event store failure | Work remains `CREATED`; no execution/evidence/executor call; bounded `RUNTIME_STORE_FAILURE`. |
+| Work start transition failure | Work remains `CREATED`; no execution/evidence/executor call; `policy.evaluated` only; bounded repository error. |
+| Execution creation failure | Work is `RUNNING`; no execution/evidence/executor call; `policy.evaluated` only; bounded repository error. |
+| Execution start transition failure | Work is `RUNNING`; execution remains `CREATED`; no executor call; bounded repository error. |
+| `execution.started` event failure | Work/execution are `RUNNING`; executor is not called; bounded runtime-store error. |
+| Executor raises | Work `FAILED`, execution `FAILED`; `execution.failed` recorded where possible; bounded `EXECUTOR_FAILURE`. |
+| Executor returns failure | Work `FAILED`, execution `FAILED`; failed runtime result; no native/lower error leakage. |
+| Evidence append failure after executor success | Work `FAILED`, execution `SUCCEEDED`; no evidence fabricated; bounded runtime-store error with executor success detail. |
+| Success work terminal transition failure | Work `FAILED`, execution `SUCCEEDED`; bounded repository error; no false completed result. |
+| Success execution terminal transition failure | Work `FAILED`, execution `FAILED`; bounded repository error; no stranded success truth. |
+| Completion event append failure | Work `COMPLETED`, execution `SUCCEEDED`; completed result includes bounded `recording_errors`; no event authority over state. |
+| Failure work transition failure | Work remains `RUNNING`, execution `FAILED`; bounded `EXECUTOR_FAILURE` with cleanup detail. |
+| Failure execution transition failure | Work `FAILED`, execution remains `RUNNING`; bounded `EXECUTOR_FAILURE` with cleanup detail. |
+| Failure event append failure | Work `FAILED`, execution `FAILED`; failed result includes bounded `recording_errors`. |
+
+The success regression remains `work=COMPLETED`, `execution=SUCCEEDED`,
+policy/start/evidence/completion events, persisted executor evidence, and
+`COMPLETED` result.
+
+The non-authorizing regression remains: `UNKNOWN`/`DENY` records
+`policy.evaluated`, returns `BLOCKED`, leaves work unchanged, creates no
+execution, and never invokes the executor.
+
+Repeated invocation remains blocked for `RUNNING`, `WAITING`, and terminal work
+states; these states do not cause duplicate executor invocation.
 
 ## Topology and Scope
 
@@ -121,26 +177,35 @@ router, and agent runtime modules remain rejected by security tests.
 
 Implementation verification:
 
-- TOML validation: `passed`
+- TOML validation: `11` manifests parsed, `passed`
 - `uv lock --check`: `passed`
 - `uv sync --locked --all-groups --all-packages`: `passed`
 - Docker Compose config: `passed`
 - Ruff check: `passed`
-- Ruff format check: `passed`
+- Ruff format check: `175` files already formatted, `passed`
 - mypy source scope: `52 source files`, `passed`
+- TASK-M0-006 service tests: `25 passed`
 - policy tests: `20 passed`
-- runtime unit tests including TASK-M0-006: `64 passed`
+- event/evidence runtime-store unit tests: `9 passed`
+- work repository unit tests: `47 passed`
+- persistence tests: `21 passed`
+- runtime package tests: `83 passed`
 - contracts/core tests: `123 passed`
 - provider/API package tests: `38 passed`
-- contract/schema/architecture/security/acceptance tests: `77 passed`,
-  `2` known dependency warnings
-- PostgreSQL-backed persistence/provider/runtime integration tests: `24 passed`
-- full pytest: `352 passed`, `2` known dependency warnings
+- contract/schema tests: `15 passed`
+- architecture tests: `16 passed`
+- security tests: `40 passed`
+- API integration tests: `6 passed`, `2` known dependency warnings
+- PostgreSQL-backed provider integration test: `1 passed`
+- PostgreSQL-backed runtime event/evidence integration test: `1 passed`
+- PostgreSQL-backed runtime work repository integration test: `1 passed`
+- PostgreSQL-backed persistence integration tests: `2 passed`
+- BOOT acceptance tests: `6 passed`, `2` known dependency warnings
+- full pytest: `369 passed`, `2` known dependency warnings
 - frontend frozen install/check/test/typecheck/build: `passed`; web test
   `2 passed`
 - `git diff --check`: `passed`
-- `pytest packages/python/curios_runtime/tests/test_single_step_runtime_service.py packages/python/curios_runtime/tests/test_event_evidence_store.py tests/security tests/architecture -q`:
-  `73 passed`
+- focused touched-file Ruff check/format and source mypy checks: `passed`
 
 The known warnings are the pre-existing Starlette/TestClient `httpx` warning
 and anyio `BlockingPortal` alias deprecation warning.
