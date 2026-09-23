@@ -218,6 +218,16 @@ AUTHORIZED_BOOT019_INTEGRATION_TESTS = frozenset(
         "tests/integration/test_postgres_provider_integration.py",
     }
 )
+AUTHORIZED_M0_INTEGRATION_TESTS_BY_TASK = {
+    "TASK-M0-010": frozenset(
+        {
+            "tests/integration/test_m0_vertical_slice_integration.py",
+        }
+    ),
+}
+AUTHORIZED_M0_INTEGRATION_TESTS = frozenset().union(
+    *AUTHORIZED_M0_INTEGRATION_TESTS_BY_TASK.values()
+)
 AUTHORIZED_BOOT026_ACCEPTANCE_TESTS = frozenset(
     {
         "tests/acceptance/test_boot_acceptance.py",
@@ -323,6 +333,7 @@ SECURITY_SCAN_ROOTS = (
     "packages/python/curios_runtime/tests",
     "packages/typescript/curios-contracts/src",
     "tests/acceptance",
+    "tests/integration",
 )
 SECURITY_SCAN_ROOT_FILES = frozenset(
     {
@@ -746,6 +757,10 @@ def _unauthorized_web_source_files(paths: frozenset[str]) -> frozenset[str]:
     return paths - M0_AUTHORIZED_WEB_SOURCE_FILES
 
 
+def _unauthorized_integration_tests(paths: frozenset[str]) -> frozenset[str]:
+    return paths - AUTHORIZED_BOOT019_INTEGRATION_TESTS - AUTHORIZED_M0_INTEGRATION_TESTS
+
+
 def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
     return paths - ALLOWED_PACKAGE_ROOTS
 
@@ -1151,6 +1166,9 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
         "main.tsx",
     }
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
+    assert AUTHORIZED_M0_INTEGRATION_TESTS_BY_TASK["TASK-M0-010"] == {
+        "tests/integration/test_m0_vertical_slice_integration.py"
+    }
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
 
 
@@ -1226,11 +1244,29 @@ def test_m0_web_source_topology_rejects_unvalidated_future_web_surfaces(
     assert _unauthorized_web_source_files(simulated_files) == {web_file}
 
 
+@pytest.mark.parametrize(
+    "integration_file",
+    (
+        "tests/integration/test_m0_scheduler_integration.py",
+        "tests/integration/test_m0_agent_runtime_integration.py",
+        "tests/integration/test_m0_model_router_integration.py",
+        "tests/integration/test_m0_datalab_integration.py",
+        "tests/integration/test_m0_acceptance_suite.py",
+    ),
+)
+def test_m0_integration_topology_rejects_unvalidated_future_integration_surfaces(
+    integration_file: str,
+) -> None:
+    simulated_files = (
+        AUTHORIZED_BOOT019_INTEGRATION_TESTS | AUTHORIZED_M0_INTEGRATION_TESTS | {integration_file}
+    )
+
+    assert _unauthorized_integration_tests(simulated_files) == {integration_file}
+
+
 def test_later_task_security_provider_runtime_surfaces_match_authorized_current_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
-    unexpected_integration_tests = (
-        _tracked_integration_tests() - AUTHORIZED_BOOT019_INTEGRATION_TESTS
-    )
+    unexpected_integration_tests = _unauthorized_integration_tests(_tracked_integration_tests())
     unexpected_acceptance_tests = _tracked_acceptance_tests() - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
@@ -1251,7 +1287,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     )
     _assert_no_security_failure(
         not unexpected_integration_tests,
-        "unexpected integration test path(s) outside TASK-BOOT-019: "
+        "unexpected integration test path(s) outside authorized BOOT/M0 integration tests: "
         f"{sorted(unexpected_integration_tests)}",
     )
     _assert_no_security_failure(
