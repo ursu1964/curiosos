@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-007-EVIDENCE
 title: TASK-M0-007 Provider Inventory Executor Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-007
@@ -144,7 +144,12 @@ Implementation verification:
 
 ## Lifecycle
 
-TASK-M0-007 is `IMPLEMENTED, TESTED`.
+TASK-M0-007 is `VALIDATED, FROZEN`.
 
-It is not `VALIDATED` or `FROZEN`. Independent validation must decide whether
-TASK-M0-007 can freeze and whether TASK-M0-008 may become ready.
+Independent validation accepted candidate
+`be86f12edbb8b6d9ea9049d43eb5b8d521f581b4`.
+
+The frozen DAG requires TASK-M0-007 to be validated, frozen, and integrated
+before TASK-M0-008 can become ready. Therefore TASK-M0-008 remains `BLOCKED` on
+this task branch. After the validation/freeze commit is integrated into `main`,
+TASK-M0-008 may become `READY`; it is not implemented by this validation.
