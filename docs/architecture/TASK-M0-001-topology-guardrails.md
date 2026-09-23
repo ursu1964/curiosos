@@ -25,8 +25,8 @@ become dependencies of `curios_contracts` or `curios_core`.
 The initial M0 implementation package roots are planned but not currently
 authorized as tracked package roots, except the currently validated M0 package
 transitions: TASK-M0-002 persistence, TASK-M0-003 policy, TASK-M0-004
-event/evidence runtime store, TASK-M0-005 work repository, and TASK-M0-006
-single-step runtime service:
+event/evidence runtime store, TASK-M0-005 work repository, TASK-M0-006
+single-step runtime service, and TASK-M0-007 provider-inventory executor:
 
 | Task | Planned Surface |
 | --- | --- |
@@ -35,7 +35,7 @@ single-step runtime service:
 | TASK-M0-004 | `packages/python/curios_runtime/**` event/evidence modules only (authorized by TASK-M0-004) |
 | TASK-M0-005 | `packages/python/curios_runtime/**` work repository modules only (authorized by TASK-M0-005) |
 | TASK-M0-006 | `packages/python/curios_runtime/**` single-step runtime service module only (authorized by TASK-M0-006) |
-| TASK-M0-007 | `packages/python/curios_runtime/**` provider-inventory executor modules blocked until TASK-M0-007 |
+| TASK-M0-007 | `packages/python/curios_runtime/**` provider-inventory executor module only (authorized by TASK-M0-007) |
 
 TASK-M0-001 establishes architecture tests that already block inward imports or
 metadata dependencies from contracts/core to those implementation packages.
@@ -50,8 +50,8 @@ security topology before adding implementation.
   implementations.
 - Provider packages, FastAPI, and the web remain outer surfaces.
 - `ObjectReference` remains the single generic reference abstraction.
-- No new canonical contract, generic reference, scheduler, provider executor,
-  API route, or web console is introduced by the M0-006 transition.
+- No new canonical contract, generic reference, scheduler, arbitrary executor,
+  API route, or web console is introduced by the M0-007 transition.
 
 ## Deferred Architecture
 

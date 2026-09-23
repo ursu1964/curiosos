@@ -26,7 +26,7 @@ date: 2026-09-23
 | TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | VALIDATED, FROZEN | Independent revalidation accepted the corrected append-order ordinal implementation and runtime event/evidence store boundary. PG-M0-02B integration with TASK-M0-005 remains required before downstream readiness changes. |
 | TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | VALIDATED, FROZEN | Independent revalidation accepted the corrected repository decode boundary, state-transition model, concurrency semantics, and PostgreSQL reconstruction behavior. |
 | TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | VALIDATED, FROZEN | Independent revalidation accepted corrected bounded partial-failure handling and runtime truth guarantees. |
-| TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | BLOCKED | Requires validated/frozen TASK-M0-006 to be integrated into main before becoming ready. |
+| TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | IMPLEMENTED, TESTED | Provider inventory executor consumes the frozen TASK-M0-006 seam and remains pending independent validation. |
 | TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05A | BLOCKED | Requires provider-inventory executor. |
 | TASK-M0-009 | M0 Web Work Console | TASK-M0-008 | PG-M0-05B | BLOCKED | Requires M0 API endpoint contract. |
 | TASK-M0-010 | M0 Integration Test Foundation | TASK-M0-008, TASK-M0-009 | PG-M0-06 | BLOCKED | Requires API and web surfaces. |
