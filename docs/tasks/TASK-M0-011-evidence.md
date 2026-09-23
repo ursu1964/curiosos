@@ -152,6 +152,32 @@ Corrective behavior added:
 
 The workflow YAML did not change during this correction.
 
+Second independent revalidation of corrective candidate
+`b51ce3482a40db0610815f7ade312d7c5b117f76` failed because the first corrective
+permission detector still depended on exact indentation widths. A YAML-valid
+workflow using alternate four-space job indentation could hide a job-level
+`contents` write override from the detector.
+
+Second corrective behavior added:
+
+- replaced the indentation-sensitive permission scanner with PyYAML structural
+  parsing using `yaml.BaseLoader`;
+- confirmed the actual workflow parses with string keys, including the `on`
+  trigger key, and with top-level permissions equal to `contents` read access;
+- enforce the exact top-level permission mapping semantically;
+- inspect every parsed job mapping and reject any job-level `permissions` key
+  regardless of job name, key order, comments, indentation, or scalar/mapping
+  value;
+- added adversarial coverage for top-level cases A-J, job-level cases K-T, and
+  valid current workflow case U;
+- added formatting variants for two-space job indentation, four-space job
+  indentation, deeper valid indentation, comments between job and permissions,
+  permissions before or after other job keys, and multiple jobs where only the
+  second job declares permissions.
+
+Dependency change: `PyYAML>=6.0.3` was added to the root dev dependency group
+and locked as `pyyaml v6.0.3` solely for structural YAML security testing.
+
 ## PostgreSQL Strategy
 
 CI continues to use the frozen PostgreSQL 18 `LOCAL_DOCKER` service in
@@ -182,25 +208,25 @@ cloud infrastructure, or deployment credential.
 | Check | Result |
 | --- | --- |
 | TOML validation | PASS: 11 Python manifests parsed. |
-| `uv lock --check` | PASS: resolved 46 packages. |
-| `uv sync --locked --all-groups --all-packages` | PASS: 10 local workspace packages built/prepared, 25 packages installed. |
+| `uv lock --check` | PASS: resolved 47 packages. |
+| `uv sync --locked --all-groups --all-packages` | PASS: checked 44 packages. |
 | Docker Compose config | PASS. |
 | `actionlint` | NOT AVAILABLE locally; no dependency was added. |
 | Ruff | PASS. |
-| Ruff format | PASS: 188 files already formatted. |
+| Ruff format | PASS: 189 files already formatted. |
 | Authoritative mypy source scope | PASS: no issues in 53 source files. |
 | Package-local Python tests | PASS: 168 passed, 2 known dependency warnings. |
 | M0 runtime/persistence/policy package tests | PASS: 128 passed, 4 deselected. |
 | Contract/schema tests | PASS: 15 passed. |
 | Architecture tests | PASS: 16 passed. |
-| Security tests | PASS: 70 passed. |
-| Synthetic permission mutations | PASS: top-level `id-token` write access, top-level `contents` write access, job-level `contents` write access, job-level `id-token` write access, job-level `packages` write access, unexpected permission key, and missing permissions were rejected; the valid current workflow was accepted. |
+| Security tests | PASS: 91 passed. |
+| Synthetic permission mutations | PASS: A-T rejected; valid current workflow case U accepted. |
 | API integration tests | PASS: 6 passed, 2 known dependency warnings. |
 | PostgreSQL provider integration test | PASS: 1 passed. |
 | M0 PostgreSQL integration tests | PASS: 4 passed. |
 | TASK-M0-010 integration tests | PASS: 2 passed, 2 known dependency warnings. |
 | BOOT acceptance tests | PASS: 6 passed, 2 known dependency warnings. |
-| Full pytest | PASS: 416 passed, 2 known dependency warnings. |
+| Full pytest | PASS: 437 passed, 2 known dependency warnings. |
 | PostgreSQL clean stop/volume preservation | PASS: Compose showed no running `postgres` container and `curios-local-docker_postgres_data` remained present. |
 | `pnpm install --frozen-lockfile` | PASS. |
 | `pnpm check` | PASS. |

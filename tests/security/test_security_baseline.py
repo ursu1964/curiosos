@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, cast, get_type_hints
 
 import pytest
+import yaml
 from contract_fixtures import UTC_LATER, UTC_NOW, fixed_id, human_principal
 from curios_contracts import (
     APPROVAL_OUTCOME_VALUES,
@@ -722,151 +723,38 @@ def _workflow_action_refs() -> tuple[str, ...]:
     return tuple(refs)
 
 
-def _strip_yaml_comment(line: str) -> str:
-    quote: str | None = None
-    escaped = False
-    for index, character in enumerate(line):
-        if escaped:
-            escaped = False
-            continue
-        if character == "\\" and quote == '"':
-            escaped = True
-            continue
-        if character in {"'", '"'}:
-            if quote == character:
-                quote = None
-            elif quote is None:
-                quote = character
-            continue
-        if character == "#" and quote is None:
-            return line[:index].rstrip()
-    return line.rstrip()
+def _parse_quality_gate_workflow(workflow_text: str) -> dict[str, object]:
+    parsed = yaml.load(workflow_text, Loader=yaml.BaseLoader)
+    if not isinstance(parsed, dict):
+        msg = "quality-gates workflow YAML must parse to a mapping"
+        raise AssertionError(msg)
+    return cast(dict[str, object], parsed)
 
 
-def _yaml_key_value(line: str) -> tuple[str, str] | None:
-    stripped = _strip_yaml_comment(line).strip()
-    if not stripped or stripped.startswith("-"):
-        return None
-    key, separator, value = stripped.partition(":")
-    if separator != ":":
-        return None
-    return key.strip().strip("\"'"), value.strip().strip("\"'")
-
-
-def _indent_width(line: str) -> int:
-    return len(line) - len(line.lstrip(" "))
-
-
-def _top_level_permission_blocks(workflow_text: str) -> tuple[dict[str, str] | str, ...]:
-    lines = workflow_text.splitlines()
-    blocks: list[dict[str, str] | str] = []
-    index = 0
-    while index < len(lines):
-        raw_line = lines[index]
-        if _indent_width(raw_line) == 0 and (key_value := _yaml_key_value(raw_line)) is not None:
-            key, value = key_value
-            if key != "permissions":
-                index += 1
-                continue
-            if value:
-                blocks.append(value)
-                index += 1
-                continue
-            permissions: dict[str, str] = {}
-            index += 1
-            while index < len(lines):
-                child_line = lines[index]
-                if _strip_yaml_comment(child_line).strip() and _indent_width(child_line) == 0:
-                    break
-                if (
-                    _indent_width(child_line) == 2
-                    and (child_key_value := _yaml_key_value(child_line)) is not None
-                ):
-                    child_key, child_value = child_key_value
-                    permissions[child_key] = child_value
-                index += 1
-            blocks.append(permissions)
-            continue
-        index += 1
-    return tuple(blocks)
-
-
-def _job_permission_blocks(workflow_text: str) -> dict[str, dict[str, str] | str]:
-    lines = workflow_text.splitlines()
-    jobs: dict[str, dict[str, str] | str] = {}
-    index = 0
-    while index < len(lines):
-        raw_line = lines[index]
-        if not (
-            _indent_width(raw_line) == 0
-            and (key_value := _yaml_key_value(raw_line)) is not None
-            and key_value == ("jobs", "")
-        ):
-            index += 1
-            continue
-
-        index += 1
-        while index < len(lines):
-            job_line = lines[index]
-            if _strip_yaml_comment(job_line).strip() and _indent_width(job_line) == 0:
-                break
-            job_key_value = _yaml_key_value(job_line)
-            if _indent_width(job_line) != 2 or job_key_value is None or job_key_value[1]:
-                index += 1
-                continue
-
-            job_name = job_key_value[0]
-            index += 1
-            while index < len(lines):
-                child_line = lines[index]
-                if _strip_yaml_comment(child_line).strip() and _indent_width(child_line) <= 2:
-                    break
-                child_key_value = _yaml_key_value(child_line)
-                if (
-                    _indent_width(child_line) == 4
-                    and child_key_value is not None
-                    and child_key_value[0] == "permissions"
-                ):
-                    if child_key_value[1]:
-                        jobs[job_name] = child_key_value[1]
-                        index += 1
-                        continue
-                    permissions: dict[str, str] = {}
-                    index += 1
-                    while index < len(lines):
-                        permission_line = lines[index]
-                        if (
-                            _strip_yaml_comment(permission_line).strip()
-                            and _indent_width(permission_line) <= 4
-                        ):
-                            break
-                        if (
-                            _indent_width(permission_line) == 6
-                            and (permission_key_value := _yaml_key_value(permission_line))
-                            is not None
-                        ):
-                            permission_key, permission_value = permission_key_value
-                            permissions[permission_key] = permission_value
-                        index += 1
-                    jobs[job_name] = permissions
-                    continue
-                index += 1
-        break
-    return jobs
-
-
-def _workflow_permission_violations(workflow_text: str) -> tuple[str, ...]:
+def _workflow_permission_violations(workflow: dict[str, object]) -> tuple[str, ...]:
     violations: list[str] = []
-    top_level_blocks = _top_level_permission_blocks(workflow_text)
-    if top_level_blocks != (AUTHORIZED_WORKFLOW_PERMISSIONS,):
+
+    permissions = workflow.get("permissions")
+    if permissions != AUTHORIZED_WORKFLOW_PERMISSIONS:
         violations.append(
             "workflow permissions must be exactly "
-            f"{AUTHORIZED_WORKFLOW_PERMISSIONS!r}; got {top_level_blocks!r}"
+            f"{AUTHORIZED_WORKFLOW_PERMISSIONS!r}; got {permissions!r}"
         )
 
-    job_blocks = _job_permission_blocks(workflow_text)
-    if job_blocks:
-        violations.append(f"job-level permissions are not authorized: {job_blocks!r}")
+    jobs = workflow.get("jobs")
+    if not isinstance(jobs, dict):
+        violations.append(f"jobs must be a mapping; got {jobs!r}")
+        return tuple(violations)
+
+    for job_name, job_config in jobs.items():
+        if not isinstance(job_config, dict):
+            violations.append(f"job {job_name!r} must be a mapping; got {job_config!r}")
+            continue
+        if "permissions" in job_config:
+            violations.append(
+                f"job-level permissions are not authorized: {job_name!r} -> "
+                f"{job_config['permissions']!r}"
+            )
 
     return tuple(violations)
 
@@ -1277,9 +1165,10 @@ def test_github_topology_detector_allows_only_task_boot_025_workflow() -> None:
 
 def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates() -> None:
     workflow_text = _quality_gates_workflow_text()
+    workflow = _parse_quality_gate_workflow(workflow_text)
     normalized_workflow = _normalized_workflow_text()
     action_refs = _workflow_action_refs()
-    permission_violations = _workflow_permission_violations(workflow_text)
+    permission_violations = _workflow_permission_violations(workflow)
 
     _assert_no_security_failure(action_refs != (), "quality-gates workflow has no actions")
     for action_ref in action_refs:
@@ -1374,107 +1263,308 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
 
 
 @pytest.mark.parametrize(
-    "workflow_text",
+    ("case_id", "workflow_text"),
     (
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions:
-          contents: read
-          id-token: write
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions:
-          contents: write
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions:
-          contents: read
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
-            permissions:
-              contents: write
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions:
-          contents: read
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
+        (
+            "A_top_level_id_token_write",
+            """
+            name: Quality Gates
+            on:
+              push:
             permissions:
               id-token: write
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions:
-          contents: read
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "B_top_level_contents_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "C_top_level_packages_write",
+            """
+            name: Quality Gates
+            on:
+              push:
             permissions:
               packages: write
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions:
-          contents: read
-          attestations: read
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
-            steps: []
-        """,
-        """
-        name: Quality Gates
-        on:
-          push:
-        permissions: read-all
-        jobs:
-          python:
-            runs-on: ubuntu-24.04
-            steps: []
-        """,
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "D_top_level_contents_read_plus_id_token_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+              id-token: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "E_missing_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "F_empty_mapping_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: {}
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "G_null_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: null
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "H_read_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: read-all
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "I_write_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: write-all
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "J_unexpected_permission_key",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+              attestations: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "K_job_contents_write_normal_indent",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+        (
+            "L_job_contents_write_four_space_indent",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+                python:
+                    runs-on: ubuntu-24.04
+                    permissions:
+                        contents: write
+                    steps: []
+            """,
+        ),
+        (
+            "M_job_id_token_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  id-token: write
+                steps: []
+            """,
+        ),
+        (
+            "N_job_packages_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  packages: write
+                steps: []
+            """,
+        ),
+        (
+            "O_job_contents_read",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              frontend:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: read
+                steps: []
+            """,
+        ),
+        (
+            "P_job_empty_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: {}
+                steps: []
+            """,
+        ),
+        (
+            "Q_job_null_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: null
+                steps: []
+            """,
+        ),
+        (
+            "R_job_read_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: read-all
+                steps: []
+            """,
+        ),
+        (
+            "S_job_write_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: write-all
+                steps: []
+            """,
+        ),
+        (
+            "T_differently_named_job_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              quiet-but-broad:
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
     ),
 )
 def test_quality_gate_permission_detector_rejects_non_frozen_permission_models(
+    case_id: str,
     workflow_text: str,
 ) -> None:
-    assert _workflow_permission_violations(textwrap.dedent(workflow_text))
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    assert _workflow_permission_violations(workflow), case_id
 
 
 def test_quality_gate_permission_detector_accepts_only_frozen_read_only_model() -> None:
@@ -1490,7 +1580,154 @@ def test_quality_gate_permission_detector_accepts_only_frozen_read_only_model() 
         steps: []
     """
 
-    assert not _workflow_permission_violations(textwrap.dedent(workflow_text))
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+    assert not _workflow_permission_violations(workflow)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "two_space_job_indentation",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "four_space_job_indentation",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+                python:
+                    permissions:
+                        contents: write
+                    runs-on: ubuntu-24.04
+                    steps: []
+            """,
+        ),
+        (
+            "deeper_valid_job_indentation",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+                  python:
+                      runs-on: ubuntu-24.04
+                      permissions:
+                          contents: write
+                      steps: []
+            """,
+        ),
+        (
+            "comments_between_job_and_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                # This comment must not hide the semantic permission override.
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "permissions_before_other_job_keys",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "permissions_after_other_job_keys",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+                permissions:
+                  contents: write
+            """,
+        ),
+        (
+            "multiple_jobs_second_has_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+              frontend:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_permission_detector_rejects_job_permission_formatting_variants(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    assert _workflow_permission_violations(workflow), case_id
+
+
+@pytest.mark.parametrize(
+    "workflow_text",
+    (
+        """
+        name: Quality Gates
+        permissions: # comments do not change the frozen model
+          contents: read # checkout only
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+        """
+        jobs:
+          python:
+            steps: []
+            runs-on: ubuntu-24.04
+        permissions:
+          "contents": "read"
+        name: Quality Gates
+        """,
+    ),
+)
+def test_quality_gate_permission_detector_accepts_harmless_yaml_formatting(
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    assert not _workflow_permission_violations(workflow)
 
 
 @pytest.mark.parametrize(
