@@ -14,7 +14,7 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-010 integration tests are independently validated/frozen on the task branch; downstream M0 work remains blocked until the validation/freeze commit is integrated into `main`. |
+| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-011 CI quality gate update is validated/frozen on the task branch; downstream M0 work remains blocked until the validation/freeze history is integrated into main. |
 
 ## Task Status
 
@@ -30,8 +30,8 @@ date: 2026-09-23
 | TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05A | VALIDATED, FROZEN | Independent validation accepted the M0 API work endpoints as outer composition/translation over frozen runtime boundaries. |
 | TASK-M0-009 | M0 Web Work Console | TASK-M0-008 | PG-M0-05B | VALIDATED, FROZEN | Independent validation accepted the minimal web console as a presentation-only surface over the frozen M0 API routes with bounded stale-response handling. |
 | TASK-M0-010 | M0 Integration Test Foundation | TASK-M0-008, TASK-M0-009 | PG-M0-06 | VALIDATED, FROZEN | Independent validation accepted deterministic M0 vertical-slice integration tests for provider inventory success, policy blocking, PostgreSQL reconstruction, API recorded truth, web/API route alignment, cross-work isolation, and bounded failure translation. |
-| TASK-M0-011 | M0 CI Quality Gate Update | TASK-M0-010 | PG-M0-07 | BLOCKED | Requires the TASK-M0-010 validation/freeze commit to be integrated into `main`. |
-| TASK-M0-012 | M0 Acceptance Suite | TASK-M0-011 | PG-M0-08 | BLOCKED | Requires CI gate update. |
+| TASK-M0-011 | M0 CI Quality Gate Update | TASK-M0-010 | PG-M0-07 | VALIDATED, FROZEN | Independent validation accepted the M0 CI quality gate update, including explicit M0 package, PostgreSQL, TASK-M0-010 integration, BOOT acceptance, full pytest, frontend, exact workflow execution-surface, and BOOT-025 security-preservation gates. |
+| TASK-M0-012 | M0 Acceptance Suite | TASK-M0-011 | PG-M0-08 | BLOCKED | Requires TASK-M0-011 independent validation/freeze and integration. |
 | TASK-M0-013 | M0 Independent Verification Record | TASK-M0-012 | PG-M0-09 | BLOCKED | Requires M0 acceptance suite. |
 | TASK-M0-014 | M0 Final Freeze | TASK-M0-013 | PG-M0-10 | BLOCKED | Requires independent M0 verification. |
 

