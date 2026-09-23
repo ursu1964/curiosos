@@ -1,7 +1,7 @@
 ---
 id: TASK-M0-012-EVIDENCE
 title: TASK-M0-012 M0 Acceptance Suite Evidence
-lifecycle: TESTED
+lifecycle: FROZEN
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M0-012
@@ -118,7 +118,8 @@ Verification performed during implementation:
 
 ## Lifecycle
 
-TASK-M0-012 is `IMPLEMENTED, TESTED`.
+TASK-M0-012 is `VALIDATED, FROZEN`.
 
-It is not `VALIDATED` or `FROZEN`. Independent validation must decide whether
-TASK-M0-012 can freeze and whether TASK-M0-013 may become ready.
+Independent validation accepted the implemented acceptance suite without
+requiring production corrections. TASK-M0-013 remains blocked until this
+complete validation/freeze history is integrated into `main`.
