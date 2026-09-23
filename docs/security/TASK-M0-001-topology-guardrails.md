@@ -27,8 +27,9 @@ Current tracked roots remain the frozen BOOT roots:
 - existing BOOT Python packages;
 - `packages/python/curios_persistence/**` for TASK-M0-002 only;
 - `packages/python/curios_policy/**` for TASK-M0-003 only;
-- `packages/python/curios_runtime/**` event/evidence modules for TASK-M0-004
-  only;
+- `packages/python/curios_runtime/**` event/evidence modules for TASK-M0-004,
+  work repository modules for TASK-M0-005, and single-step runtime service
+  module for TASK-M0-006 only;
 - existing BOOT TypeScript package;
 - `apps/api`;
 - `apps/web`;
@@ -41,8 +42,10 @@ service roots, provider roots, or `.github` surfaces.
 TASK-M0-002 narrowly authorizes the planned `curios_persistence` package root.
 TASK-M0-003 narrowly authorizes the planned `curios_policy` package root.
 TASK-M0-004 narrowly authorizes event/evidence runtime store modules under the
-planned `curios_runtime` package root. Work repositories, runtime services, and
-executor/API/web downstream surfaces remain blocked until their owning tasks.
+planned `curios_runtime` package root. TASK-M0-005 authorizes work repository
+modules under that root. TASK-M0-006 authorizes only the single-step runtime
+service module under that root. Provider executors, API/web downstream surfaces,
+and broader runtime/service roots remain blocked until their owning tasks.
 
 ## Planned But Not Yet Authorized M0 Surfaces
 
@@ -51,7 +54,7 @@ authorize them narrowly:
 
 | Task | Planned Surface |
 | --- | --- |
-| TASK-M0-005 through TASK-M0-007 | `packages/python/curios_runtime/**` downstream modules beyond TASK-M0-004 event/evidence store |
+| TASK-M0-007 | `packages/python/curios_runtime/**` provider-inventory executor modules beyond the TASK-M0-004/005/006 runtime modules |
 | TASK-M0-010 | `tests/integration/**` additions beyond frozen BOOT integration tests |
 | TASK-M0-012 | `tests/acceptance/**` additions beyond frozen BOOT acceptance tests |
 
@@ -76,6 +79,7 @@ to the M0 DAG.
 The security topology tests reject:
 
 - future M0 packages before their owning task authorizes them;
+- future `curios_runtime` modules before their owning task authorizes them;
 - plausible M1+ package names such as agent runtime, DataLab, knowledge,
   model-router, and secret-resolver packages;
 - broad top-level runtime/service/provider roots;

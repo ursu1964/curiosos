@@ -115,7 +115,6 @@ POLICY_FORBIDDEN_IMPORTS = frozenset(
 RUNTIME_FORBIDDEN_IMPORTS = frozenset(
     {
         "curios_core",
-        "curios_policy",
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -555,7 +554,7 @@ def test_minimal_policy_evaluator_remains_outer_and_contract_backed() -> None:
     _assert_no_violations(violations)
 
 
-def test_m0_event_evidence_runtime_store_remains_outer_and_persistence_backed() -> None:
+def test_m0_runtime_package_remains_outer_and_persistence_policy_backed() -> None:
     violations = (
         *_forbidden_import_violations(
             rule=M0_INWARD_DEPENDENCY_RULE,
