@@ -14,7 +14,7 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-013 independent verification passed on the verification branch; final M0 freeze remains blocked until the verification record is committed and integrated. |
+| M0 | VALIDATED, FROZEN | M0 executable program passed independent readiness revalidation, TASK-M0-001 through TASK-M0-013 are validated/frozen and integrated, and TASK-M0-014 final freeze records closure. No post-M0 execution unit is authorized by this ledger. |
 
 ## Task Status
 
@@ -33,7 +33,7 @@ date: 2026-09-23
 | TASK-M0-011 | M0 CI Quality Gate Update | TASK-M0-010 | PG-M0-07 | VALIDATED, FROZEN | Independent validation accepted the M0 CI quality gate update, including explicit M0 package, PostgreSQL, TASK-M0-010 integration, BOOT acceptance, full pytest, frontend, exact workflow execution-surface, and BOOT-025 security-preservation gates. |
 | TASK-M0-012 | M0 Acceptance Suite | TASK-M0-011 | PG-M0-08 | VALIDATED, FROZEN | Independent validation accepted the M0 acceptance suite as milestone-level proof for provider inventory success, policy fail-closed behavior, PostgreSQL reconstruction, API/web recorded truth, CI/security/architecture guardrails, and M1+ exclusion without changing production semantics. |
 | TASK-M0-013 | M0 Independent Verification Record | TASK-M0-012 | PG-M0-09 | VALIDATED, FROZEN | Independent verification accepted the complete integrated M0 baseline through TASK-M0-012 and recorded architecture, security, CI, acceptance, lifecycle, ancestry, dependency, hygiene, PostgreSQL, and mechanical verification evidence. |
-| TASK-M0-014 | M0 Final Freeze | TASK-M0-013 | PG-M0-10 | BLOCKED | Requires TASK-M0-013 verification record to be committed and integrated. |
+| TASK-M0-014 | M0 Final Freeze | TASK-M0-013 | PG-M0-10 | VALIDATED, FROZEN | Final M0 freeze/status-ledger closure passed and records M0 as validated/frozen. Next program state is authorization required. |
 
 ## Status Semantics
 
