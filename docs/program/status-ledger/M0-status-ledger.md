@@ -14,7 +14,7 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-012 M0 acceptance suite is validated/frozen on the task branch; downstream M0 work remains blocked until the validation/freeze history is integrated into main. |
+| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-013 independent verification passed on the verification branch; final M0 freeze remains blocked until the verification record is committed and integrated. |
 
 ## Task Status
 
@@ -32,8 +32,8 @@ date: 2026-09-23
 | TASK-M0-010 | M0 Integration Test Foundation | TASK-M0-008, TASK-M0-009 | PG-M0-06 | VALIDATED, FROZEN | Independent validation accepted deterministic M0 vertical-slice integration tests for provider inventory success, policy blocking, PostgreSQL reconstruction, API recorded truth, web/API route alignment, cross-work isolation, and bounded failure translation. |
 | TASK-M0-011 | M0 CI Quality Gate Update | TASK-M0-010 | PG-M0-07 | VALIDATED, FROZEN | Independent validation accepted the M0 CI quality gate update, including explicit M0 package, PostgreSQL, TASK-M0-010 integration, BOOT acceptance, full pytest, frontend, exact workflow execution-surface, and BOOT-025 security-preservation gates. |
 | TASK-M0-012 | M0 Acceptance Suite | TASK-M0-011 | PG-M0-08 | VALIDATED, FROZEN | Independent validation accepted the M0 acceptance suite as milestone-level proof for provider inventory success, policy fail-closed behavior, PostgreSQL reconstruction, API/web recorded truth, CI/security/architecture guardrails, and M1+ exclusion without changing production semantics. |
-| TASK-M0-013 | M0 Independent Verification Record | TASK-M0-012 | PG-M0-09 | BLOCKED | Requires TASK-M0-012 validation/freeze history to be integrated into main. |
-| TASK-M0-014 | M0 Final Freeze | TASK-M0-013 | PG-M0-10 | BLOCKED | Requires independent M0 verification. |
+| TASK-M0-013 | M0 Independent Verification Record | TASK-M0-012 | PG-M0-09 | VALIDATED, FROZEN | Independent verification accepted the complete integrated M0 baseline through TASK-M0-012 and recorded architecture, security, CI, acceptance, lifecycle, ancestry, dependency, hygiene, PostgreSQL, and mechanical verification evidence. |
+| TASK-M0-014 | M0 Final Freeze | TASK-M0-013 | PG-M0-10 | BLOCKED | Requires TASK-M0-013 verification record to be committed and integrated. |
 
 ## Status Semantics
 
