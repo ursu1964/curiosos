@@ -281,12 +281,14 @@ source = { editable = "packages/python/curios_runtime" }
 dependencies = [
     { name = "curios-contracts" },
     { name = "curios-persistence" },
+    { name = "curios-policy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "curios-contracts", editable = "packages/python/curios_contracts" },
     { name = "curios-persistence", editable = "packages/python/curios_persistence" },
+    { name = "curios-policy", editable = "packages/python/curios_policy" },
 ]
 
 [[package]]

@@ -242,7 +242,6 @@ def test_runtime_store_public_boundary_exports_no_persistence_objects() -> None:
 
 def test_runtime_store_source_does_not_introduce_blocked_runtime_scope() -> None:
     source = EVENT_EVIDENCE_SOURCE.read_text(encoding="utf-8")
-    pyproject = PYPROJECT.read_text(encoding="utf-8")
 
     for forbidden in (
         "asyncio",
@@ -256,7 +255,6 @@ def test_runtime_store_source_does_not_introduce_blocked_runtime_scope() -> None
         "FastAPI",
     ):
         assert forbidden not in source
-    assert "curios-policy" not in pyproject
 
 
 class _MemoryPersistenceStore:

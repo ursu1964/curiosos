@@ -149,7 +149,20 @@ M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK = {
     "TASK-M0-003": frozenset({"packages/python/curios_policy"}),
     "TASK-M0-004": frozenset({"packages/python/curios_runtime"}),
     "TASK-M0-005": frozenset({"packages/python/curios_runtime"}),
+    "TASK-M0-006": frozenset({"packages/python/curios_runtime"}),
 }
+M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
+    "TASK-M0-004": frozenset({"event_evidence_store.py"}),
+    "TASK-M0-005": frozenset({"work_repository.py"}),
+    "TASK-M0-006": frozenset({"single_step_runtime.py"}),
+}
+M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
+    {
+        "__init__.py",
+        "py.typed",
+        *frozenset().union(*M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK.values()),
+    }
+)
 M0_PLANNED_APP_ROOTS_BY_TASK = {
     "TASK-M0-008": frozenset({"apps/api"}),
     "TASK-M0-009": frozenset({"apps/web"}),
@@ -649,8 +662,21 @@ def _tracked_github_paths() -> frozenset[str]:
     )
 
 
+def _tracked_runtime_source_files() -> frozenset[str]:
+    runtime_source = REPO_ROOT / "packages/python/curios_runtime/src/curios_runtime"
+    return frozenset(
+        path.relative_to(runtime_source).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(runtime_source)
+    )
+
+
 def _unauthorized_github_paths(paths: frozenset[str]) -> frozenset[str]:
     return paths - AUTHORIZED_GITHUB_PATHS
+
+
+def _unauthorized_runtime_source_files(paths: frozenset[str]) -> frozenset[str]:
+    return paths - M0_AUTHORIZED_RUNTIME_SOURCE_FILES
 
 
 def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
@@ -1032,11 +1058,31 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-004"] == {"packages/python/curios_runtime"}
     assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-005"] == {"packages/python/curios_runtime"}
     assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-005"] == {"packages/python/curios_runtime"}
-    assert "TASK-M0-006" not in M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK
+    assert M0_PLANNED_PACKAGE_ROOTS_BY_TASK["TASK-M0-006"] == {"packages/python/curios_runtime"}
+    assert M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK["TASK-M0-006"] == {"packages/python/curios_runtime"}
+    assert M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M0-006"] == {"single_step_runtime.py"}
     assert "TASK-M0-007" not in M0_AUTHORIZED_PACKAGE_ROOTS_BY_TASK
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
+
+
+@pytest.mark.parametrize(
+    "runtime_file",
+    (
+        "scheduler.py",
+        "provider_inventory_executor.py",
+        "model_router.py",
+        "agent_runtime.py",
+        "services/workflow.py",
+    ),
+)
+def test_m0_runtime_module_topology_rejects_unvalidated_future_runtime_surfaces(
+    runtime_file: str,
+) -> None:
+    simulated_files = M0_AUTHORIZED_RUNTIME_SOURCE_FILES | {runtime_file}
+
+    assert _unauthorized_runtime_source_files(simulated_files) == {runtime_file}
 
 
 def test_later_task_security_provider_runtime_surfaces_match_authorized_current_boundary() -> None:
@@ -1047,6 +1093,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     unexpected_acceptance_tests = _tracked_acceptance_tests() - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
+    unexpected_runtime_files = _unauthorized_runtime_source_files(_tracked_runtime_source_files())
     unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
     unexpected_m0_package_roots = _tracked_package_roots() & M0_DEFERRED_PACKAGE_ROOTS
@@ -1075,6 +1122,10 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     _assert_no_security_failure(
         not unexpected_github_paths,
         f"unexpected tracked .github path(s): {sorted(unexpected_github_paths)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_runtime_files,
+        f"unexpected tracked curios_runtime source file(s): {sorted(unexpected_runtime_files)}",
     )
     _assert_no_security_failure(
         not unexpected_apps,

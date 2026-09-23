@@ -14,7 +14,7 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. M0 Wave-03 integrated validated/frozen TASK-M0-004 and TASK-M0-005; TASK-M0-006 is ready as the next M0 wave. |
+| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-006 single-step runtime service is implemented/tested; downstream M0 work remains blocked pending independent validation. |
 
 ## Task Status
 
@@ -25,7 +25,7 @@ date: 2026-09-23
 | TASK-M0-003 | Minimal Policy Evaluator | TASK-M0-001 | PG-M0-02A | VALIDATED, FROZEN | Independent revalidation accepted the corrected minimal policy evaluator after the formatter-only guardrail-test correction. PG-M0-02 integration with frozen TASK-M0-002 remains required before downstream readiness changes. |
 | TASK-M0-004 | Event and Evidence Runtime Store | TASK-M0-001, TASK-M0-002 | PG-M0-02B | VALIDATED, FROZEN | Independent revalidation accepted the corrected append-order ordinal implementation and runtime event/evidence store boundary. PG-M0-02B integration with TASK-M0-005 remains required before downstream readiness changes. |
 | TASK-M0-005 | Work Repository and State Transitions | TASK-M0-002 | PG-M0-02B | VALIDATED, FROZEN | Independent revalidation accepted the corrected repository decode boundary, state-transition model, concurrency semantics, and PostgreSQL reconstruction behavior. |
-| TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | READY | TASK-M0-003, TASK-M0-004, and TASK-M0-005 are validated/frozen and integrated; may begin after explicit task authorization. |
+| TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | IMPLEMENTED, TESTED | Runtime service coordinates frozen policy, work repository, event/evidence store, and a fakeable executor seam; requires independent validation before downstream readiness changes. |
 | TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | BLOCKED | Requires runtime service. |
 | TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05A | BLOCKED | Requires provider-inventory executor. |
 | TASK-M0-009 | M0 Web Work Console | TASK-M0-008 | PG-M0-05B | BLOCKED | Requires M0 API endpoint contract. |
