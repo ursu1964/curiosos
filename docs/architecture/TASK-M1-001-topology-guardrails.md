@@ -81,8 +81,11 @@ are absent.
 
 Security topology tests provide the companion canonical-authority guard for
 `curios_contracts`: the current module declaration inventory and
-package-export inventory are exact, while planned M1 concepts remain registered
-as future ownership only.
+package-export inventory are exact. Package exports include a lossless ordered
+inventory of `__init__.py` import statements, so duplicate imports, aliases,
+plain imports, assignment aliases, and `__all__` changes are treated as
+authority transitions. Planned M1 concepts remain registered as future
+ownership only.
 
 TASK-M1-001 does not authorize:
 

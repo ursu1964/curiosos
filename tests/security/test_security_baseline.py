@@ -684,137 +684,194 @@ FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE = {
         ),
     },
 }
-FROZEN_CONTRACT_INIT_IMPORTS = {
-    "curios_contracts.agents": (
-        ("AGENT_INSTANCE_STATE_VALUES", None),
-        ("AgentDefinition", None),
-        ("AgentInstance", None),
-        ("AgentInstanceState", None),
+FROZEN_CONTRACT_INIT_IMPORTS = (
+    (
+        "curios_contracts.agents",
+        (
+            ("AGENT_INSTANCE_STATE_VALUES", None),
+            ("AgentDefinition", None),
+            ("AgentInstance", None),
+            ("AgentInstanceState", None),
+        ),
     ),
-    "curios_contracts.artifacts": (
-        ("ARTIFACT_KIND_VALUES", None),
-        ("INTEGRITY_ALGORITHM_VALUES", None),
-        ("ArtifactKind", None),
-        ("ArtifactReference", None),
-        ("IntegrityAlgorithm", None),
-        ("IntegrityDescriptor", None),
+    (
+        "curios_contracts.artifacts",
+        (
+            ("ARTIFACT_KIND_VALUES", None),
+            ("INTEGRITY_ALGORITHM_VALUES", None),
+            ("ArtifactKind", None),
+            ("ArtifactReference", None),
+            ("IntegrityAlgorithm", None),
+            ("IntegrityDescriptor", None),
+        ),
     ),
-    "curios_contracts.capabilities": (
-        ("CAPABILITY_CATEGORY_VALUES", None),
-        ("CAPABILITY_QUALITY_VALUES", None),
-        ("Capability", None),
-        ("CapabilityCategory", None),
-        ("CapabilityQuality", None),
-        ("CapabilityRequirement", None),
+    (
+        "curios_contracts.capabilities",
+        (
+            ("CAPABILITY_CATEGORY_VALUES", None),
+            ("CAPABILITY_QUALITY_VALUES", None),
+            ("Capability", None),
+            ("CapabilityCategory", None),
+            ("CapabilityQuality", None),
+            ("CapabilityRequirement", None),
+        ),
     ),
-    "curios_contracts.errors": (
-        ("ERROR_CATEGORY_VALUES", None),
-        ("ERROR_SEVERITY_VALUES", None),
-        ("ContractError", None),
-        ("ErrorCategory", None),
-        ("ErrorCode", None),
-        ("ErrorSeverity", None),
-        ("ResultWarning", None),
+    (
+        "curios_contracts.errors",
+        (
+            ("ERROR_CATEGORY_VALUES", None),
+            ("ERROR_SEVERITY_VALUES", None),
+            ("ContractError", None),
+            ("ErrorCategory", None),
+            ("ErrorCode", None),
+            ("ErrorSeverity", None),
+            ("ResultWarning", None),
+        ),
     ),
-    "curios_contracts.events": (
-        ("RUNTIME_EVENT_TYPES", None),
-        ("EventEnvelope", None),
-        ("EventType", None),
-        ("RuntimeEventType", None),
+    (
+        "curios_contracts.events",
+        (
+            ("RUNTIME_EVENT_TYPES", None),
+            ("EventEnvelope", None),
+            ("EventType", None),
+            ("RuntimeEventType", None),
+        ),
     ),
-    "curios_contracts.evidence": (
-        ("EVIDENCE_KIND_VALUES", None),
-        ("EvidenceKind", None),
-        ("EvidenceReference", None),
+    (
+        "curios_contracts.evidence",
+        (
+            ("EVIDENCE_KIND_VALUES", None),
+            ("EvidenceKind", None),
+            ("EvidenceReference", None),
+        ),
     ),
-    "curios_contracts.executions": (
-        ("EXECUTION_STATE_VALUES", None),
-        ("ExecutionRecord", None),
-        ("ExecutionState", None),
+    (
+        "curios_contracts.executions",
+        (
+            ("EXECUTION_STATE_VALUES", None),
+            ("ExecutionRecord", None),
+            ("ExecutionState", None),
+        ),
     ),
-    "curios_contracts.identifiers": (
-        ("ID_PREFIXES", None),
-        ("ID_TYPES", None),
-        ("AgentDefinitionId", None),
-        ("AgentInstanceId", None),
-        ("ApplicationId", None),
-        ("ArtifactId", None),
-        ("CapabilityId", None),
-        ("CorrelationId", None),
-        ("CuriosId", None),
-        ("EventId", None),
-        ("EvidenceId", None),
-        ("ExecutionId", None),
-        ("MilestoneId", None),
-        ("ProjectId", None),
-        ("ProviderId", None),
-        ("TraceId", None),
-        ("VerificationId", None),
-        ("WorkId", None),
-        ("WorkstreamId", None),
-        ("ensure_id_type", None),
+    (
+        "curios_contracts.identifiers",
+        (
+            ("ID_PREFIXES", None),
+            ("ID_TYPES", None),
+            ("AgentDefinitionId", None),
+            ("AgentInstanceId", None),
+            ("ApplicationId", None),
+            ("ArtifactId", None),
+            ("CapabilityId", None),
+            ("CorrelationId", None),
+            ("CuriosId", None),
+            ("EventId", None),
+            ("EvidenceId", None),
+            ("ExecutionId", None),
+            ("MilestoneId", None),
+            ("ProjectId", None),
+            ("ProviderId", None),
+            ("TraceId", None),
+            ("VerificationId", None),
+            ("WorkId", None),
+            ("WorkstreamId", None),
+            ("ensure_id_type", None),
+        ),
     ),
-    "curios_contracts.lifecycle": (
-        ("ENGINEERING_LIFECYCLE_VALUES", None),
-        ("EngineeringLifecycle", None),
+    (
+        "curios_contracts.lifecycle",
+        (
+            ("ENGINEERING_LIFECYCLE_VALUES", None),
+            ("EngineeringLifecycle", None),
+        ),
     ),
-    "curios_contracts.observability": (("ObservabilityContext", None),),
-    "curios_contracts.providers": (
-        ("PROVIDER_STATUS_VALUES", None),
-        ("PROVIDER_TYPE_VALUES", None),
-        ("ProviderDescriptor", None),
-        ("ProviderStatus", None),
-        ("ProviderType", None),
+    (
+        "curios_contracts.observability",
+        (("ObservabilityContext", None),),
     ),
-    "curios_contracts.references": (
-        ("REFERENCE_KIND_VALUES", None),
-        ("ObjectReference", None),
-        ("ReferenceKind", None),
+    (
+        "curios_contracts.providers",
+        (
+            ("PROVIDER_STATUS_VALUES", None),
+            ("PROVIDER_TYPE_VALUES", None),
+            ("ProviderDescriptor", None),
+            ("ProviderStatus", None),
+            ("ProviderType", None),
+        ),
     ),
-    "curios_contracts.results": (
-        ("RESULT_STATUS_VALUES", None),
-        ("Result", None),
-        ("ResultStatus", None),
+    (
+        "curios_contracts.references",
+        (
+            ("REFERENCE_KIND_VALUES", None),
+            ("ObjectReference", None),
+            ("ReferenceKind", None),
+        ),
     ),
-    "curios_contracts.schema_version": (("SchemaVersion", None),),
-    "curios_contracts.security": (
-        ("APPROVAL_OUTCOME_VALUES", None),
-        ("CONFIGURATION_PROFILE_VALUES", None),
-        ("EFFECT_CLASSIFICATION_VALUES", None),
-        ("GOVERNED_EFFECT_VALUES", None),
-        ("POLICY_DECISION_OUTCOME_VALUES", None),
-        ("PRINCIPAL_TYPE_VALUES", None),
-        ("RISK_CLASSIFICATION_VALUES", None),
-        ("Approval", None),
-        ("ApprovalOutcome", None),
-        ("Authority", None),
-        ("ConfigurationProfile", None),
-        ("ConfigurationProfileName", None),
-        ("EffectClassification", None),
-        ("Permission", None),
-        ("PolicyDecision", None),
-        ("PolicyDecisionOutcome", None),
-        ("Principal", None),
-        ("PrincipalType", None),
-        ("RiskClassification", None),
-        ("SecretReference", None),
+    (
+        "curios_contracts.results",
+        (
+            ("RESULT_STATUS_VALUES", None),
+            ("Result", None),
+            ("ResultStatus", None),
+        ),
     ),
-    "curios_contracts.serialization": (("to_json_compatible", None),),
-    "curios_contracts.temporal": (
-        ("DurationMilliseconds", None),
-        ("UtcTimestamp", None),
+    (
+        "curios_contracts.schema_version",
+        (("SchemaVersion", None),),
     ),
-    "curios_contracts.verification": (
-        ("VERIFICATION_OUTCOME_VALUES", None),
-        ("VerificationOutcome", None),
-        ("VerificationReference", None),
+    (
+        "curios_contracts.security",
+        (
+            ("APPROVAL_OUTCOME_VALUES", None),
+            ("CONFIGURATION_PROFILE_VALUES", None),
+            ("EFFECT_CLASSIFICATION_VALUES", None),
+            ("GOVERNED_EFFECT_VALUES", None),
+            ("POLICY_DECISION_OUTCOME_VALUES", None),
+            ("PRINCIPAL_TYPE_VALUES", None),
+            ("RISK_CLASSIFICATION_VALUES", None),
+            ("Approval", None),
+            ("ApprovalOutcome", None),
+            ("Authority", None),
+            ("ConfigurationProfile", None),
+            ("ConfigurationProfileName", None),
+            ("EffectClassification", None),
+            ("Permission", None),
+            ("PolicyDecision", None),
+            ("PolicyDecisionOutcome", None),
+            ("Principal", None),
+            ("PrincipalType", None),
+            ("RiskClassification", None),
+            ("SecretReference", None),
+        ),
     ),
-    "curios_contracts.work": (
-        ("WORK_ITEM_STATE_VALUES", None),
-        ("WorkItem", None),
-        ("WorkItemState", None),
+    (
+        "curios_contracts.serialization",
+        (("to_json_compatible", None),),
     ),
-}
+    (
+        "curios_contracts.temporal",
+        (
+            ("DurationMilliseconds", None),
+            ("UtcTimestamp", None),
+        ),
+    ),
+    (
+        "curios_contracts.verification",
+        (
+            ("VERIFICATION_OUTCOME_VALUES", None),
+            ("VerificationOutcome", None),
+            ("VerificationReference", None),
+        ),
+    ),
+    (
+        "curios_contracts.work",
+        (
+            ("WORK_ITEM_STATE_VALUES", None),
+            ("WorkItem", None),
+            ("WorkItemState", None),
+        ),
+    ),
+)
 FROZEN_CONTRACT_INIT_DECLARATIONS = (("__version__", "assignment"),)
 FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "AGENT_INSTANCE_STATE_VALUES",
@@ -1499,18 +1556,30 @@ def _contract_module_authority_violations(
 def _contract_init_authority(
     source: str,
 ) -> tuple[
-    dict[str, tuple[tuple[str, str | None], ...]],
+    tuple[tuple[str, tuple[tuple[str, str | None], ...]], ...],
     tuple[tuple[str, str], ...],
     tuple[str, ...],
 ]:
     tree = _parse_contract_text("__init__.py", source)
-    imports: dict[str, tuple[tuple[str, str | None], ...]] = {}
+    imports: list[tuple[str, tuple[tuple[str, str | None], ...]]] = []
     declarations: list[tuple[str, str]] = []
     all_values: tuple[str, ...] = ()
 
     for node in tree.body:
         if isinstance(node, ast.ImportFrom) and node.module is not None:
-            imports[node.module] = tuple((alias.name, alias.asname) for alias in node.names)
+            imports.append(
+                (
+                    node.module,
+                    tuple((alias.name, alias.asname) for alias in node.names),
+                )
+            )
+        elif isinstance(node, ast.Import):
+            imports.append(
+                (
+                    "<import>",
+                    tuple((alias.name, alias.asname) for alias in node.names),
+                )
+            )
         elif isinstance(node, ast.Assign):
             for target in node.targets:
                 if not isinstance(target, ast.Name):
@@ -1533,7 +1602,7 @@ def _contract_init_authority(
             kind = "class" if isinstance(node, ast.ClassDef) else "function"
             declarations.append((node.name, kind))
 
-    return imports, tuple(declarations), all_values
+    return tuple(imports), tuple(declarations), all_values
 
 
 def _contract_init_authority_violations(source: str) -> tuple[str, ...]:
@@ -4354,11 +4423,104 @@ def test_curios_contracts_reject_duplicate_generic_reference_declaration() -> No
 @pytest.mark.parametrize(
     "mutation",
     (
+        "unsafe_alias_before_legitimate_import",
+        "unsafe_alias_after_legitimate_import",
+        "unsafe_alias_between_legitimate_imports",
+        "duplicate_module_import_one_unsafe",
+        "duplicate_module_import_three_times_middle_unsafe",
+        "unsafe_alias_mixed_into_legitimate_import",
+        "safe_frozen_import_duplicated_unexpectedly",
+        "duplicate_import_changed_alias",
+        "star_import",
+        "plain_import_as_public_alias",
+        "from_import_then_public_assignment_alias",
+        "plain_import_then_public_assignment_alias",
+        "other_module_existing_symbol_under_new_public_name",
+    ),
+)
+def test_curios_contracts_init_rejects_lossy_import_and_alias_edge_cases(
+    mutation: str,
+) -> None:
+    source = (CONTRACTS_SOURCE / "__init__.py").read_text(encoding="utf-8")
+    work_import = (
+        "from curios_contracts.work import WORK_ITEM_STATE_VALUES, WorkItem, WorkItemState\n"
+    )
+    evidence_import = (
+        "from curios_contracts.evidence import EVIDENCE_KIND_VALUES, "
+        "EvidenceKind, EvidenceReference\n"
+    )
+    mutations = {
+        "unsafe_alias_before_legitimate_import": (
+            "from curios_contracts.work import WorkItem as Intent\n" + source
+        ),
+        "unsafe_alias_after_legitimate_import": source.replace(
+            work_import,
+            f"{work_import}from curios_contracts.work import WorkItem as Intent\n",
+        ),
+        "unsafe_alias_between_legitimate_imports": source.replace(
+            evidence_import,
+            f"from curios_contracts.work import WorkItem as Intent\n{evidence_import}",
+        ),
+        "duplicate_module_import_one_unsafe": source.replace(
+            work_import,
+            f"from curios_contracts.work import WorkItem as Objective\n{work_import}",
+        ),
+        "duplicate_module_import_three_times_middle_unsafe": source.replace(
+            work_import,
+            (
+                "from curios_contracts.work import WorkItem\n"
+                "from curios_contracts.work import WorkItem as AnythingPublic\n"
+                f"{work_import}"
+            ),
+        ),
+        "unsafe_alias_mixed_into_legitimate_import": source.replace(
+            work_import,
+            (
+                "from curios_contracts.work import WORK_ITEM_STATE_VALUES, "
+                "WorkItem as AnythingPublic, WorkItemState\n"
+            ),
+        ),
+        "safe_frozen_import_duplicated_unexpectedly": source.replace(
+            work_import,
+            f"{work_import}{work_import}",
+        ),
+        "duplicate_import_changed_alias": source.replace(
+            work_import,
+            (
+                "from curios_contracts.work import WORK_ITEM_STATE_VALUES, "
+                "WorkItem as WorkItem, WorkItemState\n"
+            ),
+        ),
+        "star_import": source.replace(
+            work_import,
+            "from curios_contracts.work import *\n",
+        ),
+        "plain_import_as_public_alias": f"import curios_contracts.work as Intent\n{source}",
+        "from_import_then_public_assignment_alias": source.replace(
+            work_import,
+            f"from curios_contracts.work import WorkItem\nIntent = WorkItem\n{work_import}",
+        ),
+        "plain_import_then_public_assignment_alias": (
+            f"import curios_contracts.work\nIntent = curios_contracts.work.WorkItem\n{source}"
+        ),
+        "other_module_existing_symbol_under_new_public_name": (
+            "from curios_contracts.providers import ProviderDescriptor as ModelProfile\n" + source
+        ),
+    }
+
+    assert _contract_init_authority_violations(mutations[mutation])
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
         "new_intent_import_and_export",
         "new_declaration_without_all",
         "reexport_new_symbol_from_existing_module",
         "alias_existing_symbol_under_new_public_name",
+        "alias_existing_symbol_without_all",
         "all_addition_without_authority",
+        "alias_import_plus_all_addition",
         "new_private_helper_reexport",
     ),
 )
@@ -4390,7 +4552,20 @@ def test_curios_contracts_package_exports_reject_public_authority_expansion(
             '    "IntegrityDescriptor",\n',
             '    "IntegrityDescriptor",\n    "Intent",\n',
         ),
+        "alias_existing_symbol_without_all": source.replace(
+            "from curios_contracts.work import WORK_ITEM_STATE_VALUES, WorkItem, WorkItemState",
+            (
+                "from curios_contracts.work import WORK_ITEM_STATE_VALUES, "
+                "WorkItem as Intent, WorkItemState"
+            ),
+        ),
         "all_addition_without_authority": source.replace(
+            '    "IntegrityDescriptor",\n',
+            '    "IntegrityDescriptor",\n    "Intent",\n',
+        ),
+        "alias_import_plus_all_addition": (
+            "from curios_contracts.work import WorkItem as Intent\n" + source
+        ).replace(
             '    "IntegrityDescriptor",\n',
             '    "IntegrityDescriptor",\n    "Intent",\n',
         ),

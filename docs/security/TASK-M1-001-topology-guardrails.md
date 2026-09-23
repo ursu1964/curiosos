@@ -91,9 +91,12 @@ surfaces.
 
 The contract authority guard is AST-based. It compares the frozen inventory of
 public module declarations, representative class/schema members, and
-`curios_contracts.__init__` exports against explicit expected sets. Private
-implementation helpers that remain private by name are not treated as new
-canonical authority, but re-exporting a private helper is blocked.
+`curios_contracts.__init__` exports against explicit expected sets.
+Package-initializer import authority is represented as an ordered lossless
+sequence of import statements, preserving duplicate source-module imports,
+aliases, and statement order. Private implementation helpers that remain
+private by name are not treated as new canonical authority, but re-exporting a
+private helper is blocked.
 
 ## Future Contract Transition
 

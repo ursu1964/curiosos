@@ -87,6 +87,36 @@ The correction freezes the current contract authority inventory explicitly:
 The replayed bypass now fails the canonical declaration inventory and package
 export inventory checks.
 
+## Second Independent Validation Failure And Correction
+
+Independent revalidation of corrected candidate
+`21c4b690397a470eee4fc3ca9ae6c65ff80f8e61` found a narrower package-export
+bypass. Prepending the following import to `curios_contracts/__init__.py`
+created a new public package name while the guard stayed green:
+
+```python
+from curios_contracts.work import WorkItem as Intent
+```
+
+`from curios_contracts import Intent` then succeeded with `Intent is WorkItem`.
+
+The root cause was information loss in the package export inventory:
+`_contract_init_authority` keyed imports by source module, so a later legitimate
+frozen import from `curios_contracts.work` overwrote the earlier unauthorized
+alias import.
+
+The second correction represents package-initializer import authority as an
+ordered sequence of import statements:
+
+- every import statement is preserved;
+- duplicate source-module imports are preserved;
+- imported names and aliases are preserved;
+- statement order is preserved;
+- plain `import ... as ...` statements are represented and rejected unless
+  explicitly frozen.
+
+The confirmed alias bypass now fails the package export inventory check.
+
 ## Adversarial Coverage
 
 The guardrail tests reject representative premature additions for:
@@ -95,6 +125,9 @@ The guardrail tests reject representative premature additions for:
 - M1 cognitive declarations, fields, enum members, type aliases, public
   factories/functions, and constants inside already-authorized contract files;
 - M1 package-level exports, aliases, and re-exports from `curios_contracts`;
+- duplicate-module import aliases, alias-only exports without `__all__`
+  changes, star imports, plain import aliases, and public assignment aliases in
+  `curios_contracts/__init__.py`;
 - TypeScript contract files;
 - M1 package roots;
 - DAG/agent/executor/model/routing/runner/verification runtime modules;
@@ -138,7 +171,10 @@ CI workflow content, API behavior, web behavior, or runtime implementation.
 | Check | Result |
 | --- | --- |
 | Canonical-authority bypass replay | Passed: temporary exported `Intent` probe was rejected by declaration and export inventories. |
-| Security and architecture focused suite | Passed: `292 passed` (`259` security, `33` architecture). |
+| Alias export bypass replay | Passed: temporary `WorkItem as Intent` package import was importable but rejected by lossless export inventory. |
+| Export-authority adversarial matrix | Passed: `22` passed. |
+| Canonical-authority targeted suite | Passed: `24` passed, `250` deselected. |
+| Security and architecture focused suite | Passed: `307 passed` (`274` security, `33` architecture). |
 | TOML validation | Passed: `11` `pyproject.toml` files parsed. |
 | `uv lock --check` | Passed: `47` packages resolved. |
 | `uv sync --locked --all-groups --all-packages` | Passed: `47` packages resolved, `44` packages checked. |
@@ -149,16 +185,16 @@ CI workflow content, API behavior, web behavior, or runtime implementation.
 | Package/API/provider tests | Passed: 168 passed, 2 known dependency warnings. |
 | M0 runtime, persistence, and policy package tests | Passed: 128 passed, 4 deselected. |
 | Contract and schema tests | Passed: 15 passed. |
-| Security tests | Passed: 259 passed. |
+| Security tests | Passed: 274 passed. |
 | Architecture tests | Passed: 33 passed. |
 | API integration tests | Passed: 6 passed, 2 known dependency warnings. |
 | PostgreSQL provider integration test | Passed: 1 passed. |
 | M0 PostgreSQL integration tests | Passed: 4 passed. |
 | M0 vertical-slice integration tests | Passed: 2 passed, 2 known dependency warnings. |
 | BOOT/M0 acceptance tests | Passed: 8 passed, 2 known dependency warnings. |
-| Full pytest suite | Passed: 624 passed, 2 known dependency warnings. |
+| Full pytest suite | Passed: 639 passed, 2 known dependency warnings. |
 | Frontend checks | Passed: frozen install, `pnpm check`, apps/web tests (6 passed), typecheck, and production build (`18` modules transformed). |
-| Workflow Prettier/static audit | Passed: workflow Prettier check and quality-gate static audit (`127` passed, `132` deselected). |
+| Workflow Prettier/static audit | Passed: workflow Prettier check and quality-gate static audit (`127` passed, `147` deselected). |
 | `git diff --check` | Passed. |
 
 The warnings are the existing Starlette/TestClient `httpx` deprecation and
