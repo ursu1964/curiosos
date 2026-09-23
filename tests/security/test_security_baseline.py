@@ -315,6 +315,14 @@ FROZEN_WEB_API_BOUNDARY_PATH_LITERALS = (
     "/work/provider-inventory",
 )
 FROZEN_WEB_API_BOUNDARY_METHODS = ("POST", "POST")
+FROZEN_WEB_API_BOUNDARY_REQUESTS = (
+    ("createProviderInventoryWork", '"/work/provider-inventory"', "POST"),
+    ("runProviderInventoryWork", "runWorkPath(workId)", "POST"),
+    ("readWork", "workPath(workId)", "GET"),
+    ("readExecution", "executionPath(workId, executionId)", "GET"),
+    ("listWorkEvents", "eventsPath(workId)", "GET"),
+    ("listWorkEvidence", "evidencePath(workId)", "GET"),
+)
 FROZEN_WEB_API_BOUNDARY_EXPORTS = (
     "apiBoundaryPaths",
     "ApiBoundaryPath",
@@ -350,106 +358,80 @@ FROZEN_WEB_API_BOUNDARY_EXPORTS = (
     "listWorkEvents",
     "listWorkEvidence",
 )
-FROZEN_WEB_APP_API_BOUNDARY_IMPORTS = (
-    "apiBoundaryPaths",
-    "createProviderInventoryWork",
-    "listWorkEvidence",
-    "listWorkEvents",
-    "readExecution",
-    "readWork",
-    "runProviderInventoryWork",
-    "ApiFailure",
-    "EvidencePayload",
-    "ExecutionPayload",
-    "ProviderDescriptorPayload",
-    "RuntimeEventPayload",
-    "RuntimeStatus",
-    "WorkItemPayload",
+FROZEN_WEB_APP_IMPORTS = (
+    (
+        "@curiosos/curios-contracts",
+        (
+            ("curiosContractsPackageName", None, False),
+            ("curiosContractsPackageVersion", None, False),
+        ),
+    ),
+    (
+        "react",
+        (
+            ("useRef", None, False),
+            ("useState", None, False),
+            ("JSX", None, True),
+            ("ReactNode", None, True),
+        ),
+    ),
+    ("./App.css", ()),
+    (
+        "./apiBoundary",
+        (
+            ("apiBoundaryPaths", None, False),
+            ("createProviderInventoryWork", None, False),
+            ("listWorkEvidence", None, False),
+            ("listWorkEvents", None, False),
+            ("readExecution", None, False),
+            ("readWork", None, False),
+            ("runProviderInventoryWork", None, False),
+            ("ApiFailure", None, True),
+            ("EvidencePayload", None, True),
+            ("ExecutionPayload", None, True),
+            ("ProviderDescriptorPayload", None, True),
+            ("RuntimeEventPayload", None, True),
+            ("RuntimeStatus", None, True),
+            ("WorkItemPayload", None, True),
+        ),
+    ),
 )
+FROZEN_WEB_APP_IMPORT_MODULES = tuple(module for module, _ in FROZEN_WEB_APP_IMPORTS)
+FROZEN_WEB_APP_AUTHORITY_IMPORTS_BY_MODULE = {
+    module: names
+    for module, names in FROZEN_WEB_APP_IMPORTS
+    if module in {"@curiosos/curios-contracts", "./apiBoundary"}
+}
 FROZEN_WEB_APP_EXPORTS = ("App",)
-FROZEN_WEB_APP_STRING_LITERALS = (
-    "@curiosos/curios-contracts",
-    "react",
-    "./App.css",
-    "./apiBoundary",
-    "create",
-    "run",
-    "refresh",
-    "No provider-inventory work has been submitted.",
-    "create",
-    "Provider-inventory work created.",
-    "run",
-    "refresh",
-    "Recorded runtime truth refreshed.",
-    "work-console",
-    "web-shell",
-    "work-console__header",
-    "work-console-title",
-    "work-console__eyebrow",
-    "work-console-title",
-    "work-console__summary",
-    "work-console__contract",
-    "work-console__toolbar",
-    "operation-title",
-    "operation-title",
-    "work-console__actions",
-    "create",
-    "button",
-    "create",
-    "Creating...",
-    "Create Work",
-    "button",
-    "run",
-    "Running...",
-    "Run",
-    "button",
-    "refresh",
-    "Refreshing...",
-    "Refresh",
-    "polite",
-    "work-console__status",
-    "status",
-    "work-console__alert",
-    "assertive",
-    "alert",
-    " ",
-    "work-console__grid",
-    "M0 runtime truth",
-    "Work",
-    "none",
-    "none",
-    "provider_inventory",
-    "Execution",
-    "none",
-    "none",
-    "Runtime status",
-    "none",
-    "Provider Inventory",
-    "work-console__empty",
-    "work-console__list",
-    "Events",
-    "No runtime events recorded.",
-    "Evidence",
-    "No evidence recorded.",
-    "API Boundary",
-    "work-console__routes",
-    "Frozen M0 API routes",
-    "work-console__panel",
-    "work-console__definition-list",
-    "work-console__empty",
-    "work-console__list",
-    "COMPLETED",
-    "Provider inventory completed and recorded.",
-    "BLOCKED",
-    "Provider inventory was blocked by policy.",
-    "Provider inventory failed with a bounded runtime result.",
-    "HTTP_${String(failure.status)}",
-    "The API returned a bounded failure.",
-    "${code}: ${message}",
-    'panel-${title.toLowerCase().replaceAll(" ", "-")}',
+FROZEN_WEB_APP_INTERACTIVE_CAPABILITIES = (
+    ("button", "onClick", ("createProviderInventoryWork",)),
+    ("button", "onClick", ("runProviderInventoryWork",)),
+    ("button", "onClick", ("listWorkEvents", "listWorkEvidence", "readExecution", "readWork")),
+)
+WEB_APP_FORBIDDEN_CAPABILITY_IDENTIFIERS = frozenset(
+    {
+        "EventSource",
+        "fetch",
+        "globalThis",
+        "navigator",
+        "sendBeacon",
+        "WebSocket",
+        "window",
+        "XMLHttpRequest",
+    }
+)
+WEB_API_BOUNDARY_FORBIDDEN_NETWORK_IDENTIFIERS = frozenset(
+    {
+        "EventSource",
+        "globalThis",
+        "navigator",
+        "sendBeacon",
+        "WebSocket",
+        "window",
+        "XMLHttpRequest",
+    }
 )
 WEB_NETWORK_PRIMITIVES = (
-    "fetch(",
     "XMLHttpRequest",
     "WebSocket",
     "EventSource",
@@ -2099,6 +2081,54 @@ def _typescript_string_literals(source: str) -> tuple[str, ...]:
     )
 
 
+def _strip_typescript_comments_and_strings(source: str) -> str:
+    pieces: list[str] = []
+    index = 0
+    while index < len(source):
+        char = source[index]
+        next_char = source[index + 1] if index + 1 < len(source) else ""
+        if char in {'"', "'", "`"}:
+            quote = char
+            pieces.append(" ")
+            index += 1
+            while index < len(source):
+                if source[index] == "\\":
+                    pieces.append(" ")
+                    index += 2
+                    continue
+                if source[index] == quote:
+                    pieces.append(" ")
+                    index += 1
+                    break
+                pieces.append("\n" if source[index] == "\n" else " ")
+                index += 1
+            continue
+        if char == "/" and next_char == "/":
+            pieces.append("  ")
+            index += 2
+            while index < len(source) and source[index] != "\n":
+                pieces.append(" ")
+                index += 1
+            continue
+        if char == "/" and next_char == "*":
+            pieces.append("  ")
+            index += 2
+            while index + 1 < len(source) and source[index : index + 2] != "*/":
+                pieces.append("\n" if source[index] == "\n" else " ")
+                index += 1
+            pieces.append("  ")
+            index += 2
+            continue
+        pieces.append(char)
+        index += 1
+    return "".join(pieces)
+
+
+def _typescript_identifier_tokens(source: str) -> tuple[str, ...]:
+    cleaned = _strip_typescript_comments_and_strings(source)
+    return tuple(re.findall(r"\b[A-Za-z_$][A-Za-z0-9_$]*\b", cleaned))
+
+
 def _typescript_exports(source: str) -> tuple[str, ...]:
     return tuple(
         match.group(1)
@@ -2108,6 +2138,51 @@ def _typescript_exports(source: str) -> tuple[str, ...]:
             source,
         )
     )
+
+
+def _typescript_imports(
+    source: str,
+) -> tuple[tuple[str, tuple[tuple[str, str | None, bool], ...]], ...]:
+    imports: list[tuple[int, str, tuple[tuple[str, str | None, bool], ...]]] = []
+    for match in re.finditer(
+        r"\bimport\s+(?P<body>[^;]*?)\s+from\s*([\"'])(?P<module>[^\"']+)\2\s*;",
+        source,
+        flags=re.DOTALL,
+    ):
+        body = match.group("body").strip()
+        module = match.group("module")
+        if not (body.startswith("{") and body.endswith("}")):
+            imports.append((match.start(), module, (("<default-or-namespace>", body, False),)))
+            continue
+        names: list[tuple[str, str | None, bool]] = []
+        for raw_item in body[1:-1].split(","):
+            item = raw_item.strip()
+            if not item:
+                continue
+            is_type = False
+            if item.startswith("type "):
+                is_type = True
+                item = item.removeprefix("type ").strip()
+            if " as " in item:
+                imported, alias = (part.strip() for part in item.split(" as ", maxsplit=1))
+            else:
+                imported, alias = item, None
+            names.append((imported, alias, is_type))
+        imports.append((match.start(), module, tuple(names)))
+    for match in re.finditer(r"\bimport\s*([\"'])(?P<module>[^\"']+)\1\s*;", source):
+        imports.append((match.start(), match.group("module"), ()))
+    return tuple((module, names) for _, module, names in sorted(imports, key=lambda item: item[0]))
+
+
+def _api_boundary_value_imports(source: str) -> dict[str, str]:
+    imports: dict[str, str] = {}
+    for module, names in _typescript_imports(source):
+        if module != "./apiBoundary":
+            continue
+        for imported, alias, is_type in names:
+            if not is_type:
+                imports[alias or imported] = imported
+    return imports
 
 
 def _typescript_string_array_const(source: str, const_name: str) -> tuple[str, ...]:
@@ -2125,29 +2200,6 @@ def _typescript_method_literals(source: str) -> tuple[str, ...]:
     return tuple(
         match.group(2) for match in re.finditer(r"\bmethod\s*:\s*([\"'])([^\"']+)\1", source)
     )
-
-
-def _typescript_api_boundary_imports(source: str) -> tuple[str, ...]:
-    matches = re.finditer(
-        r"\bimport\s*{(?P<body>.*?)}\s*from\s*([\"'])(?P<module>[^\"']+)\2",
-        source,
-        flags=re.DOTALL,
-    )
-    match = next(
-        (candidate for candidate in matches if candidate.group("module") == "./apiBoundary"),
-        None,
-    )
-    if match is None:
-        return ()
-    imports: list[str] = []
-    for item in match.group("body").split(","):
-        name = item.strip()
-        if not name:
-            continue
-        if name.startswith("type "):
-            name = name.removeprefix("type ").strip()
-        imports.append(name.split(maxsplit=1)[0])
-    return tuple(imports)
 
 
 def _path_like_web_literals(source: str) -> tuple[str, ...]:
@@ -2171,6 +2223,244 @@ def _future_backend_path_hits(source: str) -> tuple[str, ...]:
         for literal in literals
         if any(token in literal.lower() for token in FUTURE_WEB_BACKEND_PATH_TOKENS)
     )
+
+
+def _find_matching_brace(source: str, open_brace_index: int) -> int:
+    depth = 0
+    index = open_brace_index
+    while index < len(source):
+        char = source[index]
+        if char in {'"', "'", "`"}:
+            quote = char
+            index += 1
+            while index < len(source):
+                if source[index] == "\\":
+                    index += 2
+                    continue
+                if source[index] == quote:
+                    break
+                index += 1
+        elif source.startswith("//", index):
+            newline = source.find("\n", index + 2)
+            index = len(source) if newline == -1 else newline
+        elif source.startswith("/*", index):
+            end = source.find("*/", index + 2)
+            index = len(source) if end == -1 else end + 1
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return -1
+
+
+def _find_matching_paren(source: str, open_paren_index: int) -> int:
+    depth = 0
+    index = open_paren_index
+    while index < len(source):
+        char = source[index]
+        if char in {'"', "'", "`"}:
+            quote = char
+            index += 1
+            while index < len(source):
+                if source[index] == "\\":
+                    index += 2
+                    continue
+                if source[index] == quote:
+                    break
+                index += 1
+        elif source.startswith("//", index):
+            newline = source.find("\n", index + 2)
+            index = len(source) if newline == -1 else newline
+        elif source.startswith("/*", index):
+            end = source.find("*/", index + 2)
+            index = len(source) if end == -1 else end + 1
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return -1
+
+
+def _split_top_level_arguments(arguments: str) -> tuple[str, ...]:
+    parts: list[str] = []
+    start = 0
+    paren_depth = 0
+    brace_depth = 0
+    bracket_depth = 0
+    index = 0
+    while index < len(arguments):
+        char = arguments[index]
+        if char in {'"', "'", "`"}:
+            quote = char
+            index += 1
+            while index < len(arguments):
+                if arguments[index] == "\\":
+                    index += 2
+                    continue
+                if arguments[index] == quote:
+                    break
+                index += 1
+        elif char == "(":
+            paren_depth += 1
+        elif char == ")":
+            paren_depth -= 1
+        elif char == "{":
+            brace_depth += 1
+        elif char == "}":
+            brace_depth -= 1
+        elif char == "[":
+            bracket_depth += 1
+        elif char == "]":
+            bracket_depth -= 1
+        elif char == "," and paren_depth == 0 and brace_depth == 0 and bracket_depth == 0:
+            parts.append(arguments[start:index].strip())
+            start = index + 1
+        index += 1
+    parts.append(arguments[start:].strip())
+    return tuple(parts)
+
+
+def _typescript_function_bodies(source: str) -> dict[str, str]:
+    functions: dict[str, str] = {}
+    for match in re.finditer(
+        r"\b(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\b[^{]*{",
+        source,
+    ):
+        open_brace = source.find("{", match.start())
+        close_brace = _find_matching_brace(source, open_brace)
+        if close_brace == -1:
+            continue
+        functions[match.group(1)] = source[open_brace + 1 : close_brace]
+    return functions
+
+
+def _api_boundary_calls_in_body(body: str, api_imports: dict[str, str]) -> tuple[str, ...]:
+    calls: list[str] = []
+    cleaned = _strip_typescript_comments_and_strings(body)
+    for local_name, imported_name in api_imports.items():
+        if re.search(rf"\b{re.escape(local_name)}\s*\(", cleaned):
+            calls.append(imported_name)
+    return tuple(sorted(calls))
+
+
+def _jsx_attribute_expression(attributes: str, attribute_name: str) -> str | None:
+    match = re.search(rf"\b{re.escape(attribute_name)}\s*=\s*{{", attributes)
+    if match is None:
+        return None
+    open_brace = match.end() - 1
+    close_brace = _find_matching_brace(attributes, open_brace)
+    if close_brace == -1:
+        return None
+    return attributes[open_brace + 1 : close_brace]
+
+
+def _find_jsx_opening_end(source: str, start_index: int) -> int:
+    index = start_index
+    brace_depth = 0
+    while index < len(source):
+        char = source[index]
+        if char in {'"', "'", "`"}:
+            quote = char
+            index += 1
+            while index < len(source):
+                if source[index] == "\\":
+                    index += 2
+                    continue
+                if source[index] == quote:
+                    break
+                index += 1
+        elif char == "{":
+            brace_depth += 1
+        elif char == "}":
+            brace_depth -= 1
+        elif char == ">" and brace_depth == 0 and source[index - 1 : index + 1] != "=>":
+            return index
+        index += 1
+    return -1
+
+
+def _handler_capabilities(
+    expression: str,
+    functions: dict[str, str],
+    api_imports: dict[str, str],
+) -> tuple[str, ...]:
+    cleaned = _strip_typescript_comments_and_strings(expression)
+    capability_calls: set[str] = set()
+    handler_calls = re.findall(r"\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(", cleaned)
+    for call in handler_calls:
+        if call in api_imports:
+            capability_calls.add(api_imports[call])
+        elif call in functions:
+            capability_calls.update(_api_boundary_calls_in_body(functions[call], api_imports))
+    return tuple(sorted(capability_calls))
+
+
+def _web_app_interactive_capabilities(source: str) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    functions = _typescript_function_bodies(source)
+    api_imports = _api_boundary_value_imports(source)
+    capabilities: list[tuple[str, str, tuple[str, ...]]] = []
+    for match in re.finditer(r"<(?P<tag>button|form|a)\b", source):
+        tag = match.group("tag")
+        opening_end = _find_jsx_opening_end(source, match.end())
+        if opening_end == -1:
+            capabilities.append((tag, "<parse-error>", ()))
+            continue
+        attributes = source[match.end() : opening_end]
+        for event_name in ("onClick", "onSubmit", "onChange"):
+            expression = _jsx_attribute_expression(attributes, event_name)
+            if expression is None:
+                continue
+            capabilities.append(
+                (
+                    tag,
+                    event_name,
+                    _handler_capabilities(expression, functions, api_imports),
+                )
+            )
+    return tuple(capabilities)
+
+
+def _exported_api_boundary_request_authority(source: str) -> tuple[tuple[str, str, str], ...]:
+    functions = _typescript_function_bodies(source)
+    requests: list[tuple[str, str, str]] = []
+    for function_name in (
+        "createProviderInventoryWork",
+        "runProviderInventoryWork",
+        "readWork",
+        "readExecution",
+        "listWorkEvents",
+        "listWorkEvidence",
+    ):
+        body = functions.get(function_name, "")
+        match = re.search(r"\brequestJson(?:<[^>]+>)?\s*\(", body)
+        if match is None:
+            requests.append((function_name, "<missing>", "<missing>"))
+            continue
+        open_paren = body.find("(", match.start())
+        close_paren = _find_matching_paren(body, open_paren)
+        if close_paren == -1:
+            requests.append((function_name, "<parse-error>", "<parse-error>"))
+            continue
+        arguments = _split_top_level_arguments(body[open_paren + 1 : close_paren])
+        path_expression = " ".join(arguments[0].split()) if arguments else "<missing>"
+        method_match = re.search(r"\bmethod\s*:\s*([\"'])(?P<method>[^\"']+)\1", body)
+        method = method_match.group("method") if method_match is not None else "GET"
+        requests.append((function_name, path_expression, method))
+    return tuple(requests)
+
+
+def _forbidden_identifier_hits(
+    source: str,
+    forbidden_identifiers: frozenset[str],
+) -> tuple[str, ...]:
+    identifiers = _typescript_identifier_tokens(source)
+    return tuple(identifier for identifier in identifiers if identifier in forbidden_identifiers)
 
 
 def _web_api_boundary_authority_violations(source: str) -> tuple[str, ...]:
@@ -2204,6 +2494,20 @@ def _web_api_boundary_authority_violations(source: str) -> tuple[str, ...]:
         violations.append(
             f"web API boundary must contain exactly one fetch call; got {fetch_count}"
         )
+    requests = _exported_api_boundary_request_authority(source)
+    if requests != FROZEN_WEB_API_BOUNDARY_REQUESTS:
+        violations.append(
+            "web API boundary request authority changed: expected "
+            f"{FROZEN_WEB_API_BOUNDARY_REQUESTS!r}; got {requests!r}"
+        )
+    forbidden_hits = _forbidden_identifier_hits(
+        source,
+        WEB_API_BOUNDARY_FORBIDDEN_NETWORK_IDENTIFIERS,
+    )
+    if forbidden_hits:
+        violations.append(
+            f"web API boundary unauthorized network identifier(s): {forbidden_hits!r}"
+        )
     network_hits = _network_primitive_hits(source, allow_fetch=True)
     if network_hits:
         violations.append(f"web API boundary unauthorized network primitive(s): {network_hits!r}")
@@ -2220,18 +2524,30 @@ def _web_app_authority_violations(source: str) -> tuple[str, ...]:
         violations.append(
             f"web App exports changed: expected {FROZEN_WEB_APP_EXPORTS!r}; got {exports!r}"
         )
-    imports = _typescript_api_boundary_imports(source)
-    if imports != FROZEN_WEB_APP_API_BOUNDARY_IMPORTS:
+    imports = _typescript_imports(source)
+    import_modules = tuple(module for module, _ in imports)
+    if import_modules != FROZEN_WEB_APP_IMPORT_MODULES:
         violations.append(
-            "web App API-boundary imports changed: expected "
-            f"{FROZEN_WEB_APP_API_BOUNDARY_IMPORTS!r}; got {imports!r}"
+            f"web App import modules changed: expected {FROZEN_WEB_APP_IMPORT_MODULES!r}; "
+            f"got {import_modules!r}"
         )
-    literals = _typescript_string_literals(source)
-    if literals != FROZEN_WEB_APP_STRING_LITERALS:
+    imports_by_module = {module: names for module, names in imports}
+    for module, expected_imports in FROZEN_WEB_APP_AUTHORITY_IMPORTS_BY_MODULE.items():
+        actual_imports = imports_by_module.get(module, ())
+        if actual_imports != expected_imports:
+            violations.append(
+                f"web App authority imports from {module} changed: "
+                f"expected {expected_imports!r}; got {actual_imports!r}"
+            )
+    interactive_capabilities = _web_app_interactive_capabilities(source)
+    if interactive_capabilities != FROZEN_WEB_APP_INTERACTIVE_CAPABILITIES:
         violations.append(
-            "web App user/control string authority changed: expected "
-            f"{FROZEN_WEB_APP_STRING_LITERALS!r}; got {literals!r}"
+            "web App interactive capabilities changed: expected "
+            f"{FROZEN_WEB_APP_INTERACTIVE_CAPABILITIES!r}; got {interactive_capabilities!r}"
         )
+    forbidden_hits = _forbidden_identifier_hits(source, WEB_APP_FORBIDDEN_CAPABILITY_IDENTIFIERS)
+    if forbidden_hits:
+        violations.append(f"web App forbidden capability identifier(s): {forbidden_hits!r}")
     network_hits = _network_primitive_hits(source, allow_fetch=False)
     if network_hits:
         violations.append(f"web App unauthorized direct network primitive(s): {network_hits!r}")
@@ -5134,19 +5450,117 @@ def test_web_app_authority_matches_frozen_boot_m0_inventory() -> None:
 @pytest.mark.parametrize(
     ("mutation", "snippet"),
     (
-        ("direct_cognitive_fetch", 'void fetch("/cognitive/intents");\n'),
-        ("direct_constructed_cognitive_fetch", 'void fetch("/cognitive" + "/intents");\n'),
-        ("direct_unrelated_fetch", 'void fetch("/admin/tools");\n'),
-        ("websocket", 'const socket = new WebSocket("/cognitive/intents");\n'),
-        ("eventsource", 'const source = new EventSource("/cognitive/intents");\n'),
         (
-            "cognitive_control",
-            'const label = "Cognitive Intents";\nconst action = "Load Intents";\n',
+            "direct_cognitive_fetch",
+            """
+            <button onClick={() => void fetch("/cognitive/intents")} type="button">
+              Load
+            </button>
+            """,
         ),
-        ("dag_control", 'const label = "DAG Runner";\nconst action = "Run DAG";\n'),
-        ("agent_control", 'const label = "Agent Console";\nconst action = "Assign Agent";\n'),
-        ("model_router_control", 'const label = "Model Router";\nconst action = "Route Model";\n'),
-        ("backend_triggering_control", 'const action = "Launch Tool";\n'),
+        (
+            "computed_global_fetch",
+            """
+            <button
+              onClick={() => {
+                const request = globalThis.fetch.bind(globalThis);
+                void request(String.fromCharCode(
+                  47, 99, 111, 103, 110, 105, 116, 105, 118, 101,
+                  47, 105, 110, 116, 101, 110, 116, 115
+                ));
+              }}
+              type="button"
+            >
+              {String.fromCharCode(
+                67, 111, 103, 110, 105, 116, 105, 118, 101,
+                32, 73, 110, 116, 101, 110, 116, 115
+              )}
+            </button>
+            """,
+        ),
+        (
+            "aliased_window_fetch",
+            """
+            <button
+              onClick={() => {
+                const request = window.fetch;
+                void request("/cognitive/intents");
+              }}
+              type="button"
+            >
+              Load
+            </button>
+            """,
+        ),
+        (
+            "computed_member_fetch",
+            """
+            <button
+              onClick={() => {
+                const request = window["fetch"];
+                void request("/cognitive/intents");
+              }}
+              type="button"
+            >
+              Load
+            </button>
+            """,
+        ),
+        (
+            "websocket",
+            """
+            <button onClick={() => void new WebSocket("/cognitive/intents")} type="button">
+              Load
+            </button>
+            """,
+        ),
+        (
+            "eventsource",
+            """
+            <button onClick={() => void new EventSource("/cognitive/intents")} type="button">
+              Load
+            </button>
+            """,
+        ),
+        (
+            "xml_http_request",
+            """
+            <button
+              onClick={() => {
+                const request = new XMLHttpRequest();
+                request.open("GET", "/cognitive/intents");
+                request.send();
+              }}
+              type="button"
+            >
+              Load
+            </button>
+            """,
+        ),
+        (
+            "extra_authorized_capability_button",
+            """
+            <button onClick={() => void createWork()} type="button">
+              Duplicate
+            </button>
+            """,
+        ),
+        (
+            "form_submit_authority",
+            """
+            <form onSubmit={() => void runWork()}>
+              <button type="submit">Submit</button>
+            </form>
+            """,
+        ),
+        (
+            "anchor_authority",
+            """
+            <a onClick={() => void refreshWork()}>
+              Refresh elsewhere
+            </a>
+            """,
+        ),
     ),
 )
 def test_web_app_authority_rejects_premature_network_and_control_surface(
@@ -5154,15 +5568,42 @@ def test_web_app_authority_rejects_premature_network_and_control_surface(
     snippet: str,
 ) -> None:
     source = (WEB_SOURCE / "App.tsx").read_text(encoding="utf-8")
-    mutated_source = f"{source}\n{snippet}"
+    insertion_point = "      {consoleState.lastFailure === null ? null : ("
+    assert insertion_point in source
+    mutated_source = source.replace(
+        insertion_point,
+        f"{textwrap.indent(textwrap.dedent(snippet).strip(), '      ')}\n\n{insertion_point}",
+        1,
+    )
 
     assert _web_app_authority_violations(mutated_source), mutation
+
+
+def test_web_app_authority_allows_presentation_copy_without_new_control_capability() -> None:
+    source = (WEB_SOURCE / "App.tsx").read_text(encoding="utf-8")
+    mutated_source = source.replace("Create Work", "Start Work", 1).replace(
+        "M0 Work Console",
+        "M0 Operations Console",
+        1,
+    )
+
+    assert not _web_app_authority_violations(mutated_source)
+
+
+def test_web_app_authority_allows_handler_rename_without_capability_change() -> None:
+    source = (WEB_SOURCE / "App.tsx").read_text(encoding="utf-8")
+    mutated_source = source.replace("async function createWork()", "async function createM0Work()")
+    mutated_source = mutated_source.replace("void createWork()", "void createM0Work()")
+
+    assert not _web_app_authority_violations(mutated_source)
 
 
 @pytest.mark.parametrize(
     "mutation",
     (
         "new_cognitive_api_function",
+        "generic_cognitive_api_function",
+        "computed_existing_path_mutation",
         "changed_method",
         "arbitrary_backend_path",
         "websocket",
@@ -5178,6 +5619,17 @@ def test_web_api_boundary_authority_rejects_premature_backend_surface(
         + "\nexport async function listIntents(): Promise<ApiResult<unknown>> {\n"
         + '  return requestJson("/cognitive/intents" as ApiBoundaryPath);\n'
         + "}\n",
+        "generic_cognitive_api_function": source
+        + "\nexport async function loadRecords(): Promise<ApiResult<unknown>> {\n"
+        + '  return requestJson("/cognitive/intents" as ApiBoundaryPath);\n'
+        + "}\n",
+        "computed_existing_path_mutation": source.replace(
+            'requestJson<WorkResponse>("/work/provider-inventory"',
+            "requestJson<WorkResponse>(String.fromCharCode("
+            "47, 99, 111, 103, 110, 105, 116, 105, 118, 101, "
+            "47, 105, 110, 116, 101, 110, 116, 115)",
+            1,
+        ),
         "changed_method": source.replace('method: "POST"', 'method: "DELETE"', 1),
         "arbitrary_backend_path": source
         + "\nexport async function adminTools(): Promise<ApiResult<unknown>> {\n"

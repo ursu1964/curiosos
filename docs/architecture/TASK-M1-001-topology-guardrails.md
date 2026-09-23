@@ -99,12 +99,15 @@ remain registered as future ownership only.
 Security tests also freeze the current application-owned FastAPI routes by
 path, method, route name, endpoint owner, and schema visibility. FastAPI
 framework documentation routes are classified separately. Web tests freeze the
-current API-boundary exports, backend path/method literals, App imports from
-the boundary, current user/control string authority, and the rule that direct
-network primitives do not appear in `App.tsx`. Existing `curios_core` and
-`curios_runtime` modules have explicit public declaration/member inventories to
-block hidden cognitive, DAG, agent, capability, routing, or model-generation
-authority inside already-authorized files.
+current API-boundary exports, backend path/method literals, App
+authority-bearing imports, App network-capability access, and the current JSX
+event-handler API capabilities. The App guard is intentionally capability-based
+rather than product-copy-based: display copy may change, but direct or indirect
+browser network access and new interactive API capability cannot appear before
+TASK-M1-014. Existing `curios_core` and `curios_runtime` modules have explicit
+public declaration/member inventories to block hidden cognitive, DAG, agent,
+capability, routing, or model-generation authority inside already-authorized
+files.
 
 TASK-M1-001 does not authorize:
 

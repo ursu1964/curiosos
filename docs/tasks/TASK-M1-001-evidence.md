@@ -177,8 +177,8 @@ This correction freezes semantic authority at the existing outer boundaries:
 - framework-owned FastAPI docs/OpenAPI routes are classified separately as
   infrastructure, not application authority;
 - exact web API-boundary path, method, export, and path-literal authority;
-- exact current web `App.tsx` API-boundary imports, exported component, and
-  user/control string authority;
+- exact current web `App.tsx` authority-bearing imports, exported component,
+  and interactive API-capability authority;
 - direct web network primitives outside `apiBoundary.ts` remain unauthorized;
 - `curios_core` and `curios_runtime` existing modules now have explicit public
   declaration and class-member inventories so new cognitive, DAG, agent,
@@ -187,6 +187,42 @@ This correction freezes semantic authority at the existing outer boundaries:
 
 The confirmed API and web bypasses are rejected by the new route and web
 authority guards.
+
+## Fifth Independent Validation Failure And Correction
+
+Independent revalidation of corrective candidate
+`1d96598d0a8a56092d4844c16bd4a74ff774ef32` found that the web guard still
+relied partly on string literals and selected network tokens. A temporary probe
+created real M1 UI/network authority in `apps/web/src/App.tsx` without adding
+literal M1 strings:
+
+- the visible label evaluated to `Cognitive Intents`;
+- the click handler called `/cognitive/intents`;
+- the request function was obtained through
+  `globalThis.fetch.bind(globalThis)`;
+- the backend path was constructed with `String.fromCharCode(...)`.
+
+The guard, web tests, and typecheck stayed green.
+
+The correction replaces the App string-copy inventory with a structural
+capability authority model:
+
+- App imports are parsed structurally and only the frozen modules may be
+  imported;
+- authority-bearing imports from `./apiBoundary` and the contracts package are
+  exact, including aliases and type-only status;
+- App may not reference browser/network-capability globals such as `fetch`,
+  `globalThis`, `window`, `XMLHttpRequest`, `WebSocket`, `EventSource`,
+  `navigator`, or `sendBeacon`;
+- JSX `button`, `form`, and `a` event handlers are parsed and reduced to the
+  API-boundary capabilities they invoke;
+- the only current interactive capabilities are create provider-inventory work,
+  run provider-inventory work, and refresh recorded work/execution/event/evidence
+  truth.
+
+This makes computed endpoint strings irrelevant because App has no direct
+network capability. Display copy changes and handler renames that preserve the
+same API-boundary capability remain allowed.
 
 ## Adversarial Coverage
 
@@ -205,11 +241,13 @@ The guardrail tests reject representative premature additions for:
 - new FastAPI route/path/method authority, regardless of whether it is created
   by decorators, `add_api_route`, `api_route`, or `include_router`;
 - FastAPI route removal, path rename, or method mutation;
-- direct web `fetch`, WebSocket, EventSource, or sendBeacon usage outside the
-  frozen API boundary;
+- direct or indirect web network capability outside the frozen API boundary,
+  including computed `globalThis.fetch.bind(...)`, `window.fetch`,
+  `window["fetch"]`, `XMLHttpRequest`, WebSocket, EventSource, or sendBeacon
+  forms;
 - new web API-boundary exports, paths, HTTP methods, or future backend path
   literals;
-- new visible/control string authority in the frozen M0 web app;
+- new interactive/control API capability in the frozen M0 web app;
 - new public `curios_core` or `curios_runtime` declarations and public class
   members in already-authorized modules;
 - TypeScript contract files;
@@ -264,7 +302,8 @@ CI workflow content, API behavior, web behavior, or runtime implementation.
 | Conditional initializer bypass replay | Passed: temporary conditional `WorkItem as Intent` import was importable but rejected by statement-sequence guard. |
 | API route-authority bypass replay | Passed: temporary `GET /cognitive/intents` route was executable but rejected by exact route inventory. |
 | Web analogue bypass replay | Passed: temporary cognitive control/network snippets were rejected by App and API-boundary authority inventories. |
-| Boundary semantic-authority targeted suite | Passed: `40` passed, 2 known dependency warnings. |
+| Computed web bypass replay | Passed: temporary `globalThis.fetch.bind(globalThis)` plus `String.fromCharCode(...)` probe was rejected by the structural App capability guard. |
+| Boundary semantic-authority targeted suite | Passed: `81` passed, 2 known dependency warnings. |
 | Initializer/export adversarial matrix | Passed: `58` passed. |
 | Canonical-authority targeted suite | Passed: `76` passed, `237` deselected. |
 | Security and architecture focused suite | Passed: `346 passed` (`313` security, `33` architecture). |

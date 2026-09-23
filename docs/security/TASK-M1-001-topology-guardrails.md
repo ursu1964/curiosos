@@ -96,8 +96,8 @@ including:
   inclusion create the route;
 - new M1 web source files;
 - new web API-boundary exports, paths, methods, future backend path literals,
-  direct network primitives outside the boundary, or visible/control authority
-  inside already-authorized web files;
+  direct or indirect network capability outside the boundary, or interactive
+  control/API capability inside already-authorized web files;
 - new M1 integration or acceptance tests;
 - any additional `.github` content beyond the frozen quality-gates workflow.
 
@@ -121,9 +121,11 @@ The FastAPI authority guard constructs the app and compares application-owned
 `APIRoute` entries to an explicit frozen BOOT+M0 inventory. Framework-owned
 OpenAPI/docs routes are classified separately as infrastructure. The web guard
 uses explicit structural inventories of API-boundary exports, allowed
-route/method literals, App API-boundary imports, and current user/control
-strings; it is not a raw source hash, but it is fail-closed for premature M1
-product controls and backend calls.
+route/method literals, App imports, network-capability access, and current JSX
+event-handler API capabilities. It is not a raw source hash or product-copy
+freeze: harmless display-copy changes may pass, while computed
+`globalThis.fetch.bind(...)`, `window["fetch"]`, WebSocket, EventSource, and
+other direct network-capability forms are rejected before TASK-M1-014.
 
 ## Future Contract Transition
 
