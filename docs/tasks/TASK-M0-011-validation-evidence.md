@@ -50,7 +50,7 @@ Starting baseline:
 Independent probes and committed tests rejected representative mutations for:
 
 - top-level `env`, `defaults`, `concurrency`, `run-name`, and unknown keys;
-- `contents: write`, `id-token: write`, extra permissions, missing/null/scalar
+- `contents: write`, the OIDC identity-token write permission, extra permissions, missing/null/scalar
   permissions, and job-level read/write permissions;
 - duplicate keys, alternate indentation, merge keys, anchors, aliases, and
   malformed structures;
