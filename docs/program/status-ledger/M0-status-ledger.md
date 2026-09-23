@@ -14,7 +14,7 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-008 API work endpoints are validated/frozen on their task branch; downstream M0 work remains blocked pending integration of the validation/freeze commit. |
+| M0 | IMPLEMENTING | M0 executable program passed independent readiness revalidation. TASK-M0-009 web work console is validated/frozen on its task branch; downstream M0 work remains blocked pending validation/freeze commit integration into main. |
 
 ## Task Status
 
@@ -28,8 +28,8 @@ date: 2026-09-23
 | TASK-M0-006 | Single-Step Work Runtime Service | TASK-M0-003, TASK-M0-004, TASK-M0-005 | PG-M0-03 | VALIDATED, FROZEN | Independent revalidation accepted corrected bounded partial-failure handling and runtime truth guarantees. |
 | TASK-M0-007 | Provider Inventory Executor | TASK-M0-006 | PG-M0-04 | VALIDATED, FROZEN | Independent validation accepted the provider inventory executor behind the frozen TASK-M0-006 seam. |
 | TASK-M0-008 | M0 API Work Endpoints | TASK-M0-007 | PG-M0-05A | VALIDATED, FROZEN | Independent validation accepted the M0 API work endpoints as outer composition/translation over frozen runtime boundaries. |
-| TASK-M0-009 | M0 Web Work Console | TASK-M0-008 | PG-M0-05B | BLOCKED | Requires the TASK-M0-008 validation/freeze commit to be integrated into `main` before readiness changes. |
-| TASK-M0-010 | M0 Integration Test Foundation | TASK-M0-008, TASK-M0-009 | PG-M0-06 | BLOCKED | Requires API and web surfaces. |
+| TASK-M0-009 | M0 Web Work Console | TASK-M0-008 | PG-M0-05B | VALIDATED, FROZEN | Independent validation accepted the minimal web console as a presentation-only surface over the frozen M0 API routes with bounded stale-response handling. |
+| TASK-M0-010 | M0 Integration Test Foundation | TASK-M0-008, TASK-M0-009 | PG-M0-06 | BLOCKED | Requires the TASK-M0-009 validation/freeze commit to be integrated into main before becoming ready. |
 | TASK-M0-011 | M0 CI Quality Gate Update | TASK-M0-010 | PG-M0-07 | BLOCKED | Requires M0 integration tests. |
 | TASK-M0-012 | M0 Acceptance Suite | TASK-M0-011 | PG-M0-08 | BLOCKED | Requires CI gate update. |
 | TASK-M0-013 | M0 Independent Verification Record | TASK-M0-012 | PG-M0-09 | BLOCKED | Requires M0 acceptance suite. |
