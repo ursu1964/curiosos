@@ -119,13 +119,38 @@ to the pinned SHA above.
 The security baseline now includes a workflow audit that verifies:
 
 - every action reference is a full SHA pin;
-- workflow permissions remain read-only;
+- workflow permissions are structurally exact: top-level `contents: read`
+  only, with no job-level permission overrides;
 - only authorized push/pull request triggers are present;
 - required BOOT and M0 gates remain present;
 - TASK-M0-010 integration runs before BOOT acceptance and full pytest;
 - prohibited CI patterns such as deployment, release, unsafe dispatch,
   `continue-on-error`, `|| true`, live Ollama startup, secret access, and
   `down -v` are absent.
+
+## Corrective Permission Enforcement
+
+Independent validation of candidate
+`a20a6537e0332d9efaeecb198d696f47a2232c96` failed because the workflow itself
+preserved least privilege but the new security regression test did not
+structurally enforce the permission invariant.
+
+False negatives reproduced by independent validation:
+
+- adding top-level `id-token` with write access while keeping `contents` read-only;
+- adding job-level `contents` with write access.
+
+Corrective behavior added:
+
+- parse the workflow permission blocks structurally instead of checking for the
+  substring `contents: read`;
+- require the top-level permission model to be exactly `contents: read`;
+- reject all job-level permission overrides, including any write permission;
+- reject missing top-level permissions, scalar `read-all`, `contents` write
+  access, `id-token` write access, `packages` write access, and unexpected
+  permission keys.
+
+The workflow YAML did not change during this correction.
 
 ## PostgreSQL Strategy
 
@@ -168,13 +193,14 @@ cloud infrastructure, or deployment credential.
 | M0 runtime/persistence/policy package tests | PASS: 128 passed, 4 deselected. |
 | Contract/schema tests | PASS: 15 passed. |
 | Architecture tests | PASS: 16 passed. |
-| Security tests | PASS: 61 passed. |
+| Security tests | PASS: 70 passed. |
+| Synthetic permission mutations | PASS: top-level `id-token` write access, top-level `contents` write access, job-level `contents` write access, job-level `id-token` write access, job-level `packages` write access, unexpected permission key, and missing permissions were rejected; the valid current workflow was accepted. |
 | API integration tests | PASS: 6 passed, 2 known dependency warnings. |
 | PostgreSQL provider integration test | PASS: 1 passed. |
 | M0 PostgreSQL integration tests | PASS: 4 passed. |
 | TASK-M0-010 integration tests | PASS: 2 passed, 2 known dependency warnings. |
 | BOOT acceptance tests | PASS: 6 passed, 2 known dependency warnings. |
-| Full pytest | PASS: 407 passed, 2 known dependency warnings. |
+| Full pytest | PASS: 416 passed, 2 known dependency warnings. |
 | PostgreSQL clean stop/volume preservation | PASS: Compose showed no running `postgres` container and `curios-local-docker_postgres_data` remained present. |
 | `pnpm install --frozen-lockfile` | PASS. |
 | `pnpm check` | PASS. |

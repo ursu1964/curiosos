@@ -4,6 +4,7 @@ import ast
 import json
 import re
 import subprocess
+import textwrap
 import tomllib
 from dataclasses import fields
 from pathlib import Path
@@ -240,6 +241,7 @@ AUTHORIZED_GITHUB_PATHS = frozenset(
         ".github/workflows/quality-gates.yml",
     }
 )
+AUTHORIZED_WORKFLOW_PERMISSIONS = {"contents": "read"}
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
         ".github",
@@ -720,6 +722,155 @@ def _workflow_action_refs() -> tuple[str, ...]:
     return tuple(refs)
 
 
+def _strip_yaml_comment(line: str) -> str:
+    quote: str | None = None
+    escaped = False
+    for index, character in enumerate(line):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\" and quote == '"':
+            escaped = True
+            continue
+        if character in {"'", '"'}:
+            if quote == character:
+                quote = None
+            elif quote is None:
+                quote = character
+            continue
+        if character == "#" and quote is None:
+            return line[:index].rstrip()
+    return line.rstrip()
+
+
+def _yaml_key_value(line: str) -> tuple[str, str] | None:
+    stripped = _strip_yaml_comment(line).strip()
+    if not stripped or stripped.startswith("-"):
+        return None
+    key, separator, value = stripped.partition(":")
+    if separator != ":":
+        return None
+    return key.strip().strip("\"'"), value.strip().strip("\"'")
+
+
+def _indent_width(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def _top_level_permission_blocks(workflow_text: str) -> tuple[dict[str, str] | str, ...]:
+    lines = workflow_text.splitlines()
+    blocks: list[dict[str, str] | str] = []
+    index = 0
+    while index < len(lines):
+        raw_line = lines[index]
+        if _indent_width(raw_line) == 0 and (key_value := _yaml_key_value(raw_line)) is not None:
+            key, value = key_value
+            if key != "permissions":
+                index += 1
+                continue
+            if value:
+                blocks.append(value)
+                index += 1
+                continue
+            permissions: dict[str, str] = {}
+            index += 1
+            while index < len(lines):
+                child_line = lines[index]
+                if _strip_yaml_comment(child_line).strip() and _indent_width(child_line) == 0:
+                    break
+                if (
+                    _indent_width(child_line) == 2
+                    and (child_key_value := _yaml_key_value(child_line)) is not None
+                ):
+                    child_key, child_value = child_key_value
+                    permissions[child_key] = child_value
+                index += 1
+            blocks.append(permissions)
+            continue
+        index += 1
+    return tuple(blocks)
+
+
+def _job_permission_blocks(workflow_text: str) -> dict[str, dict[str, str] | str]:
+    lines = workflow_text.splitlines()
+    jobs: dict[str, dict[str, str] | str] = {}
+    index = 0
+    while index < len(lines):
+        raw_line = lines[index]
+        if not (
+            _indent_width(raw_line) == 0
+            and (key_value := _yaml_key_value(raw_line)) is not None
+            and key_value == ("jobs", "")
+        ):
+            index += 1
+            continue
+
+        index += 1
+        while index < len(lines):
+            job_line = lines[index]
+            if _strip_yaml_comment(job_line).strip() and _indent_width(job_line) == 0:
+                break
+            job_key_value = _yaml_key_value(job_line)
+            if _indent_width(job_line) != 2 or job_key_value is None or job_key_value[1]:
+                index += 1
+                continue
+
+            job_name = job_key_value[0]
+            index += 1
+            while index < len(lines):
+                child_line = lines[index]
+                if _strip_yaml_comment(child_line).strip() and _indent_width(child_line) <= 2:
+                    break
+                child_key_value = _yaml_key_value(child_line)
+                if (
+                    _indent_width(child_line) == 4
+                    and child_key_value is not None
+                    and child_key_value[0] == "permissions"
+                ):
+                    if child_key_value[1]:
+                        jobs[job_name] = child_key_value[1]
+                        index += 1
+                        continue
+                    permissions: dict[str, str] = {}
+                    index += 1
+                    while index < len(lines):
+                        permission_line = lines[index]
+                        if (
+                            _strip_yaml_comment(permission_line).strip()
+                            and _indent_width(permission_line) <= 4
+                        ):
+                            break
+                        if (
+                            _indent_width(permission_line) == 6
+                            and (permission_key_value := _yaml_key_value(permission_line))
+                            is not None
+                        ):
+                            permission_key, permission_value = permission_key_value
+                            permissions[permission_key] = permission_value
+                        index += 1
+                    jobs[job_name] = permissions
+                    continue
+                index += 1
+        break
+    return jobs
+
+
+def _workflow_permission_violations(workflow_text: str) -> tuple[str, ...]:
+    violations: list[str] = []
+    top_level_blocks = _top_level_permission_blocks(workflow_text)
+    if top_level_blocks != (AUTHORIZED_WORKFLOW_PERMISSIONS,):
+        violations.append(
+            "workflow permissions must be exactly "
+            f"{AUTHORIZED_WORKFLOW_PERMISSIONS!r}; got {top_level_blocks!r}"
+        )
+
+    job_blocks = _job_permission_blocks(workflow_text)
+    if job_blocks:
+        violations.append(f"job-level permissions are not authorized: {job_blocks!r}")
+
+    return tuple(violations)
+
+
 def _tracked_runtime_source_files() -> frozenset[str]:
     runtime_source = REPO_ROOT / "packages/python/curios_runtime/src/curios_runtime"
     return frozenset(
@@ -1128,6 +1279,7 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
     workflow_text = _quality_gates_workflow_text()
     normalized_workflow = _normalized_workflow_text()
     action_refs = _workflow_action_refs()
+    permission_violations = _workflow_permission_violations(workflow_text)
 
     _assert_no_security_failure(action_refs != (), "quality-gates workflow has no actions")
     for action_ref in action_refs:
@@ -1176,7 +1328,8 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
         )
 
     _assert_no_security_failure(
-        "permissions: contents: read" in normalized_workflow, "permissions changed"
+        not permission_violations,
+        f"workflow permissions changed: {list(permission_violations)}",
     )
     _assert_no_security_failure("pull_request:" in workflow_text, "pull request trigger missing")
     _assert_no_security_failure("push:" in workflow_text, "push trigger missing")
@@ -1218,6 +1371,126 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
         m0_integration_index < boot_acceptance_index < full_pytest_index,
         "M0 integration must run before acceptance and full pytest",
     )
+
+
+@pytest.mark.parametrize(
+    "workflow_text",
+    (
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions:
+          contents: read
+          id-token: write
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions:
+          contents: write
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions:
+          contents: read
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            permissions:
+              contents: write
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions:
+          contents: read
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            permissions:
+              id-token: write
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions:
+          contents: read
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            permissions:
+              packages: write
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions:
+          contents: read
+          attestations: read
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+        """
+        name: Quality Gates
+        on:
+          push:
+        permissions: read-all
+        jobs:
+          python:
+            runs-on: ubuntu-24.04
+            steps: []
+        """,
+    ),
+)
+def test_quality_gate_permission_detector_rejects_non_frozen_permission_models(
+    workflow_text: str,
+) -> None:
+    assert _workflow_permission_violations(textwrap.dedent(workflow_text))
+
+
+def test_quality_gate_permission_detector_accepts_only_frozen_read_only_model() -> None:
+    workflow_text = """
+    name: Quality Gates
+    on:
+      push:
+    permissions:
+      contents: read
+    jobs:
+      python:
+        runs-on: ubuntu-24.04
+        steps: []
+    """
+
+    assert not _workflow_permission_violations(textwrap.dedent(workflow_text))
 
 
 @pytest.mark.parametrize(
