@@ -183,6 +183,18 @@ M0_AUTHORIZED_API_SOURCE_FILES = frozenset(
     }
 )
 M0_AUTHORIZED_API_TEST_FILES = frozenset().union(*M0_AUTHORIZED_API_TEST_FILES_BY_TASK.values())
+M0_AUTHORIZED_WEB_SOURCE_FILES_BY_TASK = {
+    "TASK-M0-009": frozenset(
+        {
+            "App.css",
+            "App.test.tsx",
+            "App.tsx",
+            "apiBoundary.ts",
+            "main.tsx",
+        }
+    ),
+}
+M0_AUTHORIZED_WEB_SOURCE_FILES = frozenset().union(*M0_AUTHORIZED_WEB_SOURCE_FILES_BY_TASK.values())
 M0_PLANNED_TEST_ROOTS_BY_TASK = {
     "TASK-M0-010": frozenset({"tests/integration"}),
     "TASK-M0-012": frozenset({"tests/acceptance"}),
@@ -705,6 +717,15 @@ def _tracked_api_test_files() -> frozenset[str]:
     )
 
 
+def _tracked_web_source_files() -> frozenset[str]:
+    web_source = REPO_ROOT / "apps/web/src"
+    return frozenset(
+        path.relative_to(web_source).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(web_source)
+    )
+
+
 def _unauthorized_github_paths(paths: frozenset[str]) -> frozenset[str]:
     return paths - AUTHORIZED_GITHUB_PATHS
 
@@ -719,6 +740,10 @@ def _unauthorized_api_source_files(paths: frozenset[str]) -> frozenset[str]:
 
 def _unauthorized_api_test_files(paths: frozenset[str]) -> frozenset[str]:
     return paths - M0_AUTHORIZED_API_TEST_FILES
+
+
+def _unauthorized_web_source_files(paths: frozenset[str]) -> frozenset[str]:
+    return paths - M0_AUTHORIZED_WEB_SOURCE_FILES
 
 
 def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
@@ -1118,6 +1143,13 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
         "test_m0_work_endpoints.py",
     }
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
+    assert M0_AUTHORIZED_WEB_SOURCE_FILES_BY_TASK["TASK-M0-009"] == {
+        "App.css",
+        "App.test.tsx",
+        "App.tsx",
+        "apiBoundary.ts",
+        "main.tsx",
+    }
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
 
@@ -1174,6 +1206,26 @@ def test_m0_api_test_topology_rejects_unvalidated_future_api_tests(
     assert _unauthorized_api_test_files(simulated_files) == {api_test_file}
 
 
+@pytest.mark.parametrize(
+    "web_file",
+    (
+        "AgentConsole.tsx",
+        "DagEditor.tsx",
+        "DataLab.tsx",
+        "ModelRouter.tsx",
+        "SchedulerView.tsx",
+        "ToolRunner.tsx",
+        "routes/AdminPage.tsx",
+    ),
+)
+def test_m0_web_source_topology_rejects_unvalidated_future_web_surfaces(
+    web_file: str,
+) -> None:
+    simulated_files = M0_AUTHORIZED_WEB_SOURCE_FILES | {web_file}
+
+    assert _unauthorized_web_source_files(simulated_files) == {web_file}
+
+
 def test_later_task_security_provider_runtime_surfaces_match_authorized_current_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = (
@@ -1185,6 +1237,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     unexpected_runtime_files = _unauthorized_runtime_source_files(_tracked_runtime_source_files())
     unexpected_api_source_files = _unauthorized_api_source_files(_tracked_api_source_files())
     unexpected_api_test_files = _unauthorized_api_test_files(_tracked_api_test_files())
+    unexpected_web_source_files = _unauthorized_web_source_files(_tracked_web_source_files())
     unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
     unexpected_m0_package_roots = _tracked_package_roots() & M0_DEFERRED_PACKAGE_ROOTS
@@ -1225,6 +1278,10 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     _assert_no_security_failure(
         not unexpected_api_test_files,
         f"unexpected tracked apps/api test file(s): {sorted(unexpected_api_test_files)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_web_source_files,
+        f"unexpected tracked apps/web source file(s): {sorted(unexpected_web_source_files)}",
     )
     _assert_no_security_failure(
         not unexpected_apps,
