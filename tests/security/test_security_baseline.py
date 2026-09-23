@@ -44,6 +44,9 @@ from curios_contracts import (
     to_json_compatible,
 )
 from curios_core import CoreContext, CoreServices
+from yaml.constructor import ConstructorError
+from yaml.events import AliasEvent
+from yaml.nodes import MappingNode
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_SOURCE = REPO_ROOT / "packages/python/curios_contracts/src/curios_contracts"
@@ -266,6 +269,48 @@ ALLOWED_TOP_LEVEL_PATHS = frozenset(
         "tsconfig.json",
         "uv.lock",
     }
+)
+
+
+class _QualityGateWorkflowLoader(yaml.BaseLoader):
+    """Fail-closed YAML loader for security-sensitive workflow audits."""
+
+
+def _construct_workflow_mapping(
+    loader: _QualityGateWorkflowLoader, node: yaml.nodes.Node, deep: bool = False
+) -> dict[object, object]:
+    if not isinstance(node, MappingNode):
+        raise ConstructorError(
+            "while constructing a workflow mapping",
+            node.start_mark,
+            f"expected a mapping node, got {node.id}",
+            node.start_mark,
+        )
+
+    mapping: dict[object, object] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key == "<<":
+            raise ConstructorError(
+                "while constructing a workflow mapping",
+                node.start_mark,
+                "YAML merge keys are not authorized in the quality-gates workflow",
+                key_node.start_mark,
+            )
+        if key in mapping:
+            raise ConstructorError(
+                "while constructing a workflow mapping",
+                node.start_mark,
+                f"duplicate YAML mapping key is not authorized: {key!r}",
+                key_node.start_mark,
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_QualityGateWorkflowLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_workflow_mapping,
 )
 ALLOWED_APP_ROOTS = frozenset(
     {
@@ -723,8 +768,23 @@ def _workflow_action_refs() -> tuple[str, ...]:
     return tuple(refs)
 
 
+def _reject_workflow_yaml_anchors_and_aliases(workflow_text: str) -> None:
+    for event in yaml.parse(workflow_text, Loader=_QualityGateWorkflowLoader):
+        if isinstance(event, AliasEvent):
+            msg = "YAML aliases are not authorized in the quality-gates workflow"
+            raise AssertionError(msg)
+        if getattr(event, "anchor", None) is not None:
+            msg = "YAML anchors are not authorized in the quality-gates workflow"
+            raise AssertionError(msg)
+
+
 def _parse_quality_gate_workflow(workflow_text: str) -> dict[str, object]:
-    parsed = yaml.load(workflow_text, Loader=yaml.BaseLoader)
+    try:
+        _reject_workflow_yaml_anchors_and_aliases(workflow_text)
+        parsed = yaml.load(workflow_text, Loader=_QualityGateWorkflowLoader)
+    except yaml.YAMLError as exc:
+        msg = f"quality-gates workflow YAML is not authorized: {exc}"
+        raise AssertionError(msg) from exc
     if not isinstance(parsed, dict):
         msg = "quality-gates workflow YAML must parse to a mapping"
         raise AssertionError(msg)
@@ -1589,6 +1649,275 @@ def test_quality_gate_permission_detector_accepts_only_frozen_read_only_model() 
     ("case_id", "workflow_text"),
     (
         (
+            "A_duplicate_top_level_permissions_write_then_read",
+            """
+            name: Quality Gates
+            permissions:
+              contents: write
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "B_duplicate_top_level_permissions_read_then_write",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            permissions:
+              contents: write
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "C_duplicate_jobs_key",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            jobs:
+              frontend:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "D_duplicate_job_name_unsafe_then_safe",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "E_duplicate_job_name_safe_then_unsafe",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+        (
+            "F_duplicate_permissions_key_inside_job",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  contents: read
+                permissions:
+                  contents: write
+                steps: []
+            """,
+        ),
+        (
+            "G_duplicate_contents_key_inside_top_level_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: write
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "H_duplicate_arbitrary_mapping_key_elsewhere",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            env:
+              CI_MODE: safe
+              CI_MODE: unsafe
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "I_duplicate_trigger_key",
+            """
+            name: Quality Gates
+            on:
+              push:
+              push:
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "flow_style_duplicate_mapping",
+            """
+            name: Quality Gates
+            permissions: {contents: write, contents: read}
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "comments_between_duplicate_permission_definitions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: write
+            # Comments must not make a duplicate security-sensitive key safe.
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_workflow_parser_rejects_duplicate_mapping_keys(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    with pytest.raises(AssertionError, match="duplicate YAML mapping key"):
+        _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text", "expected_message"),
+    (
+        (
+            "J_job_permissions_inherited_through_merge",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            shared: &shared_job_permissions
+              permissions:
+                contents: write
+            jobs:
+              python:
+                <<: *shared_job_permissions
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML anchors are not authorized|YAML aliases are not authorized|YAML merge keys",
+        ),
+        (
+            "K_top_level_permission_mapping_introduced_through_merge",
+            """
+            name: Quality Gates
+            <<:
+              permissions:
+                contents: write
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML merge keys",
+        ),
+        (
+            "L_merged_job_definition_containing_permissions",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                <<:
+                  permissions:
+                    contents: write
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML merge keys",
+        ),
+        (
+            "M_anchor_alias_supplies_permissioned_job",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            job_template: &permissioned_job
+              runs-on: ubuntu-24.04
+              permissions:
+                contents: write
+              steps: []
+            jobs:
+              python: *permissioned_job
+            """,
+            "YAML anchors are not authorized|YAML aliases are not authorized",
+        ),
+        (
+            "harmless_anchor_is_still_rejected_fail_closed",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            harmless: &harmless value
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+            "YAML anchors are not authorized",
+        ),
+    ),
+)
+def test_quality_gate_workflow_parser_rejects_merge_anchors_and_aliases(
+    case_id: str,
+    workflow_text: str,
+    expected_message: str,
+) -> None:
+    with pytest.raises(AssertionError, match=expected_message):
+        _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
             "two_space_job_indentation",
             """
             name: Quality Gates
@@ -1721,6 +2050,12 @@ def test_quality_gate_permission_detector_rejects_job_permission_formatting_vari
           "contents": "read"
         name: Quality Gates
         """,
+        """
+        name: Quality Gates
+        "on": {push: null}
+        permissions: {contents: "read"}
+        jobs: {python: {runs-on: ubuntu-24.04, steps: []}}
+        """,
     ),
 )
 def test_quality_gate_permission_detector_accepts_harmless_yaml_formatting(
@@ -1728,6 +2063,86 @@ def test_quality_gate_permission_detector_accepts_harmless_yaml_formatting(
 ) -> None:
     workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
     assert not _workflow_permission_violations(workflow)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "workflow_text"),
+    (
+        (
+            "root_is_not_mapping",
+            """
+            - name: Quality Gates
+            - permissions:
+                contents: read
+            """,
+        ),
+        (
+            "jobs_missing",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            """,
+        ),
+        (
+            "jobs_not_mapping",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs: nope
+            """,
+        ),
+        (
+            "job_value_not_mapping",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python: nope
+            """,
+        ),
+        (
+            "permissions_list_instead_of_mapping",
+            """
+            name: Quality Gates
+            permissions:
+              - contents
+              - read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                steps: []
+            """,
+        ),
+        (
+            "job_permissions_list_instead_of_absent",
+            """
+            name: Quality Gates
+            permissions:
+              contents: read
+            jobs:
+              python:
+                runs-on: ubuntu-24.04
+                permissions:
+                  - contents
+                  - read
+                steps: []
+            """,
+        ),
+    ),
+)
+def test_quality_gate_permission_detector_rejects_malformed_security_structures(
+    case_id: str,
+    workflow_text: str,
+) -> None:
+    try:
+        workflow = _parse_quality_gate_workflow(textwrap.dedent(workflow_text))
+    except AssertionError:
+        return
+
+    assert _workflow_permission_violations(workflow), case_id
 
 
 @pytest.mark.parametrize(

@@ -31,11 +31,14 @@ infrastructure, credentials, post-M0 acceptance semantics, or M1+ scope.
 - `tests/security/test_security_baseline.py`
 - `docs/program/status-ledger/M0-status-ledger.md`
 - `docs/tasks/TASK-M0-011-evidence.md`
+- `pyproject.toml`
+- `uv.lock`
 
-No other GitHub workflow or `.github` configuration was added. No dependency
-manifest, lockfile, production source, runtime behavior, API route, web product
-behavior, deployment surface, release surface, cloud infrastructure, or
-credential/secret configuration was changed.
+No other GitHub workflow or `.github` configuration was added. No production
+source, runtime behavior, API route, web product behavior, deployment surface,
+release surface, cloud infrastructure, or credential/secret configuration was
+changed. The only dependency change is the root dev/test PyYAML dependency used
+by the security test workflow parser.
 
 ## Acceptance Matrix
 
@@ -52,7 +55,7 @@ credential/secret configuration was changed.
 | Failure behavior | PASS | No `continue-on-error`, `|| true`, allow-failure semantics, or broad conditional skips were added. |
 | Topology transition | PASS | Authorized GitHub topology remains exactly `.github/workflows/quality-gates.yml`; tests continue rejecting unrelated `.github` paths. |
 | Frontend coverage | PASS | `pnpm install --frozen-lockfile`, `pnpm check`, apps/web tests, apps/web typecheck, and apps/web production build remain required. |
-| Dependencies | PASS | No dependency changes. |
+| Dependencies | PASS | Added root dev/test-only `PyYAML>=6.0.3` for structural workflow YAML security parsing; no production package imports it. |
 | Hosted CI status | NOT RUN | No hosted GitHub Actions execution was performed or claimed. Local/static reproduction was performed. |
 
 ## Workflow Changes
@@ -178,6 +181,38 @@ Second corrective behavior added:
 Dependency change: `PyYAML>=6.0.3` was added to the root dev dependency group
 and locked as `pyyaml v6.0.3` solely for structural YAML security testing.
 
+Third independent revalidation of corrective candidate
+`2816b1c6177fc659787fcead9f57828aaa429fe8` failed because PyYAML
+`BaseLoader` parsed ordinary formatting structurally but still silently
+overwrote duplicate mapping keys before the security audit. The same parser
+also left YAML merge keys as ordinary `<<` entries, allowing merge/alias
+patterns to create ambiguous effective permission semantics.
+
+False negatives reproduced by independent revalidation:
+
+- duplicate top-level `permissions` where an unsafe `contents: write` block was
+  overwritten by a later allowed `contents: read` block;
+- duplicate job names where an earlier job-level permission override was
+  overwritten by a later duplicate job mapping;
+- merge-key patterns such as `<<: *anchor` that could hide inherited
+  permissions from the checker.
+
+Third corrective behavior added:
+
+- introduced a test-only `_QualityGateWorkflowLoader` based on PyYAML
+  `BaseLoader`;
+- reject duplicate mapping keys at every YAML mapping level before any mapping
+  can be overwritten;
+- reject YAML merge keys (`<<`) fail-closed anywhere in the workflow;
+- reject all anchors and aliases fail-closed because the quality-gates workflow
+  does not need YAML indirection;
+- keep the already-frozen semantic permission invariant after successful parse:
+  top-level permissions must equal `contents: read`, and every job-level
+  `permissions` key must be absent;
+- added adversarial parser coverage for duplicate cases A-I, merge/anchor cases
+  J-M, the previous permission cases A-T, valid workflow case U, formatting
+  variants, flow-style mappings, CRLF, and malformed security structures.
+
 ## PostgreSQL Strategy
 
 CI continues to use the frozen PostgreSQL 18 `LOCAL_DOCKER` service in
@@ -219,8 +254,9 @@ cloud infrastructure, or deployment credential.
 | M0 runtime/persistence/policy package tests | PASS: 128 passed, 4 deselected. |
 | Contract/schema tests | PASS: 15 passed. |
 | Architecture tests | PASS: 16 passed. |
-| Security tests | PASS: 91 passed. |
-| Synthetic permission mutations | PASS: A-T rejected; valid current workflow case U accepted. |
+| Security tests | PASS: 114 passed. |
+| Parser adversarial matrices | PASS: 53 targeted cases passed, including duplicate A-I, merge/anchor J-M, previous permission A-T, valid current workflow U, formatting variants, comments between duplicate definitions, and malformed structures. |
+| Actual workflow YAML parse | PASS: parsed as a mapping with string `on` key, permissions `contents: read`, jobs `frontend`, `python`, and `repository`, and no permission violations. |
 | API integration tests | PASS: 6 passed, 2 known dependency warnings. |
 | PostgreSQL provider integration test | PASS: 1 passed. |
 | M0 PostgreSQL integration tests | PASS: 4 passed. |
