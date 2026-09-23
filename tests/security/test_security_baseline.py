@@ -334,6 +334,613 @@ ALLOWED_CONTRACTS_SOURCE_FILES = frozenset(
     }
 )
 ALLOWED_TYPESCRIPT_CONTRACTS_SOURCE_FILES = frozenset({"index.ts"})
+FROZEN_CONTRACT_DECLARATIONS_BY_MODULE = {
+    "_validation.py": (
+        ("validate_safe_token", "function"),
+        ("validate_safe_text", "function"),
+        ("validate_media_type", "function"),
+        ("reject_secret_shaped_text", "function"),
+        ("normalize_details", "function"),
+    ),
+    "agents.py": (
+        ("AgentInstanceState", "class"),
+        ("AgentDefinition", "class"),
+        ("AgentInstance", "class"),
+        ("AGENT_INSTANCE_STATE_VALUES", "annotation"),
+    ),
+    "artifacts.py": (
+        ("ArtifactKind", "class"),
+        ("IntegrityAlgorithm", "class"),
+        ("IntegrityDescriptor", "class"),
+        ("ArtifactReference", "class"),
+        ("ARTIFACT_KIND_VALUES", "annotation"),
+        ("INTEGRITY_ALGORITHM_VALUES", "annotation"),
+    ),
+    "capabilities.py": (
+        ("CapabilityCategory", "class"),
+        ("CapabilityQuality", "class"),
+        ("Capability", "class"),
+        ("CapabilityRequirement", "class"),
+        ("CAPABILITY_CATEGORY_VALUES", "annotation"),
+        ("CAPABILITY_QUALITY_VALUES", "annotation"),
+    ),
+    "errors.py": (
+        ("ErrorCode", "class"),
+        ("ErrorCategory", "class"),
+        ("ErrorSeverity", "class"),
+        ("ContractError", "class"),
+        ("ResultWarning", "class"),
+        ("ERROR_CATEGORY_VALUES", "annotation"),
+        ("ERROR_SEVERITY_VALUES", "annotation"),
+    ),
+    "events.py": (
+        ("EventType", "class"),
+        ("RuntimeEventType", "class"),
+        ("RUNTIME_EVENT_TYPES", "annotation"),
+        ("EventEnvelope", "class"),
+    ),
+    "evidence.py": (
+        ("EvidenceKind", "class"),
+        ("EvidenceReference", "class"),
+        ("EVIDENCE_KIND_VALUES", "annotation"),
+    ),
+    "executions.py": (
+        ("ExecutionState", "class"),
+        ("ExecutionRecord", "class"),
+        ("EXECUTION_STATE_VALUES", "annotation"),
+    ),
+    "identifiers.py": (
+        ("CuriosId", "class"),
+        ("ProjectId", "class"),
+        ("ApplicationId", "class"),
+        ("MilestoneId", "class"),
+        ("WorkstreamId", "class"),
+        ("WorkId", "class"),
+        ("ExecutionId", "class"),
+        ("AgentDefinitionId", "class"),
+        ("AgentInstanceId", "class"),
+        ("CapabilityId", "class"),
+        ("ProviderId", "class"),
+        ("ArtifactId", "class"),
+        ("EvidenceId", "class"),
+        ("VerificationId", "class"),
+        ("EventId", "class"),
+        ("TraceId", "class"),
+        ("CorrelationId", "class"),
+        ("ensure_id_type", "function"),
+        ("ID_TYPES", "annotation"),
+        ("ID_PREFIXES", "annotation"),
+    ),
+    "lifecycle.py": (
+        ("EngineeringLifecycle", "class"),
+        ("ENGINEERING_LIFECYCLE_VALUES", "annotation"),
+    ),
+    "observability.py": (("ObservabilityContext", "class"),),
+    "providers.py": (
+        ("ProviderType", "class"),
+        ("ProviderStatus", "class"),
+        ("ProviderDescriptor", "class"),
+        ("PROVIDER_TYPE_VALUES", "annotation"),
+        ("PROVIDER_STATUS_VALUES", "annotation"),
+    ),
+    "references.py": (
+        ("ReferenceKind", "class"),
+        ("ObjectReference", "class"),
+        ("REFERENCE_KIND_VALUES", "annotation"),
+    ),
+    "results.py": (
+        ("ResultValueT", "assignment"),
+        ("ResultStatus", "class"),
+        ("Result", "class"),
+        ("RESULT_STATUS_VALUES", "annotation"),
+    ),
+    "schema_version.py": (("SchemaVersion", "class"),),
+    "security.py": (
+        ("ConfigurationProfileName", "class"),
+        ("PrincipalType", "class"),
+        ("EffectClassification", "class"),
+        ("RiskClassification", "class"),
+        ("PolicyDecisionOutcome", "class"),
+        ("ApprovalOutcome", "class"),
+        ("ConfigurationProfile", "class"),
+        ("SecretReference", "class"),
+        ("Principal", "class"),
+        ("Permission", "class"),
+        ("Authority", "class"),
+        ("PolicyDecision", "class"),
+        ("Approval", "class"),
+        ("CONFIGURATION_PROFILE_VALUES", "annotation"),
+        ("PRINCIPAL_TYPE_VALUES", "annotation"),
+        ("EFFECT_CLASSIFICATION_VALUES", "annotation"),
+        ("GOVERNED_EFFECT_VALUES", "annotation"),
+        ("RISK_CLASSIFICATION_VALUES", "annotation"),
+        ("POLICY_DECISION_OUTCOME_VALUES", "annotation"),
+        ("APPROVAL_OUTCOME_VALUES", "annotation"),
+    ),
+    "serialization.py": (
+        ("SupportsJsonCompatible", "class"),
+        ("to_json_compatible", "function"),
+        ("JsonCompatible", "assignment"),
+    ),
+    "temporal.py": (
+        ("UtcTimestamp", "class"),
+        ("DurationMilliseconds", "class"),
+    ),
+    "verification.py": (
+        ("VerificationOutcome", "class"),
+        ("VerificationReference", "class"),
+        ("VERIFICATION_OUTCOME_VALUES", "annotation"),
+    ),
+    "work.py": (
+        ("WorkItemState", "class"),
+        ("WorkItem", "class"),
+        ("WORK_ITEM_STATE_VALUES", "annotation"),
+    ),
+}
+FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE = {
+    "agents.py": {
+        "AgentDefinition": (
+            ("agent_definition_id", "annotation"),
+            ("name", "annotation"),
+            ("version", "annotation"),
+            ("purpose", "annotation"),
+            ("allowed_capability_ids", "annotation"),
+            ("constraints", "annotation"),
+            ("model_requirement_refs", "annotation"),
+            ("input_contract_refs", "annotation"),
+            ("output_contract_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "AgentInstance": (
+            ("agent_instance_id", "annotation"),
+            ("agent_definition_id", "annotation"),
+            ("work_id", "annotation"),
+            ("state", "annotation"),
+            ("created_at", "annotation"),
+            ("execution_id", "annotation"),
+            ("observability_context", "annotation"),
+            ("authority_ref", "annotation"),
+            ("principal_ref", "annotation"),
+            ("started_at", "annotation"),
+            ("ended_at", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "AgentInstanceState": (
+            ("CREATED", "assignment"),
+            ("READY", "assignment"),
+            ("ACTIVE", "assignment"),
+            ("WAITING", "assignment"),
+            ("COMPLETED", "assignment"),
+            ("FAILED", "assignment"),
+            ("CANCELLED", "assignment"),
+        ),
+    },
+    "capabilities.py": {
+        "Capability": (
+            ("capability_id", "annotation"),
+            ("key", "annotation"),
+            ("version", "annotation"),
+            ("description", "annotation"),
+            ("category", "annotation"),
+            ("metadata", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "CapabilityRequirement": (
+            ("capability_id", "annotation"),
+            ("quality", "annotation"),
+            ("privacy_constraints", "annotation"),
+            ("latency_budget_ms", "annotation"),
+            ("cost_budget", "annotation"),
+            ("resource_constraints", "annotation"),
+            ("policy_constraint_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+    },
+    "executions.py": {
+        "ExecutionRecord": (
+            ("execution_id", "annotation"),
+            ("work_id", "annotation"),
+            ("executor_ref", "annotation"),
+            ("started_at", "annotation"),
+            ("state", "annotation"),
+            ("ended_at", "annotation"),
+            ("agent_instance_id", "annotation"),
+            ("provider_refs", "annotation"),
+            ("result", "annotation"),
+            ("evidence_refs", "annotation"),
+            ("error_refs", "annotation"),
+            ("errors", "annotation"),
+            ("observability_context", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "ExecutionState": (
+            ("CREATED", "assignment"),
+            ("RUNNING", "assignment"),
+            ("WAITING", "assignment"),
+            ("SUCCEEDED", "assignment"),
+            ("FAILED", "assignment"),
+            ("CANCELLED", "assignment"),
+        ),
+    },
+    "providers.py": {
+        "ProviderDescriptor": (
+            ("provider_id", "annotation"),
+            ("provider_type", "annotation"),
+            ("version", "annotation"),
+            ("declared_capability_ids", "annotation"),
+            ("configuration_requirement_refs", "annotation"),
+            ("status", "annotation"),
+            ("implementation_metadata", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "ProviderType": (
+            ("MODEL", "assignment"),
+            ("STORAGE", "assignment"),
+            ("DATABASE", "assignment"),
+            ("TOOL", "assignment"),
+            ("RUNTIME", "assignment"),
+            ("OTHER", "assignment"),
+        ),
+    },
+    "references.py": {
+        "ObjectReference": (
+            ("kind", "annotation"),
+            ("ref_id", "annotation"),
+            ("from_id", "method"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "ReferenceKind": (
+            ("PROJECT", "assignment"),
+            ("APPLICATION", "assignment"),
+            ("MILESTONE", "assignment"),
+            ("WORKSTREAM", "assignment"),
+            ("WORK", "assignment"),
+            ("EXECUTION", "assignment"),
+            ("AGENT_DEFINITION", "assignment"),
+            ("AGENT_INSTANCE", "assignment"),
+            ("CAPABILITY", "assignment"),
+            ("PROVIDER", "assignment"),
+            ("ARTIFACT", "assignment"),
+            ("EVIDENCE", "assignment"),
+            ("VERIFICATION", "assignment"),
+            ("EVENT", "assignment"),
+            ("TRACE", "assignment"),
+        ),
+    },
+    "security.py": {
+        "EffectClassification": (
+            ("READ_ONLY", "assignment"),
+            ("LOCAL_WRITE", "assignment"),
+            ("EXTERNAL_READ", "assignment"),
+            ("EXTERNAL_WRITE", "assignment"),
+            ("DESTRUCTIVE", "assignment"),
+            ("SECRET_ACCESS", "assignment"),
+            ("NETWORK_ACCESS", "assignment"),
+            ("EXECUTION", "assignment"),
+        ),
+        "PolicyDecision": (
+            ("subject_ref", "annotation"),
+            ("principal", "annotation"),
+            ("requested_effects", "annotation"),
+            ("resource_refs", "annotation"),
+            ("scope", "annotation"),
+            ("outcome", "annotation"),
+            ("reason", "annotation"),
+            ("decided_at", "annotation"),
+            ("decision_id", "annotation"),
+            ("policy_refs", "annotation"),
+            ("approval_id", "annotation"),
+            ("observability_context", "annotation"),
+            ("is_authorizing", "method"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "SecretReference": (
+            ("name", "annotation"),
+            ("scope", "annotation"),
+            ("purpose", "annotation"),
+            ("key", "annotation"),
+            ("resolver_ref", "annotation"),
+            ("secret_provider_ref", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+    },
+    "work.py": {
+        "WorkItem": (
+            ("work_id", "annotation"),
+            ("work_type", "annotation"),
+            ("title", "annotation"),
+            ("objective", "annotation"),
+            ("created_at", "annotation"),
+            ("updated_at", "annotation"),
+            ("state", "annotation"),
+            ("dependencies", "annotation"),
+            ("required_capabilities", "annotation"),
+            ("inputs", "annotation"),
+            ("expected_outputs", "annotation"),
+            ("policy_constraint_refs", "annotation"),
+            ("authority_ref", "annotation"),
+            ("principal_ref", "annotation"),
+            ("evidence_requirement_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "WorkItemState": (
+            ("CREATED", "assignment"),
+            ("READY", "assignment"),
+            ("RUNNING", "assignment"),
+            ("WAITING", "assignment"),
+            ("COMPLETED", "assignment"),
+            ("FAILED", "assignment"),
+            ("CANCELLED", "assignment"),
+        ),
+    },
+}
+FROZEN_CONTRACT_INIT_IMPORTS = {
+    "curios_contracts.agents": (
+        ("AGENT_INSTANCE_STATE_VALUES", None),
+        ("AgentDefinition", None),
+        ("AgentInstance", None),
+        ("AgentInstanceState", None),
+    ),
+    "curios_contracts.artifacts": (
+        ("ARTIFACT_KIND_VALUES", None),
+        ("INTEGRITY_ALGORITHM_VALUES", None),
+        ("ArtifactKind", None),
+        ("ArtifactReference", None),
+        ("IntegrityAlgorithm", None),
+        ("IntegrityDescriptor", None),
+    ),
+    "curios_contracts.capabilities": (
+        ("CAPABILITY_CATEGORY_VALUES", None),
+        ("CAPABILITY_QUALITY_VALUES", None),
+        ("Capability", None),
+        ("CapabilityCategory", None),
+        ("CapabilityQuality", None),
+        ("CapabilityRequirement", None),
+    ),
+    "curios_contracts.errors": (
+        ("ERROR_CATEGORY_VALUES", None),
+        ("ERROR_SEVERITY_VALUES", None),
+        ("ContractError", None),
+        ("ErrorCategory", None),
+        ("ErrorCode", None),
+        ("ErrorSeverity", None),
+        ("ResultWarning", None),
+    ),
+    "curios_contracts.events": (
+        ("RUNTIME_EVENT_TYPES", None),
+        ("EventEnvelope", None),
+        ("EventType", None),
+        ("RuntimeEventType", None),
+    ),
+    "curios_contracts.evidence": (
+        ("EVIDENCE_KIND_VALUES", None),
+        ("EvidenceKind", None),
+        ("EvidenceReference", None),
+    ),
+    "curios_contracts.executions": (
+        ("EXECUTION_STATE_VALUES", None),
+        ("ExecutionRecord", None),
+        ("ExecutionState", None),
+    ),
+    "curios_contracts.identifiers": (
+        ("ID_PREFIXES", None),
+        ("ID_TYPES", None),
+        ("AgentDefinitionId", None),
+        ("AgentInstanceId", None),
+        ("ApplicationId", None),
+        ("ArtifactId", None),
+        ("CapabilityId", None),
+        ("CorrelationId", None),
+        ("CuriosId", None),
+        ("EventId", None),
+        ("EvidenceId", None),
+        ("ExecutionId", None),
+        ("MilestoneId", None),
+        ("ProjectId", None),
+        ("ProviderId", None),
+        ("TraceId", None),
+        ("VerificationId", None),
+        ("WorkId", None),
+        ("WorkstreamId", None),
+        ("ensure_id_type", None),
+    ),
+    "curios_contracts.lifecycle": (
+        ("ENGINEERING_LIFECYCLE_VALUES", None),
+        ("EngineeringLifecycle", None),
+    ),
+    "curios_contracts.observability": (("ObservabilityContext", None),),
+    "curios_contracts.providers": (
+        ("PROVIDER_STATUS_VALUES", None),
+        ("PROVIDER_TYPE_VALUES", None),
+        ("ProviderDescriptor", None),
+        ("ProviderStatus", None),
+        ("ProviderType", None),
+    ),
+    "curios_contracts.references": (
+        ("REFERENCE_KIND_VALUES", None),
+        ("ObjectReference", None),
+        ("ReferenceKind", None),
+    ),
+    "curios_contracts.results": (
+        ("RESULT_STATUS_VALUES", None),
+        ("Result", None),
+        ("ResultStatus", None),
+    ),
+    "curios_contracts.schema_version": (("SchemaVersion", None),),
+    "curios_contracts.security": (
+        ("APPROVAL_OUTCOME_VALUES", None),
+        ("CONFIGURATION_PROFILE_VALUES", None),
+        ("EFFECT_CLASSIFICATION_VALUES", None),
+        ("GOVERNED_EFFECT_VALUES", None),
+        ("POLICY_DECISION_OUTCOME_VALUES", None),
+        ("PRINCIPAL_TYPE_VALUES", None),
+        ("RISK_CLASSIFICATION_VALUES", None),
+        ("Approval", None),
+        ("ApprovalOutcome", None),
+        ("Authority", None),
+        ("ConfigurationProfile", None),
+        ("ConfigurationProfileName", None),
+        ("EffectClassification", None),
+        ("Permission", None),
+        ("PolicyDecision", None),
+        ("PolicyDecisionOutcome", None),
+        ("Principal", None),
+        ("PrincipalType", None),
+        ("RiskClassification", None),
+        ("SecretReference", None),
+    ),
+    "curios_contracts.serialization": (("to_json_compatible", None),),
+    "curios_contracts.temporal": (
+        ("DurationMilliseconds", None),
+        ("UtcTimestamp", None),
+    ),
+    "curios_contracts.verification": (
+        ("VERIFICATION_OUTCOME_VALUES", None),
+        ("VerificationOutcome", None),
+        ("VerificationReference", None),
+    ),
+    "curios_contracts.work": (
+        ("WORK_ITEM_STATE_VALUES", None),
+        ("WorkItem", None),
+        ("WorkItemState", None),
+    ),
+}
+FROZEN_CONTRACT_INIT_DECLARATIONS = (("__version__", "assignment"),)
+FROZEN_CONTRACT_PACKAGE_EXPORTS = (
+    "AGENT_INSTANCE_STATE_VALUES",
+    "ARTIFACT_KIND_VALUES",
+    "APPROVAL_OUTCOME_VALUES",
+    "CAPABILITY_CATEGORY_VALUES",
+    "CAPABILITY_QUALITY_VALUES",
+    "CONFIGURATION_PROFILE_VALUES",
+    "ENGINEERING_LIFECYCLE_VALUES",
+    "ERROR_CATEGORY_VALUES",
+    "ERROR_SEVERITY_VALUES",
+    "EFFECT_CLASSIFICATION_VALUES",
+    "EVIDENCE_KIND_VALUES",
+    "EXECUTION_STATE_VALUES",
+    "GOVERNED_EFFECT_VALUES",
+    "ID_PREFIXES",
+    "ID_TYPES",
+    "INTEGRITY_ALGORITHM_VALUES",
+    "POLICY_DECISION_OUTCOME_VALUES",
+    "PRINCIPAL_TYPE_VALUES",
+    "PROVIDER_STATUS_VALUES",
+    "PROVIDER_TYPE_VALUES",
+    "REFERENCE_KIND_VALUES",
+    "RESULT_STATUS_VALUES",
+    "RISK_CLASSIFICATION_VALUES",
+    "RUNTIME_EVENT_TYPES",
+    "VERIFICATION_OUTCOME_VALUES",
+    "WORK_ITEM_STATE_VALUES",
+    "AgentDefinition",
+    "AgentDefinitionId",
+    "AgentInstance",
+    "AgentInstanceId",
+    "AgentInstanceState",
+    "ApplicationId",
+    "Approval",
+    "ApprovalOutcome",
+    "ArtifactId",
+    "ArtifactKind",
+    "ArtifactReference",
+    "Authority",
+    "Capability",
+    "CapabilityCategory",
+    "CapabilityId",
+    "CapabilityQuality",
+    "CapabilityRequirement",
+    "ConfigurationProfile",
+    "ConfigurationProfileName",
+    "ContractError",
+    "CorrelationId",
+    "CuriosId",
+    "DurationMilliseconds",
+    "EffectClassification",
+    "EngineeringLifecycle",
+    "ErrorCategory",
+    "ErrorCode",
+    "ErrorSeverity",
+    "EventEnvelope",
+    "EventId",
+    "EventType",
+    "ExecutionRecord",
+    "EvidenceKind",
+    "EvidenceId",
+    "EvidenceReference",
+    "ExecutionState",
+    "ExecutionId",
+    "IntegrityAlgorithm",
+    "IntegrityDescriptor",
+    "MilestoneId",
+    "ObjectReference",
+    "ObservabilityContext",
+    "Permission",
+    "PolicyDecision",
+    "PolicyDecisionOutcome",
+    "Principal",
+    "PrincipalType",
+    "ProjectId",
+    "ProviderDescriptor",
+    "ProviderId",
+    "ProviderStatus",
+    "ProviderType",
+    "ReferenceKind",
+    "Result",
+    "ResultStatus",
+    "ResultWarning",
+    "RiskClassification",
+    "RuntimeEventType",
+    "SchemaVersion",
+    "SecretReference",
+    "TraceId",
+    "UtcTimestamp",
+    "VerificationOutcome",
+    "VerificationId",
+    "VerificationReference",
+    "WorkItem",
+    "WorkItemState",
+    "WorkId",
+    "WorkstreamId",
+    "__version__",
+    "ensure_id_type",
+    "to_json_compatible",
+)
+M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK = {
+    "TASK-M1-002": frozenset(
+        {
+            "Intent",
+            "Objective",
+            "Problem",
+            "Assumption",
+            "Decision",
+            "Plan",
+        }
+    ),
+    "TASK-M1-004": frozenset({"bounded work-DAG records"}),
+    "TASK-M1-009": frozenset({"model/profile discovery records"}),
+    "TASK-M1-010": frozenset({"routing decision records"}),
+}
+M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS = frozenset(
+    {
+        "AgentDefinition",
+        "AgentInstance",
+        "Capability",
+        "CapabilityRequirement",
+        "ObjectReference",
+        "WorkItem",
+    }
+)
 M0_INTEGRATION_GATE_COMMAND = (
     "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
 )
@@ -768,6 +1375,186 @@ def _python_files(root: Path) -> tuple[Path, ...]:
 
 def _parse_python(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+
+
+def _parse_contract_text(module_name: str, source: str) -> ast.Module:
+    return ast.parse(source, filename=module_name)
+
+
+def _is_public_name(name: str) -> bool:
+    return not name.startswith("_")
+
+
+def _call_name(node: ast.AST) -> str:
+    match node:
+        case ast.Name(id=name):
+            return name
+        case ast.Attribute(value=value, attr=attr):
+            parent = _call_name(value)
+            return f"{parent}.{attr}" if parent else attr
+        case _:
+            return ""
+
+
+def _annotation_is_type_alias(annotation: ast.AST) -> bool:
+    return _call_name(annotation).endswith("TypeAlias")
+
+
+def _assignment_kind(value: ast.AST) -> str:
+    if isinstance(value, ast.Call):
+        call_name = _call_name(value.func)
+        if call_name.endswith("NewType"):
+            return "newtype"
+        if call_name.endswith("TypeAliasType"):
+            return "type_alias"
+        if call_name.endswith(("NamedTuple", "TypedDict")):
+            return "typed_structure"
+    return "assignment"
+
+
+def _public_contract_declarations(tree: ast.Module) -> tuple[tuple[str, str], ...]:
+    declarations: list[tuple[str, str]] = []
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and _is_public_name(node.name):
+            declarations.append((node.name, "class"))
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and _is_public_name(
+            node.name
+        ):
+            declarations.append((node.name, "function"))
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and _is_public_name(target.id):
+                    declarations.append((target.id, _assignment_kind(node.value)))
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if _is_public_name(node.target.id):
+                kind = "type_alias" if _annotation_is_type_alias(node.annotation) else "annotation"
+                declarations.append((node.target.id, kind))
+        elif isinstance(node, getattr(ast, "TypeAlias", ())):
+            name = getattr(node.name, "id", "")
+            if _is_public_name(name):
+                declarations.append((name, "type_alias"))
+    return tuple(declarations)
+
+
+def _public_class_member_declarations(tree: ast.Module) -> dict[str, tuple[tuple[str, str], ...]]:
+    class_members: dict[str, tuple[tuple[str, str], ...]] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or not _is_public_name(node.name):
+            continue
+        members: list[tuple[str, str]] = []
+        for statement in node.body:
+            if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef) and _is_public_name(
+                statement.name
+            ):
+                members.append((statement.name, "method"))
+            elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+                if _is_public_name(statement.target.id):
+                    kind = (
+                        "type_alias"
+                        if _annotation_is_type_alias(statement.annotation)
+                        else "annotation"
+                    )
+                    members.append((statement.target.id, kind))
+            elif isinstance(statement, ast.Assign):
+                for target in statement.targets:
+                    if isinstance(target, ast.Name) and _is_public_name(target.id):
+                        members.append((target.id, _assignment_kind(statement.value)))
+            elif isinstance(statement, getattr(ast, "TypeAlias", ())):
+                name = getattr(statement.name, "id", "")
+                if _is_public_name(name):
+                    members.append((name, "type_alias"))
+        class_members[node.name] = tuple(members)
+    return class_members
+
+
+def _contract_module_authority_violations(
+    module_name: str,
+    source: str,
+) -> tuple[str, ...]:
+    tree = _parse_contract_text(module_name, source)
+    violations: list[str] = []
+
+    actual_declarations = _public_contract_declarations(tree)
+    expected_declarations = FROZEN_CONTRACT_DECLARATIONS_BY_MODULE[module_name]
+    if actual_declarations != expected_declarations:
+        violations.append(
+            f"{module_name} declarations changed: expected {expected_declarations!r}; "
+            f"got {actual_declarations!r}"
+        )
+
+    expected_members_by_class = FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE.get(module_name, {})
+    if expected_members_by_class:
+        actual_members_by_class = _public_class_member_declarations(tree)
+        for class_name, expected_members in expected_members_by_class.items():
+            actual_members = actual_members_by_class.get(class_name)
+            if actual_members != expected_members:
+                violations.append(
+                    f"{module_name}:{class_name} members changed: "
+                    f"expected {expected_members!r}; got {actual_members!r}"
+                )
+
+    return tuple(violations)
+
+
+def _contract_init_authority(
+    source: str,
+) -> tuple[
+    dict[str, tuple[tuple[str, str | None], ...]],
+    tuple[tuple[str, str], ...],
+    tuple[str, ...],
+]:
+    tree = _parse_contract_text("__init__.py", source)
+    imports: dict[str, tuple[tuple[str, str | None], ...]] = {}
+    declarations: list[tuple[str, str]] = []
+    all_values: tuple[str, ...] = ()
+
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom) and node.module is not None:
+            imports[node.module] = tuple((alias.name, alias.asname) for alias in node.names)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if target.id == "__all__" and isinstance(node.value, ast.Tuple):
+                    all_values = tuple(
+                        item.value
+                        for item in node.value.elts
+                        if isinstance(item, ast.Constant) and isinstance(item.value, str)
+                    )
+                elif _is_public_name(target.id) or target.id == "__version__":
+                    declarations.append((target.id, _assignment_kind(node.value)))
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if _is_public_name(node.target.id) or node.target.id == "__version__":
+                declarations.append((node.target.id, "annotation"))
+        elif isinstance(
+            node,
+            ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+        ) and _is_public_name(node.name):
+            kind = "class" if isinstance(node, ast.ClassDef) else "function"
+            declarations.append((node.name, kind))
+
+    return imports, tuple(declarations), all_values
+
+
+def _contract_init_authority_violations(source: str) -> tuple[str, ...]:
+    actual_imports, actual_declarations, actual_all = _contract_init_authority(source)
+    violations: list[str] = []
+    if actual_imports != FROZEN_CONTRACT_INIT_IMPORTS:
+        violations.append(
+            "curios_contracts.__init__ imports changed: expected "
+            f"{FROZEN_CONTRACT_INIT_IMPORTS!r}; got {actual_imports!r}"
+        )
+    if actual_declarations != FROZEN_CONTRACT_INIT_DECLARATIONS:
+        violations.append(
+            "curios_contracts.__init__ declarations changed: expected "
+            f"{FROZEN_CONTRACT_INIT_DECLARATIONS!r}; got {actual_declarations!r}"
+        )
+    if actual_all != FROZEN_CONTRACT_PACKAGE_EXPORTS:
+        violations.append(
+            "curios_contracts.__all__ changed: expected "
+            f"{FROZEN_CONTRACT_PACKAGE_EXPORTS!r}; got {actual_all!r}"
+        )
+    return tuple(violations)
 
 
 def _import_roots(source_root: Path) -> set[str]:
@@ -3371,6 +4158,263 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-014"] == {"apps/web"}
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-015"] == {"tests/integration"}
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-017"] == {"tests/acceptance"}
+
+
+def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contracts() -> None:
+    assert {
+        "TASK-M1-002": {
+            "Intent",
+            "Objective",
+            "Problem",
+            "Assumption",
+            "Decision",
+            "Plan",
+        },
+        "TASK-M1-004": {"bounded work-DAG records"},
+        "TASK-M1-009": {"model/profile discovery records"},
+        "TASK-M1-010": {"routing decision records"},
+    } == M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK
+    assert {
+        "AgentDefinition",
+        "AgentInstance",
+        "Capability",
+        "CapabilityRequirement",
+        "ObjectReference",
+        "WorkItem",
+    } == M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS
+    planned_new_names = frozenset().union(*M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK.values())
+    assert planned_new_names.isdisjoint(FROZEN_CONTRACT_PACKAGE_EXPORTS)
+
+
+def test_curios_contracts_canonical_declarations_match_frozen_inventory() -> None:
+    actual_modules = {
+        path.relative_to(CONTRACTS_SOURCE).as_posix()
+        for path in CONTRACTS_SOURCE.glob("*.py")
+        if path.name not in {"__init__.py"}
+    }
+    assert actual_modules == set(FROZEN_CONTRACT_DECLARATIONS_BY_MODULE)
+
+    violations = tuple(
+        violation
+        for module_name in sorted(FROZEN_CONTRACT_DECLARATIONS_BY_MODULE)
+        for violation in _contract_module_authority_violations(
+            module_name,
+            (CONTRACTS_SOURCE / module_name).read_text(encoding="utf-8"),
+        )
+    )
+
+    _assert_no_security_failure(
+        not violations,
+        f"curios_contracts canonical declaration inventory changed: {list(violations)}",
+    )
+
+
+def test_curios_contracts_package_exports_match_frozen_inventory() -> None:
+    violations = _contract_init_authority_violations(
+        (CONTRACTS_SOURCE / "__init__.py").read_text(encoding="utf-8")
+    )
+
+    _assert_no_security_failure(
+        not violations,
+        f"curios_contracts package public export inventory changed: {list(violations)}",
+    )
+
+
+@pytest.mark.parametrize(
+    ("module_name", "snippet"),
+    (
+        (
+            "work.py",
+            """
+
+            @dataclass(frozen=True, slots=True)
+            class Intent:
+                intent_id: WorkId
+            """,
+        ),
+        (
+            "executions.py",
+            """
+
+            class Objective:
+                pass
+            """,
+        ),
+        (
+            "security.py",
+            """
+
+            class Problem(StrEnum):
+                UNKNOWN = "UNKNOWN"
+            """,
+        ),
+        (
+            "providers.py",
+            """
+
+            class Assumption(Protocol):
+                pass
+            """,
+        ),
+        (
+            "references.py",
+            """
+
+            Decision: TypeAlias = ObjectReference
+            """,
+        ),
+        (
+            "capabilities.py",
+            """
+
+            Plan = NewType("Plan", str)
+            """,
+        ),
+        (
+            "work.py",
+            """
+
+            COGNITIVE_GRAPH_RECORD_VALUES: tuple[str, ...] = ("INTENT",)
+            """,
+        ),
+        (
+            "serialization.py",
+            """
+
+            def make_intent() -> object:
+                return object()
+            """,
+        ),
+    ),
+)
+def test_curios_contracts_existing_files_reject_new_public_canonical_declarations(
+    module_name: str,
+    snippet: str,
+) -> None:
+    source = (CONTRACTS_SOURCE / module_name).read_text(encoding="utf-8")
+    mutated_source = f"{source}\n{textwrap.dedent(snippet)}"
+
+    assert _contract_module_authority_violations(module_name, mutated_source)
+
+
+@pytest.mark.parametrize(
+    ("module_name", "original", "replacement"),
+    (
+        (
+            "work.py",
+            "    evidence_requirement_refs: tuple[ObjectReference, ...] = ()\n",
+            "    evidence_requirement_refs: tuple[ObjectReference, ...] = ()\n"
+            "    intent: str | None = None\n",
+        ),
+        (
+            "security.py",
+            '    EXECUTION = "EXECUTION"\n',
+            '    EXECUTION = "EXECUTION"\n    COGNITIVE_AUTHORITY = "COGNITIVE_AUTHORITY"\n',
+        ),
+        (
+            "security.py",
+            "    secret_provider_ref: ObjectReference | None = None\n",
+            "    secret_provider_ref: ObjectReference | None = None\n"
+            "    intent_ref: ObjectReference | None = None\n",
+        ),
+        (
+            "references.py",
+            "    ref_id: CuriosId\n",
+            "    ref_id: CuriosId\n    graph_id: str | None = None\n",
+        ),
+    ),
+)
+def test_curios_contracts_existing_schema_and_vocabularies_reject_public_mutations(
+    module_name: str,
+    original: str,
+    replacement: str,
+) -> None:
+    source = (CONTRACTS_SOURCE / module_name).read_text(encoding="utf-8")
+    assert original in source
+    mutated_source = source.replace(original, replacement, 1)
+
+    assert _contract_module_authority_violations(module_name, mutated_source)
+
+
+def test_curios_contracts_reject_duplicate_generic_reference_declaration() -> None:
+    source = (CONTRACTS_SOURCE / "references.py").read_text(encoding="utf-8")
+    mutated_source = source + textwrap.dedent(
+        """
+
+        @dataclass(frozen=True, slots=True)
+        class GenericReference:
+            kind: str
+            ref_id: str
+        """
+    )
+
+    assert _contract_module_authority_violations("references.py", mutated_source)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "new_intent_import_and_export",
+        "new_declaration_without_all",
+        "reexport_new_symbol_from_existing_module",
+        "alias_existing_symbol_under_new_public_name",
+        "all_addition_without_authority",
+        "new_private_helper_reexport",
+    ),
+)
+def test_curios_contracts_package_exports_reject_public_authority_expansion(
+    mutation: str,
+) -> None:
+    source = (CONTRACTS_SOURCE / "__init__.py").read_text(encoding="utf-8")
+    mutations = {
+        "new_intent_import_and_export": source.replace(
+            "from curios_contracts.work import WORK_ITEM_STATE_VALUES, WorkItem, WorkItemState",
+            (
+                "from curios_contracts.work import WORK_ITEM_STATE_VALUES, "
+                "Intent, WorkItem, WorkItemState"
+            ),
+        ).replace(
+            '    "IntegrityDescriptor",\n',
+            '    "IntegrityDescriptor",\n    "Intent",\n',
+        ),
+        "new_declaration_without_all": source + "\nclass Intent:\n    pass\n",
+        "reexport_new_symbol_from_existing_module": source
+        + "\nfrom curios_contracts.work import Intent\n",
+        "alias_existing_symbol_under_new_public_name": source.replace(
+            "from curios_contracts.work import WORK_ITEM_STATE_VALUES, WorkItem, WorkItemState",
+            (
+                "from curios_contracts.work import WORK_ITEM_STATE_VALUES, "
+                "WorkItem as Intent, WorkItemState"
+            ),
+        ).replace(
+            '    "IntegrityDescriptor",\n',
+            '    "IntegrityDescriptor",\n    "Intent",\n',
+        ),
+        "all_addition_without_authority": source.replace(
+            '    "IntegrityDescriptor",\n',
+            '    "IntegrityDescriptor",\n    "Intent",\n',
+        ),
+        "new_private_helper_reexport": source
+        + "\nfrom curios_contracts._validation import validate_safe_token as Intent\n",
+    }
+
+    assert _contract_init_authority_violations(mutations[mutation])
+
+
+def test_curios_contracts_private_module_helpers_remain_allowed_when_not_public_authority() -> None:
+    source = (CONTRACTS_SOURCE / "work.py").read_text(encoding="utf-8")
+    mutated_source = source + textwrap.dedent(
+        """
+
+        def _normalize_intent_probe(value: object) -> object:
+            return value
+        """
+    )
+
+    assert not _contract_module_authority_violations(
+        "work.py",
+        mutated_source,
+    )
 
 
 @pytest.mark.parametrize(

@@ -52,6 +52,11 @@ without promoting representative package names into executable authority.
 Those categories remain planned until their owning task validates, freezes, and
 integrates the exact repository surface.
 
+TASK-M1-001 also freezes the current public `curios_contracts` canonical
+authority inventory. A future task must explicitly update that inventory before
+adding public contract declarations, schema fields, enum/vocabulary members,
+type aliases, factories/functions, or package-level exports.
+
 ## Preserved Architecture
 
 - `curios_contracts` remains canonical semantic authority.
@@ -74,13 +79,19 @@ cannot import or depend on representative M1 implementation roots. The
 detector is intentionally structural and works even while those future packages
 are absent.
 
+Security topology tests provide the companion canonical-authority guard for
+`curios_contracts`: the current module declaration inventory and
+package-export inventory are exact, while planned M1 concepts remain registered
+as future ownership only.
+
 TASK-M1-001 does not authorize:
 
 - new cognitive contract files;
+- new cognitive contract classes, enums, type aliases, factories, fields, or
+  package exports inside existing contract files;
 - new runtime modules;
 - new executor or tool framework modules;
 - scheduler/DAG production runtime;
 - model generation or router optimization;
 - API or web M1 surfaces;
 - M1 integration, CI, acceptance, verification, or freeze implementation.
-

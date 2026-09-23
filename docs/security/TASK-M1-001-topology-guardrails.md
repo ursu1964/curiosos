@@ -38,6 +38,11 @@ TASK-M1-001 adds guardrail tests and documentation only. It does not authorize
 new package roots, runtime modules, contract files, API files, web files,
 integration tests, acceptance tests, CI workflow changes, or `.github` paths.
 
+The current `curios_contracts` canonical authority surface is also frozen:
+existing source files may not gain new public canonical declarations, public
+schema fields, vocabulary members, public factories/functions, type aliases, or
+package-level exports until an owning task explicitly transitions the inventory.
+
 ## Planned But Not Yet Authorized M1 Surfaces
 
 | Task | Planned Surface Category |
@@ -68,6 +73,10 @@ The security topology tests now reject representative premature M1 additions
 including:
 
 - new cognitive contract files under the already-authorized contracts package;
+- new public canonical declarations inside already-authorized contract files;
+- new fields or vocabulary members on representative frozen contract classes;
+- new package-level `curios_contracts` imports, aliases, re-exports, or
+  `__all__` entries;
 - new TypeScript contract files;
 - arbitrary M1 package roots;
 - new `curios_runtime` modules for DAG, agent, executor, model-profile,
@@ -79,6 +88,24 @@ including:
 
 The checks also preserve current-stage exactness for all frozen BOOT and M0
 surfaces.
+
+The contract authority guard is AST-based. It compares the frozen inventory of
+public module declarations, representative class/schema members, and
+`curios_contracts.__init__` exports against explicit expected sets. Private
+implementation helpers that remain private by name are not treated as new
+canonical authority, but re-exporting a private helper is blocked.
+
+## Future Contract Transition
+
+The planned TASK-M1-002 concepts `Intent`, `Objective`, `Problem`,
+`Assumption`, `Decision`, and `Plan` are registered only as future ownership.
+They are not authorized today. TASK-M1-004, TASK-M1-009, and TASK-M1-010 own
+future bounded DAG, model/profile, and routing record transitions respectively.
+
+Existing frozen `Capability`, `CapabilityRequirement`, `AgentDefinition`,
+`AgentInstance`, `ObjectReference`, and `WorkItem` authority remains current
+BOOT/M0 contract authority. Future M1 tasks may consume or deliberately
+transition that authority only by updating the explicit inventory.
 
 ## Deferred Scope Still Blocked
 
@@ -104,4 +131,3 @@ TASK-M1-001 keeps the following outside current authority:
 New M1-001 documentation is under `docs/**`, which remains a scanned security
 surface. The task adds no exemptions and does not weaken secret-shaped literal
 detection, secret-reference/value checks, or authority boundary checks.
-
