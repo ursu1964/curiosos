@@ -31,6 +31,9 @@ TASK-M0-008 also authorizes the existing FastAPI composition/service modules
 as an outer HTTP translation surface for the M0 work endpoint contract.
 TASK-M0-009 authorizes the existing web bootstrap files to evolve into the
 minimal M0 work console over that API contract.
+TASK-M0-010 authorizes the exact integration test that composes the frozen
+runtime, API, web/API boundary, and PostgreSQL persistence surfaces without
+adding product behavior.
 
 | Task | Planned Surface |
 | --- | --- |
@@ -42,6 +45,7 @@ minimal M0 work console over that API contract.
 | TASK-M0-007 | `packages/python/curios_runtime/**` provider-inventory executor module only (authorized by TASK-M0-007) |
 | TASK-M0-008 | `apps/api/src/curios_api/composition.py`, `apps/api/src/curios_api/service.py`, and exact API endpoint tests only (authorized by TASK-M0-008) |
 | TASK-M0-009 | `apps/web/src/App.tsx`, `App.css`, `App.test.tsx`, `apiBoundary.ts`, and `main.tsx` only (authorized by TASK-M0-009) |
+| TASK-M0-010 | `tests/integration/test_m0_vertical_slice_integration.py` only (authorized by TASK-M0-010) |
 
 TASK-M0-001 establishes architecture tests that already block inward imports or
 metadata dependencies from contracts/core to those implementation packages.
@@ -60,6 +64,8 @@ security topology before adding implementation.
   scheduler, arbitrary runtime route, or backend semantic authority is
   introduced by the M0-009 transition. The web console consumes frozen API
   responses and displays recorded runtime truth only.
+- TASK-M0-010 integration tests compose frozen boundaries as tests only; no
+  production package depends on test helpers or gains new semantics.
 
 ## Deferred Architecture
 
