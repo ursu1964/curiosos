@@ -9,7 +9,10 @@ dependencies = [
   "curios-core",
   "curios-observability",
   "curios-ollama",
+  "curios-persistence",
+  "curios-policy",
   "curios-postgres-provider",
+  "curios-runtime",
   "fastapi>=0.118.0",
 ]
 
@@ -19,7 +22,10 @@ curios-contracts = { workspace = true }
 curios-core = { workspace = true }
 curios-observability = { workspace = true }
 curios-ollama = { workspace = true }
+curios-persistence = { workspace = true }
+curios-policy = { workspace = true }
 curios-postgres-provider = { workspace = true }
+curios-runtime = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.12.0,<0.13.0"]

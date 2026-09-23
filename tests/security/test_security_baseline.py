@@ -169,6 +169,20 @@ M0_PLANNED_APP_ROOTS_BY_TASK = {
     "TASK-M0-008": frozenset({"apps/api"}),
     "TASK-M0-009": frozenset({"apps/web"}),
 }
+M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK = {
+    "TASK-M0-008": frozenset({"composition.py", "service.py"}),
+}
+M0_AUTHORIZED_API_TEST_FILES_BY_TASK = {
+    "TASK-M0-008": frozenset({"test_fastapi_service_composition.py", "test_m0_work_endpoints.py"}),
+}
+M0_AUTHORIZED_API_SOURCE_FILES = frozenset(
+    {
+        "__init__.py",
+        "py.typed",
+        *frozenset().union(*M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK.values()),
+    }
+)
+M0_AUTHORIZED_API_TEST_FILES = frozenset().union(*M0_AUTHORIZED_API_TEST_FILES_BY_TASK.values())
 M0_PLANNED_TEST_ROOTS_BY_TASK = {
     "TASK-M0-010": frozenset({"tests/integration"}),
     "TASK-M0-012": frozenset({"tests/acceptance"}),
@@ -673,12 +687,38 @@ def _tracked_runtime_source_files() -> frozenset[str]:
     )
 
 
+def _tracked_api_source_files() -> frozenset[str]:
+    api_source = REPO_ROOT / "apps/api/src/curios_api"
+    return frozenset(
+        path.relative_to(api_source).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(api_source)
+    )
+
+
+def _tracked_api_test_files() -> frozenset[str]:
+    api_tests = REPO_ROOT / "apps/api/tests"
+    return frozenset(
+        path.relative_to(api_tests).as_posix()
+        for path in _tracked_files()
+        if path.is_relative_to(api_tests)
+    )
+
+
 def _unauthorized_github_paths(paths: frozenset[str]) -> frozenset[str]:
     return paths - AUTHORIZED_GITHUB_PATHS
 
 
 def _unauthorized_runtime_source_files(paths: frozenset[str]) -> frozenset[str]:
     return paths - M0_AUTHORIZED_RUNTIME_SOURCE_FILES
+
+
+def _unauthorized_api_source_files(paths: frozenset[str]) -> frozenset[str]:
+    return paths - M0_AUTHORIZED_API_SOURCE_FILES
+
+
+def _unauthorized_api_test_files(paths: frozenset[str]) -> frozenset[str]:
+    return paths - M0_AUTHORIZED_API_TEST_FILES
 
 
 def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
@@ -1068,6 +1108,15 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M0-007"] == {
         "provider_inventory_executor.py"
     }
+    assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-008"] == {"apps/api"}
+    assert M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK["TASK-M0-008"] == {
+        "composition.py",
+        "service.py",
+    }
+    assert M0_AUTHORIZED_API_TEST_FILES_BY_TASK["TASK-M0-008"] == {
+        "test_fastapi_service_composition.py",
+        "test_m0_work_endpoints.py",
+    }
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-009"] == {"apps/web"}
     assert M0_PLANNED_TEST_ROOTS_BY_TASK["TASK-M0-010"] == {"tests/integration"}
     assert M0_DEFERRED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
@@ -1091,6 +1140,40 @@ def test_m0_runtime_module_topology_rejects_unvalidated_future_runtime_surfaces(
     assert _unauthorized_runtime_source_files(simulated_files) == {runtime_file}
 
 
+@pytest.mark.parametrize(
+    "api_file",
+    (
+        "agents.py",
+        "scheduler_routes.py",
+        "model_routes.py",
+        "work_console.py",
+        "routes/provider_tools.py",
+    ),
+)
+def test_m0_api_source_topology_rejects_unvalidated_future_api_surfaces(
+    api_file: str,
+) -> None:
+    simulated_files = M0_AUTHORIZED_API_SOURCE_FILES | {api_file}
+
+    assert _unauthorized_api_source_files(simulated_files) == {api_file}
+
+
+@pytest.mark.parametrize(
+    "api_test_file",
+    (
+        "test_agent_runtime_endpoints.py",
+        "test_scheduler_routes.py",
+        "test_model_generation_api.py",
+    ),
+)
+def test_m0_api_test_topology_rejects_unvalidated_future_api_tests(
+    api_test_file: str,
+) -> None:
+    simulated_files = M0_AUTHORIZED_API_TEST_FILES | {api_test_file}
+
+    assert _unauthorized_api_test_files(simulated_files) == {api_test_file}
+
+
 def test_later_task_security_provider_runtime_surfaces_match_authorized_current_boundary() -> None:
     existing = [path for path in LATER_TASK_PATHS if (REPO_ROOT / path).exists()]
     unexpected_integration_tests = (
@@ -1100,6 +1183,8 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     unexpected_top_level = _tracked_top_level_paths() - ALLOWED_TOP_LEVEL_PATHS
     unexpected_github_paths = _unauthorized_github_paths(_tracked_github_paths())
     unexpected_runtime_files = _unauthorized_runtime_source_files(_tracked_runtime_source_files())
+    unexpected_api_source_files = _unauthorized_api_source_files(_tracked_api_source_files())
+    unexpected_api_test_files = _unauthorized_api_test_files(_tracked_api_test_files())
     unexpected_apps = _tracked_app_roots() - ALLOWED_APP_ROOTS
     unexpected_packages = _tracked_package_roots() - ALLOWED_PACKAGE_ROOTS
     unexpected_m0_package_roots = _tracked_package_roots() & M0_DEFERRED_PACKAGE_ROOTS
@@ -1132,6 +1217,14 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
     _assert_no_security_failure(
         not unexpected_runtime_files,
         f"unexpected tracked curios_runtime source file(s): {sorted(unexpected_runtime_files)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_api_source_files,
+        f"unexpected tracked apps/api source file(s): {sorted(unexpected_api_source_files)}",
+    )
+    _assert_no_security_failure(
+        not unexpected_api_test_files,
+        f"unexpected tracked apps/api test file(s): {sorted(unexpected_api_test_files)}",
     )
     _assert_no_security_failure(
         not unexpected_apps,

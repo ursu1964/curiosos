@@ -153,7 +153,10 @@ dependencies = [
     { name = "curios-core" },
     { name = "curios-observability" },
     { name = "curios-ollama" },
+    { name = "curios-persistence" },
+    { name = "curios-policy" },
     { name = "curios-postgres-provider" },
+    { name = "curios-runtime" },
     { name = "fastapi" },
 ]
 
@@ -164,7 +167,10 @@ requires-dist = [
     { name = "curios-core", editable = "packages/python/curios_core" },
     { name = "curios-observability", editable = "packages/python/curios_observability" },
     { name = "curios-ollama", editable = "packages/python/curios_ollama" },
+    { name = "curios-persistence", editable = "packages/python/curios_persistence" },
+    { name = "curios-policy", editable = "packages/python/curios_policy" },
     { name = "curios-postgres-provider", editable = "packages/python/curios_postgres_provider" },
+    { name = "curios-runtime", editable = "packages/python/curios_runtime" },
     { name = "fastapi", specifier = ">=0.118.0" },
 ]
 

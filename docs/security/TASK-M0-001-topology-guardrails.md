@@ -31,8 +31,12 @@ Current tracked roots remain the frozen BOOT roots:
   work repository modules for TASK-M0-005, and single-step runtime service
   module for TASK-M0-006, and provider-inventory executor module for
   TASK-M0-007 only;
+- `apps/api/src/curios_api/composition.py` and
+  `apps/api/src/curios_api/service.py` for TASK-M0-008 M0 work endpoint
+  composition/translation only;
+- exact `apps/api/tests/test_fastapi_service_composition.py` and
+  `apps/api/tests/test_m0_work_endpoints.py`;
 - existing BOOT TypeScript package;
-- `apps/api`;
 - `apps/web`;
 - exact `.github/workflows/quality-gates.yml`;
 - exact BOOT integration and acceptance tests.
@@ -46,9 +50,11 @@ TASK-M0-004 narrowly authorizes event/evidence runtime store modules under the
 planned `curios_runtime` package root. TASK-M0-005 authorizes work repository
 modules under that root. TASK-M0-006 authorizes only the single-step runtime
 service module under that root. TASK-M0-007 authorizes only the provider
-inventory executor module under that root. API/web downstream surfaces, arbitrary
-tool executors, and broader runtime/service roots remain blocked until their
-owning tasks.
+inventory executor module under that root. TASK-M0-008 authorizes only the
+existing API composition/service modules and the M0 API work endpoint test
+surface. Web downstream surfaces, arbitrary API modules, arbitrary tool
+executors, and broader runtime/service roots remain blocked until their owning
+tasks.
 
 ## Planned But Not Yet Authorized M0 Surfaces
 
@@ -57,6 +63,7 @@ authorize them narrowly:
 
 | Task | Planned Surface |
 | --- | --- |
+| TASK-M0-009 | `apps/web/**` M0 work console evolution |
 | TASK-M0-010 | `tests/integration/**` additions beyond frozen BOOT integration tests |
 | TASK-M0-012 | `tests/acceptance/**` additions beyond frozen BOOT acceptance tests |
 
@@ -82,6 +89,8 @@ The security topology tests reject:
 
 - future M0 packages before their owning task authorizes them;
 - future `curios_runtime` modules before their owning task authorizes them;
+- future `apps/api` source or test files before their owning task authorizes
+  them;
 - plausible M1+ package names such as agent runtime, DataLab, knowledge,
   model-router, and secret-resolver packages;
 - broad top-level runtime/service/provider roots;
