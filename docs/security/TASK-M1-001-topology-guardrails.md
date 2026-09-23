@@ -94,9 +94,13 @@ public module declarations, representative class/schema members, and
 `curios_contracts.__init__` exports against explicit expected sets.
 Package-initializer import authority is represented as an ordered lossless
 sequence of import statements, preserving duplicate source-module imports,
-aliases, and statement order. Private implementation helpers that remain
-private by name are not treated as new canonical authority, but re-exporting a
-private helper is blocked.
+aliases, and statement order. The initializer itself is constrained to its
+frozen AST grammar: docstring, exact authorized import-from statements,
+`__version__`, and exact literal `__all__`. Unexpected executable statement
+forms are rejected fail-closed so conditional imports, try/fallback imports,
+dynamic exports, and `__getattr__` cannot manufacture package authority.
+Private implementation helpers that remain private by name are not treated as
+new canonical authority, but re-exporting a private helper is blocked.
 
 ## Future Contract Transition
 

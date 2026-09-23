@@ -84,8 +84,10 @@ Security topology tests provide the companion canonical-authority guard for
 package-export inventory are exact. Package exports include a lossless ordered
 inventory of `__init__.py` import statements, so duplicate imports, aliases,
 plain imports, assignment aliases, and `__all__` changes are treated as
-authority transitions. Planned M1 concepts remain registered as future
-ownership only.
+authority transitions. The initializer top-level statement sequence is also
+frozen to the bounded package grammar, so conditional, fallback, nested, and
+dynamic export mechanisms are outside current authority. Planned M1 concepts
+remain registered as future ownership only.
 
 TASK-M1-001 does not authorize:
 

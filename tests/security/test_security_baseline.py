@@ -872,6 +872,12 @@ FROZEN_CONTRACT_INIT_IMPORTS = (
         ),
     ),
 )
+FROZEN_CONTRACT_INIT_STATEMENT_SEQUENCE = (
+    (("docstring", None), None),
+    *(((("import_from", module), names)) for module, names in FROZEN_CONTRACT_INIT_IMPORTS),
+    (("assign", "__version__"), None),
+    (("assign", "__all__"), None),
+)
 FROZEN_CONTRACT_INIT_DECLARATIONS = (("__version__", "assignment"),)
 FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "AGENT_INSTANCE_STATE_VALUES",
@@ -1556,63 +1562,127 @@ def _contract_module_authority_violations(
 def _contract_init_authority(
     source: str,
 ) -> tuple[
+    tuple[tuple[tuple[str, str | None], tuple[tuple[str, str | None], ...] | None], ...],
     tuple[tuple[str, tuple[tuple[str, str | None], ...]], ...],
     tuple[tuple[str, str], ...],
     tuple[str, ...],
+    tuple[str, ...],
 ]:
     tree = _parse_contract_text("__init__.py", source)
+    statements: list[tuple[tuple[str, str | None], tuple[tuple[str, str | None], ...] | None]] = []
     imports: list[tuple[str, tuple[tuple[str, str | None], ...]]] = []
     declarations: list[tuple[str, str]] = []
     all_values: tuple[str, ...] = ()
+    initializer_shape_violations: list[str] = []
 
-    for node in tree.body:
-        if isinstance(node, ast.ImportFrom) and node.module is not None:
+    for index, node in enumerate(tree.body):
+        if (
+            index == 0
+            and isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            statements.append((("docstring", None), None))
+        elif isinstance(node, ast.ImportFrom) and node.module is not None and node.level == 0:
+            import_names = tuple((alias.name, alias.asname) for alias in node.names)
+            statements.append((("import_from", node.module), import_names))
             imports.append(
                 (
                     node.module,
-                    tuple((alias.name, alias.asname) for alias in node.names),
+                    import_names,
                 )
             )
         elif isinstance(node, ast.Import):
+            import_names = tuple((alias.name, alias.asname) for alias in node.names)
+            statements.append((("import", None), import_names))
             imports.append(
                 (
                     "<import>",
-                    tuple((alias.name, alias.asname) for alias in node.names),
+                    import_names,
                 )
             )
         elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if not isinstance(target, ast.Name):
-                    continue
-                if target.id == "__all__" and isinstance(node.value, ast.Tuple):
+            if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+                statements.append((("assign", "<unsupported>"), None))
+                initializer_shape_violations.append(
+                    f"unsupported assignment statement: {ast.dump(node, include_attributes=False)}"
+                )
+                continue
+            target = node.targets[0]
+            statements.append((("assign", target.id), None))
+            if target.id == "__version__":
+                if not (
+                    isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                    and node.value.value == "0.0.0"
+                ):
+                    initializer_shape_violations.append("__version__ assignment changed")
+            elif target.id == "__all__":
+                if isinstance(node.value, ast.Tuple):
                     all_values = tuple(
                         item.value
                         for item in node.value.elts
                         if isinstance(item, ast.Constant) and isinstance(item.value, str)
                     )
-                elif _is_public_name(target.id) or target.id == "__version__":
+                    if len(all_values) != len(node.value.elts):
+                        initializer_shape_violations.append(
+                            "__all__ must be an exact tuple of string literals"
+                        )
+                else:
+                    initializer_shape_violations.append("__all__ must be a tuple literal")
+            else:
+                initializer_shape_violations.append(
+                    f"unexpected package initializer assignment target: {target.id}"
+                )
+            for target in node.targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if _is_public_name(target.id) or target.id == "__version__":
                     declarations.append((target.id, _assignment_kind(node.value)))
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            if _is_public_name(node.target.id) or node.target.id == "__version__":
-                declarations.append((node.target.id, "annotation"))
-        elif isinstance(
-            node,
-            ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
-        ) and _is_public_name(node.name):
-            kind = "class" if isinstance(node, ast.ClassDef) else "function"
-            declarations.append((node.name, kind))
+        else:
+            statements.append(((type(node).__name__, None), None))
+            initializer_shape_violations.append(
+                f"unexpected package initializer statement: {type(node).__name__}"
+            )
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                if _is_public_name(node.target.id) or node.target.id == "__version__":
+                    declarations.append((node.target.id, "annotation"))
+            elif isinstance(
+                node,
+                ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
+            ) and _is_public_name(node.name):
+                kind = "class" if isinstance(node, ast.ClassDef) else "function"
+                declarations.append((node.name, kind))
 
-    return tuple(imports), tuple(declarations), all_values
+    return (
+        tuple(statements),
+        tuple(imports),
+        tuple(declarations),
+        all_values,
+        tuple(initializer_shape_violations),
+    )
 
 
 def _contract_init_authority_violations(source: str) -> tuple[str, ...]:
-    actual_imports, actual_declarations, actual_all = _contract_init_authority(source)
+    (
+        actual_statements,
+        actual_imports,
+        actual_declarations,
+        actual_all,
+        initializer_shape_violations,
+    ) = _contract_init_authority(source)
     violations: list[str] = []
+    if actual_statements != FROZEN_CONTRACT_INIT_STATEMENT_SEQUENCE:
+        violations.append(
+            "curios_contracts.__init__ statement sequence changed: expected "
+            f"{FROZEN_CONTRACT_INIT_STATEMENT_SEQUENCE!r}; got {actual_statements!r}"
+        )
     if actual_imports != FROZEN_CONTRACT_INIT_IMPORTS:
         violations.append(
             "curios_contracts.__init__ imports changed: expected "
             f"{FROZEN_CONTRACT_INIT_IMPORTS!r}; got {actual_imports!r}"
         )
+    violations.extend(initializer_shape_violations)
     if actual_declarations != FROZEN_CONTRACT_INIT_DECLARATIONS:
         violations.append(
             "curios_contracts.__init__ declarations changed: expected "
@@ -4509,6 +4579,183 @@ def test_curios_contracts_init_rejects_lossy_import_and_alias_edge_cases(
     }
 
     assert _contract_init_authority_violations(mutations[mutation])
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "conditional_alias_import_true",
+        "conditional_alias_import_name",
+        "conditional_alias_assignment",
+        "type_checking_alias_import",
+        "try_alias_import",
+        "try_alias_assignment",
+        "try_finally_nested_import",
+        "with_block",
+        "for_loop",
+        "while_loop",
+        "match_block",
+        "nested_function_import",
+        "nested_class_import",
+        "getattr_dynamic_export",
+        "dir_dynamic_export",
+        "globals_assignment",
+        "globals_update",
+        "setattr_export",
+        "locals_assignment",
+        "vars_assignment",
+        "exec_export",
+        "eval_export",
+        "extra_public_assignment",
+        "extra_private_assignment",
+        "annotated_assignment",
+        "tuple_assignment",
+        "all_append",
+        "all_extend",
+        "all_reassignment",
+        "dynamic_all_construction",
+        "unexpected_plain_import",
+        "star_import",
+        "delete_statement",
+        "raise_statement",
+        "assert_statement",
+        "global_statement",
+    ),
+)
+def test_curios_contracts_init_rejects_unexpected_executable_statement_shapes(
+    mutation: str,
+) -> None:
+    source = (CONTRACTS_SOURCE / "__init__.py").read_text(encoding="utf-8")
+    work_import = (
+        "from curios_contracts.work import WORK_ITEM_STATE_VALUES, WorkItem, WorkItemState\n"
+    )
+    mutations = {
+        "conditional_alias_import_true": (
+            "if True:\n    from curios_contracts.work import WorkItem as Intent\n" + source
+        ),
+        "conditional_alias_import_name": (
+            "if some_condition:\n    from curios_contracts.work import WorkItem as Intent\n"
+            + source
+        ),
+        "conditional_alias_assignment": (
+            f"{work_import}if True:\n    Intent = WorkItem\n" + source.replace(work_import, "")
+        ),
+        "type_checking_alias_import": (
+            "if TYPE_CHECKING:\n    from curios_contracts.work import WorkItem as Intent\n" + source
+        ),
+        "try_alias_import": (
+            "try:\n    from curios_contracts.work import WorkItem as Intent\n"
+            "except ImportError:\n    pass\n" + source
+        ),
+        "try_alias_assignment": (
+            f"{work_import}try:\n    Intent = WorkItem\nexcept Exception:\n    pass\n"
+            + source.replace(work_import, "")
+        ),
+        "try_finally_nested_import": (
+            "try:\n    pass\nfinally:\n    from curios_contracts.work import WorkItem as Intent\n"
+            + source
+        ),
+        "with_block": (
+            "with open(__file__, encoding='utf-8') as _file:\n    Intent = _file\n" + source
+        ),
+        "for_loop": "for _item in ():\n    Intent = _item\n" + source,
+        "while_loop": "while False:\n    Intent = WorkItem\n" + source,
+        "match_block": "match 'Intent':\n    case _:\n        Intent = None\n" + source,
+        "nested_function_import": (
+            "def _load_intent():\n"
+            "    from curios_contracts.work import WorkItem as Intent\n"
+            "    return Intent\n" + source
+        ),
+        "nested_class_import": (
+            "class _IntentFactory:\n"
+            "    from curios_contracts.work import WorkItem as Intent\n" + source
+        ),
+        "getattr_dynamic_export": (
+            source + "\ndef __getattr__(name: str):\n"
+            "    if name == 'Intent':\n"
+            "        return WorkItem\n"
+            "    raise AttributeError(name)\n"
+        ),
+        "dir_dynamic_export": source + "\ndef __dir__():\n    return ['Intent']\n",
+        "globals_assignment": (
+            f"{work_import}globals()['Intent'] = WorkItem\n" + source.replace(work_import, "")
+        ),
+        "globals_update": (
+            f"{work_import}globals().update({{'Intent': WorkItem}})\n"
+            + source.replace(work_import, "")
+        ),
+        "setattr_export": (
+            "import sys\n"
+            f"{work_import}setattr(sys.modules[__name__], 'Intent', WorkItem)\n"
+            + source.replace(work_import, "")
+        ),
+        "locals_assignment": (
+            f"{work_import}locals()['Intent'] = WorkItem\n" + source.replace(work_import, "")
+        ),
+        "vars_assignment": (
+            f"{work_import}vars()['Intent'] = WorkItem\n" + source.replace(work_import, "")
+        ),
+        "exec_export": 'exec("Intent = object()")\n' + source,
+        "eval_export": 'eval("1")\n' + source,
+        "extra_public_assignment": source.replace(
+            '__version__ = "0.0.0"\n',
+            '__version__ = "0.0.0"\nIntent = WorkItem\n',
+        ),
+        "extra_private_assignment": source.replace(
+            '__version__ = "0.0.0"\n',
+            '__version__ = "0.0.0"\n_intent = WorkItem\n',
+        ),
+        "annotated_assignment": source.replace(
+            '__version__ = "0.0.0"\n',
+            '__version__ = "0.0.0"\nIntent: object = WorkItem\n',
+        ),
+        "tuple_assignment": source.replace(
+            '__version__ = "0.0.0"\n',
+            '__version__ = "0.0.0"\nIntent, Objective = WorkItem, WorkItem\n',
+        ),
+        "all_append": source + "\n__all__.append('Intent')\n",
+        "all_extend": source + "\n__all__.extend(('Intent',))\n",
+        "all_reassignment": source.replace(
+            "__all__ = (",
+            "__all__ = ('Intent',)\n__all__ = (",
+        ),
+        "dynamic_all_construction": source.replace(
+            "__all__ = (",
+            "__all__ = tuple(['Intent'])\n__all__ = (",
+        ),
+        "unexpected_plain_import": "import curios_contracts.work\n" + source,
+        "star_import": source.replace(
+            work_import,
+            "from curios_contracts.work import *\n",
+        ),
+        "delete_statement": "del __all__\n" + source,
+        "raise_statement": "raise RuntimeError('nope')\n" + source,
+        "assert_statement": "assert True\n" + source,
+        "global_statement": "global Intent\n" + source,
+    }
+
+    assert _contract_init_authority_violations(mutations[mutation])
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    (
+        '"""Curios-owned canonical contract package boundary."""\n\n',
+        "'Curios-owned canonical contract package boundary.'\n\n",
+        '"""Harmless package boundary documentation rewrite."""\n\n',
+    ),
+)
+def test_curios_contracts_init_allows_harmless_docstring_formatting(
+    replacement: str,
+) -> None:
+    source = (CONTRACTS_SOURCE / "__init__.py").read_text(encoding="utf-8")
+    mutated_source = source.replace(
+        '"""Curios-owned canonical contract package boundary."""\n\n',
+        replacement,
+        1,
+    )
+
+    assert not _contract_init_authority_violations(mutated_source)
 
 
 @pytest.mark.parametrize(
