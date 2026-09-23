@@ -46,6 +46,7 @@ from curios_core import CoreContext, CoreServices
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_SOURCE = REPO_ROOT / "packages/python/curios_contracts/src/curios_contracts"
 CORE_SOURCE = REPO_ROOT / "packages/python/curios_core/src/curios_core"
+QUALITY_GATES_WORKFLOW = REPO_ROOT / ".github/workflows/quality-gates.yml"
 LOCAL_DOCKER_ENV_EXAMPLE = REPO_ROOT / "infrastructure/local/docker/.env.example"
 ROOT_PACKAGE_FILES = (
     REPO_ROOT / "package.json",
@@ -75,6 +76,7 @@ CREDENTIAL_URL_RE = re.compile(r"://[^/\s:@]+(?::[^/\s@]*)?@")
 SECRET_FIELD_TOKEN_RE = re.compile(
     r"(?i)(api[_-]?key|authorization|client[_-]?secret|credential|password|private[_-]?key|secret|session|token|access[_-]?token|cookie)"
 )
+ACTION_FULL_SHA_REF_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}$")
 PROHIBITED_SECRET_VALUE_FIELDS = frozenset(
     {
         "access_token",
@@ -701,6 +703,23 @@ def _tracked_github_paths() -> frozenset[str]:
     )
 
 
+def _quality_gates_workflow_text() -> str:
+    return QUALITY_GATES_WORKFLOW.read_text(encoding="utf-8")
+
+
+def _normalized_workflow_text() -> str:
+    return re.sub(r"\s+", " ", _quality_gates_workflow_text())
+
+
+def _workflow_action_refs() -> tuple[str, ...]:
+    refs: list[str] = []
+    for line in _quality_gates_workflow_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("uses: "):
+            refs.append(stripped.removeprefix("uses: ").split("#", maxsplit=1)[0].strip())
+    return tuple(refs)
+
+
 def _tracked_runtime_source_files() -> frozenset[str]:
     runtime_source = REPO_ROOT / "packages/python/curios_runtime/src/curios_runtime"
     return frozenset(
@@ -1103,6 +1122,102 @@ def test_github_topology_detector_rejects_unauthorized_surfaces(
 
 def test_github_topology_detector_allows_only_task_boot_025_workflow() -> None:
     assert not _unauthorized_github_paths(frozenset({".github/workflows/quality-gates.yml"}))
+
+
+def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates() -> None:
+    workflow_text = _quality_gates_workflow_text()
+    normalized_workflow = _normalized_workflow_text()
+    action_refs = _workflow_action_refs()
+
+    _assert_no_security_failure(action_refs != (), "quality-gates workflow has no actions")
+    for action_ref in action_refs:
+        _assert_no_security_failure(
+            ACTION_FULL_SHA_REF_RE.fullmatch(action_ref) is not None,
+            f"GitHub action is not pinned to a full immutable SHA: {action_ref}",
+        )
+
+    expected_commands = (
+        "uv lock --check",
+        "uv sync --locked --all-groups --all-packages",
+        "docker compose --env-file infrastructure/local/docker/.env.example "
+        "-f infrastructure/local/docker/compose.yaml config --quiet",
+        "uv run ruff check .",
+        "uv run ruff format --check .",
+        "uv run mypy apps/api/src packages/python/*/src",
+        "uv run pytest apps/api/tests packages/python/curios_contracts/tests "
+        "packages/python/curios_core/tests packages/python/curios_config/tests "
+        "packages/python/curios_postgres_provider/tests packages/python/curios_ollama/tests "
+        "packages/python/curios_observability/tests -q",
+        "uv run pytest packages/python/curios_persistence/tests "
+        "packages/python/curios_policy/tests packages/python/curios_runtime/tests "
+        '-m "not integration" -q',
+        "uv run pytest tests/contract tests/schema -q",
+        "uv run pytest tests/architecture -q",
+        "uv run pytest tests/security -q",
+        "uv run pytest tests/integration/test_api_integration.py -q",
+        "uv run pytest tests/integration/test_postgres_provider_integration.py -q",
+        "uv run pytest "
+        "packages/python/curios_persistence/tests/test_postgres_persistence_integration.py "
+        "packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py "
+        "packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py -q",
+        "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q",
+        "uv run pytest tests/acceptance -q",
+        "uv run pytest -q",
+        "pnpm install --frozen-lockfile",
+        "pnpm check",
+        "pnpm --dir apps/web test",
+        "pnpm --dir apps/web typecheck",
+        "pnpm --dir apps/web build",
+        "git diff --check",
+    )
+    for command in expected_commands:
+        _assert_no_security_failure(
+            command in normalized_workflow, f"CI command missing: {command}"
+        )
+
+    _assert_no_security_failure(
+        "permissions: contents: read" in normalized_workflow, "permissions changed"
+    )
+    _assert_no_security_failure("pull_request:" in workflow_text, "pull request trigger missing")
+    _assert_no_security_failure("push:" in workflow_text, "push trigger missing")
+    for prohibited in (
+        "workflow_dispatch",
+        "schedule:",
+        "release:",
+        "deployment",
+        "environment:",
+        "secrets.",
+        "continue-on-error",
+        "|| true",
+        "ollama serve",
+        "docker compose up -d ollama",
+        "down -v",
+    ):
+        _assert_no_security_failure(
+            prohibited not in workflow_text,
+            f"prohibited workflow pattern present: {prohibited}",
+        )
+
+    postgres_provider_index = normalized_workflow.index(
+        "uv run pytest tests/integration/test_postgres_provider_integration.py -q"
+    )
+    m0_postgres_index = normalized_workflow.index(
+        "uv run pytest "
+        "packages/python/curios_persistence/tests/test_postgres_persistence_integration.py"
+    )
+    m0_integration_index = normalized_workflow.index(
+        "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
+    )
+    boot_acceptance_index = normalized_workflow.index("uv run pytest tests/acceptance -q")
+    full_pytest_index = normalized_workflow.index("uv run pytest -q")
+    _assert_no_security_failure(
+        postgres_provider_index < m0_postgres_index < m0_integration_index,
+        "PostgreSQL and M0 integration tests must run in explicit serial gates",
+    )
+    _assert_no_security_failure(
+        m0_integration_index < boot_acceptance_index < full_pytest_index,
+        "M0 integration must run before acceptance and full pytest",
+    )
 
 
 @pytest.mark.parametrize(
