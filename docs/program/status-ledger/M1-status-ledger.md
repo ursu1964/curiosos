@@ -1,7 +1,7 @@
 ---
 id: M1-STATUS-LEDGER
 title: M1 Status Ledger
-lifecycle: PLANNED
+lifecycle: FROZEN
 artifact_type: status_ledger
 authority: program_planning
 milestone_id: M1
@@ -14,14 +14,14 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M1 | PLANNED / AWAITING VALIDATION | M1-000A creates a proposed executable M1 program from frozen BOOT/M0 authority and historical design input. Independent readiness validation is required before implementation starts. |
+| M1 | PLANNING VALIDATED / FROZEN | M1-000A passed independent readiness validation and is the authoritative executable M1 program. Only TASK-M1-001 is ready. |
 
 ## Task Status
 
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| M1-000A | M1 Milestone Definition and Executable Task Pack | M0 final freeze | PG-M1-00 | IMPLEMENTED, TESTED | Planning package created; independent readiness validation remains required. |
-| TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | PLANNED | Proposed first executable unit only if readiness validation passes. |
+| M1-000A | M1 Milestone Definition and Executable Task Pack | M0 final freeze | PG-M1-00 | VALIDATED, FROZEN | Independent readiness validation accepted the M1 execution program. |
+| TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | READY | First authorized M1 implementation unit after readiness PASS. |
 | TASK-M1-002 | Cognitive Intent and Problem Contracts | TASK-M1-001 | PG-M1-02A | BLOCKED | Requires topology guardrails. |
 | TASK-M1-003 | Deterministic Intent Decomposition | TASK-M1-002 | PG-M1-02B | BLOCKED | Requires cognitive contracts. |
 | TASK-M1-004 | Work DAG Records and State | TASK-M1-002 | PG-M1-02B | BLOCKED | Requires cognitive contracts. |
@@ -46,6 +46,8 @@ date: 2026-09-23
 - `PLANNED`: task exists in proposed planning but is not executable.
 - `PLANNED / AWAITING VALIDATION`: milestone planning exists but requires
   independent readiness validation.
+- `PLANNING VALIDATED / FROZEN`: milestone planning authority is accepted and
+  frozen for execution control; implementation tasks still advance separately.
 - `READY`: all prerequisites are satisfied and implementation may begin after
   explicit task authorization.
 - `BLOCKED`: upstream M1 work is incomplete.

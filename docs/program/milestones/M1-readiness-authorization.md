@@ -1,22 +1,32 @@
 ---
 id: M1-READINESS-AUTHORIZATION
-title: M1 Readiness and Authorization Record
-lifecycle: PLANNED
+title: M1 Readiness and First Execution Authorization
+lifecycle: FROZEN
 artifact_type: readiness_record
 authority: program_planning
 milestone_id: M1
 date: 2026-09-23
 ---
 
-# M1 Readiness and Authorization Record
+# M1 Readiness and First Execution Authorization
 
-## Current Decision
+## Readiness Decision
 
-M1 EXECUTION BLOCKED: independent readiness validation required.
+M1 READINESS: PASS
 
-This planning package does not self-authorize implementation. The first M1
-implementation task may become ready only after an independent readiness
-validation accepts:
+M1 EXECUTION AUTHORIZED:
+
+`TASK-M1-001 — M1 Topology and Guardrail Transition`
+
+The M1 planning package passed independent readiness validation and is the
+authoritative executable M1 program.
+
+Only TASK-M1-001 may start from the frozen BOOT+M0 baseline plus
+validated/frozen M1 planning authority. No later M1 implementation task may
+start until TASK-M1-001 is implemented, tested, independently validated,
+frozen, and integrated.
+
+The readiness validation accepted:
 
 - `docs/program/milestones/M1-milestone-definition.md`;
 - `docs/program/milestones/M1-implementation-dag.md`;
@@ -24,7 +34,8 @@ validation accepts:
 - `docs/program/milestones/M1-p1-p6-traceability.md`;
 - `docs/program/status-ledger/M1-status-ledger.md`;
 - `docs/tasks/M1-task-pack.md`;
-- `docs/tasks/M1-000A-evidence.md`.
+- `docs/tasks/M1-000A-evidence.md`;
+- `docs/tasks/M1-000A-readiness-validation-evidence.md`.
 
 ## Entry Basis
 
@@ -34,26 +45,51 @@ M1 planning begins from baseline:
 
 This baseline contains integrated BOOT-000 and M0 final freeze records.
 
-## Lifecycle Transition
+## Prerequisites
+
+| Prerequisite | Status |
+| --- | --- |
+| BOOT-000 `VALIDATED, FROZEN` | SATISFIED |
+| M0 `VALIDATED, FROZEN` | SATISFIED at `1e71e27f4589ec09f98c0319511d67f5d93642e8` |
+| M1 milestone definition exists | SATISFIED by M1-000A artifacts |
+| M1 task pack exists | SATISFIED by `docs/tasks/M1-task-pack.md` |
+| M1 DAG exists | SATISFIED by `docs/program/milestones/M1-implementation-dag.md` |
+| M1 status ledger exists | SATISFIED by `docs/program/status-ledger/M1-status-ledger.md` |
+| P1-P6 traceability limits documented | SATISFIED by `docs/program/milestones/M1-p1-p6-traceability.md` |
+| Independent M1 readiness validation | PASSED |
+
+## Readiness Transition
 
 ```text
 M1-000A draft
   -> independent M1 readiness validation
-      -> PASS
-          -> M1 planning VALIDATED/FROZEN
-          -> TASK-M1-001 READY/AUTHORIZED
-          -> TASK-M1-002..019 BLOCKED
-      -> FAIL
-          -> M1 remains PLANNED/AWAITING VALIDATION
+  -> PASS
+  -> M1 program authority established
+  -> TASK-M1-001 READY/AUTHORIZED
 ```
 
-## Conditional First Execution Unit
+That transition has passed. TASK-M1-001 is `READY`; TASK-M1-002 through
+TASK-M1-019 remain `BLOCKED`.
 
-If independent readiness validation passes, the first executable unit is:
+## First Task Scope
 
-`TASK-M1-001 — M1 Topology and Guardrail Transition`
+TASK-M1-001 may create or modify only the surfaces needed to authorize M1
+topology and guardrails:
 
-Rationale:
+- M1 task evidence under `docs/tasks/**`.
+- M1 status updates under `docs/program/status-ledger/**`.
+- M1 architecture/security planning docs under `docs/program/milestones/**` or
+  `docs/architecture/**` if needed.
+- `tests/security/**` and `tests/architecture/**` to extend topology and
+  dependency-direction guards.
+- Root workspace metadata only if placeholder package membership is required
+  for exact M1 topology checks.
+
+TASK-M1-001 must not implement cognitive contracts, persistence schemas,
+intent decomposition, DAG runtime behavior, API routes, web UI, model/profile
+discovery, routing records, verification loops, or M2+ features.
+
+## Rationale
 
 - it has no M1 implementation prerequisites beyond frozen BOOT/M0 and accepted
   M1 planning;
@@ -63,20 +99,19 @@ Rationale:
 - it keeps TASK-M1-002 through TASK-M1-019 blocked until their prerequisites
   are validated, frozen, and integrated.
 
-## Current Status
+## Status
 
 | Unit | Status | Reason |
 | --- | --- | --- |
-| M1 planning | PLANNED / AWAITING VALIDATION | This package is a proposal until independent readiness validation passes. |
-| M1-000A | IMPLEMENTED, TESTED | Planning artifacts are created and internally checked by the planning agent. |
-| TASK-M1-001 | PLANNED | Proposed first implementation unit after readiness PASS. |
+| M1 planning | VALIDATED, FROZEN | Independent readiness validation accepted the M1 execution program. |
+| M1-000A | VALIDATED, FROZEN | Planning artifacts are accepted as executable M1 authority. |
+| TASK-M1-001 | READY | First authorized M1 implementation unit. |
 | TASK-M1-002..019 | BLOCKED | Require upstream DAG prerequisites. |
 
-## Prohibited Before Readiness PASS
+## Authorization Limits
 
-- creating M1 production packages;
-- adding M1 runtime/API/web implementation;
-- adding M1 tests beyond planning validation checks;
+- TASK-M1-002 or later;
+- M2 or post-M1 work;
 - modifying BOOT or M0 frozen semantics;
 - treating `1.txt` or unreconciled P1-P6 content as direct task authority;
-- starting TASK-M1-001.
+- broad security topology relaxation.

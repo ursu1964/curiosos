@@ -1,7 +1,7 @@
 ---
 id: MILESTONE-M1-DEFINITION
 title: M1 Milestone Definition
-lifecycle: PLANNED
+lifecycle: FROZEN
 artifact_type: milestone_definition
 authority: program_planning
 milestone_id: M1

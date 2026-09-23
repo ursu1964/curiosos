@@ -1,7 +1,7 @@
 ---
 id: M1-TASK-PACK
 title: M1 Atomic Task Pack
-lifecycle: PLANNED
+lifecycle: FROZEN
 artifact_type: task_pack
 authority: program_planning
 milestone_id: M1

@@ -1,9 +1,9 @@
 ---
 id: M1-000A-EVIDENCE
 title: M1-000A M1 Execution Program Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: planning_evidence
-authority: implementation
+authority: program_planning
 task_id: M1-000A
 milestone_id: M1
 date: 2026-09-23
@@ -71,10 +71,14 @@ The planning package was checked for:
 
 ## Lifecycle State
 
-M1-000A is `IMPLEMENTED, TESTED` as planning work.
+Independent M1 readiness validation passed for commit
+`164ac6883d49ab1b169a8e7ae6c32b304eaf29d3`.
 
-M1 remains `PLANNED / AWAITING VALIDATION`.
+The validation accepted the M1 planning package as internally consistent,
+minimal for the first cognitive-loop milestone, compatible with frozen BOOT and
+M0 authority, honest about historical P1-P6 input, and non-self-authorizing.
 
-`TASK-M1-001` remains `PLANNED` until independent readiness validation passes.
-
-`TASK-M1-002` through `TASK-M1-019` remain `BLOCKED`.
+- M1 planning: `VALIDATED, FROZEN`.
+- M1-000A: `VALIDATED, FROZEN`.
+- TASK-M1-001: `READY`.
+- TASK-M1-002 through TASK-M1-019: `BLOCKED`.
