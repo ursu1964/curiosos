@@ -244,6 +244,41 @@ Fourth corrective behavior added:
   duplicate safe/unsafe gate definitions by exact run-script comparison and
   duplicate step-name detection.
 
+Fifth independent revalidation of corrective candidate
+`2e42db942bdf4c752fcba3b65f6987c6f9b18ea4` confirmed prior hardening but found
+the audit still permitted additional executable workflow surface while all
+required gates remained intact.
+
+False negatives reproduced by independent revalidation:
+
+- extra deployment/arbitrary jobs with `run` steps;
+- extra jobs or steps using unknown but full-SHA-pinned actions;
+- arbitrary extra `run` steps in existing jobs;
+- workflow-level, job-level, or step-level `env` that could alter pytest,
+  import, path, token, or Docker behavior;
+- workflow or job `defaults.run.working-directory` changes that could make the
+  same command execute from a different tree;
+- job `services`, `container`, runner, strategy, needs, or other
+  execution-context changes not present in the frozen workflow.
+
+Fifth corrective behavior added:
+
+- replace the partial required-gate audit with a declarative exact structural
+  allowlist for the full executable quality-gates workflow;
+- require the exact top-level key set: `name`, `on`, `permissions`, and `jobs`;
+- require the exact job set: `python`, `frontend`, and `repository`;
+- require each job to have only the authorized `name`, `runs-on`,
+  `timeout-minutes`, and ordered `steps` keys with exact values;
+- require the exact ordered step sequence per job;
+- for action steps, require exact `name`, exact action owner/repository, exact
+  pinned SHA, and exact authorized `with` mapping;
+- for run steps, require exact normalized script equality and no additional
+  step-level keys;
+- reject top-level/job/step `env`, `defaults`, `container`, `services`,
+  `strategy`, `needs`, `working-directory`, `shell`, arbitrary action steps,
+  arbitrary run steps, unknown top-level keys, extra jobs, duplicate steps, and
+  any other unrecognized executable workflow surface.
+
 ## PostgreSQL Strategy
 
 CI continues to use the frozen PostgreSQL 18 `LOCAL_DOCKER` service in
@@ -285,15 +320,15 @@ cloud infrastructure, or deployment credential.
 | M0 runtime/persistence/policy package tests | PASS: 128 passed, 4 deselected. |
 | Contract/schema tests | PASS: 15 passed. |
 | Architecture tests | PASS: 16 passed. |
-| Security tests | PASS: 156 passed. |
-| Parser, trigger, and gate adversarial matrices | PASS: 95 targeted cases passed, including trigger exactness, M0 gate bypasses, representative required-gate bypasses, job-level bypasses, action-pin mutation, duplicate A-I, merge/anchor J-M, previous permission A-T, valid workflow U, formatting variants, comments between duplicate definitions, and malformed structures. |
+| Security tests | PASS: 187 passed. |
+| Parser, trigger, gate, and execution-surface adversarial matrices | PASS: 70 targeted cases passed, including A-Z execution-surface mutations, extra job/step/action/env/defaults/service/container variants, trigger exactness, M0 gate bypasses, job-level bypasses, duplicate A-I, merge/anchor J-M, and harmless formatting rewrite. |
 | Actual workflow YAML parse | PASS: parsed as a mapping with string `on` key, permissions `contents: read`, jobs `frontend`, `python`, and `repository`, and no permission violations. |
 | API integration tests | PASS: 6 passed, 2 known dependency warnings. |
 | PostgreSQL provider integration test | PASS: 1 passed. |
 | M0 PostgreSQL integration tests | PASS: 4 passed. |
 | TASK-M0-010 integration tests | PASS: 2 passed, 2 known dependency warnings. |
 | BOOT acceptance tests | PASS: 6 passed, 2 known dependency warnings. |
-| Full pytest | PASS: 502 passed, 2 known dependency warnings. |
+| Full pytest | PASS: 533 passed, 2 known dependency warnings. |
 | PostgreSQL clean stop/volume preservation | PASS: Compose showed no running `postgres` container and `curios-local-docker_postgres_data` remained present. |
 | `pnpm install --frozen-lockfile` | PASS. |
 | `pnpm check` | PASS. |

