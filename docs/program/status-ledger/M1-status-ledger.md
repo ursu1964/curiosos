@@ -23,7 +23,7 @@ date: 2026-09-23
 | M1-000A | M1 Milestone Definition and Executable Task Pack | M0 final freeze | PG-M1-00 | VALIDATED, FROZEN | Independent readiness validation accepted the M1 execution program. |
 | TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | VALIDATED, FROZEN | Independent validation accepted the M1 topology/security/architecture guardrail transition, including Correction 5 web authority hardening. |
 | TASK-M1-002 | Cognitive Intent and Problem Contracts | TASK-M1-001 | PG-M1-02A | VALIDATED, FROZEN | Independent validation accepted the cognitive intent/problem/assumption/decision/plan contracts. |
-| TASK-M1-003 | Deterministic Intent Decomposition | TASK-M1-002 | PG-M1-02B | READY | TASK-M1-002 is validated/frozen; may begin after TASK-M1-002 is integrated into the main M1 baseline. |
+| TASK-M1-003 | Deterministic Intent Decomposition | TASK-M1-002 | PG-M1-02B | IMPLEMENTED, TESTED | Implementation evidence recorded in `docs/tasks/TASK-M1-003-evidence.md`; requires independent validation/freeze before downstream integration. |
 | TASK-M1-004 | Work DAG Records and State | TASK-M1-002 | PG-M1-02B | READY | TASK-M1-002 is validated/frozen; may begin after TASK-M1-002 is integrated into the main M1 baseline. |
 | TASK-M1-005 | Capability Resolver Foundation | TASK-M1-001 | PG-M1-02A | READY | TASK-M1-001 is validated/frozen; may begin after TASK-M1-001 is integrated into the main M1 baseline. |
 | TASK-M1-006 | Agent Definition and Instance Persistence | TASK-M1-001 | PG-M1-02A | READY | TASK-M1-001 is validated/frozen; may begin after TASK-M1-001 is integrated into the main M1 baseline. |

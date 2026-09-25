@@ -26,6 +26,8 @@ POLICY_PACKAGE = REPO_ROOT / "packages/python/curios_policy"
 POLICY_SOURCE = POLICY_PACKAGE / "src/curios_policy"
 RUNTIME_PACKAGE = REPO_ROOT / "packages/python/curios_runtime"
 RUNTIME_SOURCE = RUNTIME_PACKAGE / "src/curios_runtime"
+COGNITIVE_PACKAGE = REPO_ROOT / "packages/python/curios_cognitive"
+COGNITIVE_SOURCE = COGNITIVE_PACKAGE / "src/curios_cognitive"
 
 ARCHITECTURE_FAILURE = "ARCHITECTURE_FAILURE"
 
@@ -128,6 +130,26 @@ POLICY_FORBIDDEN_IMPORTS = frozenset(
 )
 RUNTIME_FORBIDDEN_IMPORTS = frozenset(
     {
+        *FASTAPI_IMPORTS,
+        *SQLALCHEMY_IMPORTS,
+        *POSTGRES_IMPORTS,
+        *OLLAMA_PROVIDER_SDK_IMPORTS,
+        *OTEL_IMPLEMENTATION_IMPORTS,
+        *DOCKER_TOOLING_IMPORTS,
+        *REPOSITORY_TOOLING_IMPORTS,
+    }
+)
+COGNITIVE_FORBIDDEN_IMPORTS = frozenset(
+    {
+        "curios_core",
+        *M0_IMPLEMENTATION_IMPORTS,
+        "curios_agents",
+        "curios_capability",
+        "curios_dag",
+        "curios_executor",
+        "curios_model_profiles",
+        "curios_routing",
+        "curios_verification_loop",
         *FASTAPI_IMPORTS,
         *SQLALCHEMY_IMPORTS,
         *POSTGRES_IMPORTS,
@@ -653,6 +675,23 @@ def test_m0_runtime_package_remains_outer_and_persistence_policy_backed() -> Non
             rule=M0_INWARD_DEPENDENCY_RULE,
             pyproject_path=RUNTIME_PACKAGE / "pyproject.toml",
             forbidden_dependencies=RUNTIME_FORBIDDEN_IMPORTS,
+        ),
+    )
+
+    _assert_no_violations(violations)
+
+
+def test_m1_cognitive_package_remains_contract_backed_and_inert() -> None:
+    violations = (
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=COGNITIVE_SOURCE,
+            forbidden_imports=COGNITIVE_FORBIDDEN_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=COGNITIVE_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=COGNITIVE_FORBIDDEN_IMPORTS,
         ),
     )
 

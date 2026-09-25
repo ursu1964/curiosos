@@ -668,6 +668,16 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "tests/security/test_security_baseline.py",
         }
     ),
+    "TASK-M1-003": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-003-evidence.md",
+            "packages/python/curios_cognitive",
+            "pyproject.toml",
+            "tests/architecture/test_architecture_conformance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -679,7 +689,6 @@ M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS = frozenset(
     {
         "packages/python/curios_agents",
         "packages/python/curios_capability",
-        "packages/python/curios_cognitive",
         "packages/python/curios_dag",
         "packages/python/curios_executor",
         "packages/python/curios_model_profiles",
@@ -1770,6 +1779,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
         "packages/python/curios_config",
         "packages/python/curios_contracts",
         "packages/python/curios_core",
+        "packages/python/curios_cognitive",
         "packages/python/curios_ollama",
         "packages/python/curios_observability",
         "packages/python/curios_persistence",
@@ -5403,7 +5413,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-016",
         "TASK-M1-017",
     } == M1_PLANNED_SURFACE_TASKS
-    assert {"TASK-M1-001", "TASK-M1-002"} == M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    assert {"TASK-M1-001", "TASK-M1-002", "TASK-M1-003"} == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
         "packages/python/curios_contracts",
@@ -6715,6 +6725,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
         python_workspace_members
         == {
             "apps/api",
+            "packages/python/curios_cognitive",
             "packages/python/curios_config",
             "packages/python/curios_contracts",
             "packages/python/curios_core",
