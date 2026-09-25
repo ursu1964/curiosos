@@ -1,7 +1,7 @@
 ---
 id: TASK-M1-002-EVIDENCE
 title: TASK-M1-002 Cognitive Intent and Problem Contracts Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M1-002
@@ -96,8 +96,9 @@ view, scheduler, prompt, model, or provider behavior.
 
 ## Lifecycle State
 
-TASK-M1-002 is `IMPLEMENTED, TESTED`.
+TASK-M1-002 is `VALIDATED, FROZEN`.
 
-It is not `VALIDATED` or `FROZEN`; independent validation must make that
-decision. TASK-M1-003 and TASK-M1-004 remain `BLOCKED` until TASK-M1-002 is
-validated, frozen, and integrated.
+Independent validation accepted implementation commit
+`1c46cfc8e229cb2d62058ef03fc3964f2ff8c27e`. TASK-M1-003 and TASK-M1-004
+become eligible only after the validation/freeze commit is integrated into the
+main M1 baseline.

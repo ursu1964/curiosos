@@ -657,6 +657,7 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/contracts/TASK-M1-002-cognitive-contracts.md",
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-002-evidence.md",
+            "docs/tasks/TASK-M1-002-validation-evidence.md",
             "packages/python/curios_contracts/src/curios_contracts/__init__.py",
             "packages/python/curios_contracts/src/curios_contracts/cognitive.py",
             "packages/python/curios_contracts/src/curios_contracts/identifiers.py",

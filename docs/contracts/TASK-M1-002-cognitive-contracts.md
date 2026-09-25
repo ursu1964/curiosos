@@ -1,7 +1,7 @@
 ---
 id: CONTRACT-M1-002-COGNITIVE
 title: M1 Cognitive Intent, Problem, Assumption, Decision, and Plan Contracts
-lifecycle: IMPLEMENTED
+lifecycle: FROZEN
 artifact_type: contract
 authority: authoritative
 task_id: TASK-M1-002
