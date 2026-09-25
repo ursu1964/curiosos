@@ -87,6 +87,40 @@ security, integration, acceptance, and full pytest runs. `uv` also warned that
 the inherited `VIRTUAL_ENV=/home/user/projects/curiosos/.venv` did not match
 the task worktree `.venv` and was ignored.
 
+## Correction 1
+
+Independent validation found that unsupported near-miss intents were classified
+as supported because `_select_template()` used substring matching. Examples:
+
+- `Address a philosophical question.` matched keyword `add`.
+- `Discuss the statusquo of design terms.` matched keyword `status`.
+
+Correction 1 replaces substring matching with deterministic complete-token
+matching over the existing normalized objective text. It adds validator
+regression coverage for:
+
+- the two validation-discovered near misses;
+- every configured keyword as a complete supported token;
+- every configured keyword embedded at the beginning, end, and middle of a
+  larger token;
+- capitalization and punctuation adjacency for complete-token matches;
+- unsupported output invariants: `UNSUPPORTED`, `NO_TEMPLATE_MATCH`, and no
+  `Problem`, `Assumption`, `Decision`, `Plan`, or `WorkItem` proposal state.
+
+Correction 1 verification:
+
+| Check | Result |
+| --- | --- |
+| Pre-correction validator regression | FAIL as expected: 2 failed, 9 passed. |
+| Validator regression after correction | PASS: `uv run pytest -q packages/python/curios_cognitive/tests/test_task_m1_003_validation_regressions.py` passed 42 tests. |
+| M1-003 package tests after correction | PASS: `uv run pytest -q packages/python/curios_cognitive/tests` passed 51 tests. |
+| M1-003 + M1-002 contract/schema regression | PASS: 74 tests. |
+| Architecture/security tests | PASS: 390 tests, 2 known deprecation warnings. |
+| Package/API/provider tests | PASS: 182 tests, 2 known deprecation warnings. |
+| Docker-backed integrations | PASS: API 6, PostgreSQL provider 1, persistence 2, event/evidence runtime 1, work repository 1, M0 vertical slice 2. |
+| Acceptance tests | PASS: 8 tests, 2 known deprecation warnings. |
+| Full pytest suite | PASS on rerun: 781 tests, 2 known deprecation warnings. An earlier full-suite attempt hit a transient PostgreSQL connection-refused error after serial Docker-backed slices had already passed. |
+
 ## Lifecycle State
 
 TASK-M1-003 is `IMPLEMENTED, TESTED`.

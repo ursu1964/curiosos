@@ -31,6 +31,7 @@ from curios_contracts.identifiers import CuriosId
 
 _ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 _NORMALIZED_TEXT_RE = re.compile(r"\s+")
+_WORD_RE = re.compile(r"[a-z0-9]+")
 _TEMPLATE_VERSION = "m1-003.v1"
 
 
@@ -274,9 +275,9 @@ def decompose_intent(intent: Intent, *, created_at: UtcTimestamp | str) -> Decom
 
 
 def _select_template(objective: str) -> _IntentTemplate | None:
-    normalized = _normalize_objective(objective)
+    tokens = frozenset(_objective_tokens(objective))
     for template in _TEMPLATES:
-        if any(keyword in normalized for keyword in template.keywords):
+        if any(keyword in tokens for keyword in template.keywords):
             return template
     return None
 
@@ -337,6 +338,10 @@ def _id[IdT: CuriosId](
 
 def _normalize_objective(objective: str) -> str:
     return _NORMALIZED_TEXT_RE.sub(" ", objective.strip().casefold())
+
+
+def _objective_tokens(objective: str) -> tuple[str, ...]:
+    return tuple(_WORD_RE.findall(_normalize_objective(objective)))
 
 
 def _normalize_tuple[ItemT](items: tuple[ItemT, ...], item_type: type[ItemT]) -> tuple[ItemT, ...]:
