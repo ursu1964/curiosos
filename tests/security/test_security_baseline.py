@@ -672,6 +672,7 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
         {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-003-evidence.md",
+            "docs/tasks/TASK-M1-003-validation-evidence.md",
             "packages/python/curios_cognitive",
             "pyproject.toml",
             "tests/architecture/test_architecture_conformance.py",

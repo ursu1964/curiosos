@@ -1,7 +1,7 @@
 ---
 id: TASK-M1-003-EVIDENCE
 title: TASK-M1-003 Deterministic Intent Decomposition Evidence
-lifecycle: IMPLEMENTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M1-003
@@ -123,7 +123,9 @@ Correction 1 verification:
 
 ## Lifecycle State
 
-TASK-M1-003 is `IMPLEMENTED, TESTED`.
+TASK-M1-003 is `VALIDATED, FROZEN`.
 
-Independent validation/freeze is still required before TASK-M1-003 is treated
-as frozen or used to unblock TASK-M1-008 integration.
+Independent re-validation accepted corrected implementation commit
+`7c77e8df850ae9d524e6340cea58c0b40f059f53`. TASK-M1-003 still requires
+integration into the main M1 baseline before downstream tasks may consume it as
+an integrated prerequisite.
