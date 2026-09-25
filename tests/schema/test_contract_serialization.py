@@ -14,20 +14,31 @@ from curios_contracts import (
     ArtifactId,
     ArtifactKind,
     ArtifactReference,
+    Assumption,
+    AssumptionId,
     Capability,
     CapabilityCategory,
     CapabilityId,
     ConfigurationProfile,
     ConfigurationProfileName,
     CorrelationId,
+    Decision,
+    DecisionId,
     EffectClassification,
     EventEnvelope,
     EventId,
     ExecutionId,
+    Intent,
+    IntentId,
     ObjectReference,
     ObservabilityContext,
+    Plan,
+    PlanId,
     PolicyDecision,
     PolicyDecisionOutcome,
+    Problem,
+    ProblemId,
+    ProjectId,
     ProviderDescriptor,
     ProviderId,
     ProviderStatus,
@@ -210,6 +221,44 @@ def _representative_contracts() -> tuple[object, ...]:
         purpose="provider credential lookup",
     )
     result = Result.success(value={"status": "ok"})
+    intent = Intent(
+        intent_id=fixed_id(IntentId),
+        objective="Summarize recorded project status.",
+        source_ref=ref_for(ProjectId),
+        submitted_at=UTC_NOW,
+    )
+    problem = Problem(
+        problem_id=fixed_id(ProblemId),
+        intent_ref=ref_for(IntentId),
+        objective="Summarize recorded project status.",
+        statement="Use recorded Curios facts to summarize project status.",
+        created_at=UTC_NOW,
+    )
+    assumption = Assumption(
+        assumption_id=fixed_id(AssumptionId),
+        subject_ref=ref_for(ProblemId),
+        statement="Recorded evidence is authoritative.",
+        basis_refs=(ref_for(IntentId),),
+        created_at=UTC_NOW,
+    )
+    decision = Decision(
+        decision_id=fixed_id(DecisionId),
+        subject_ref=ref_for(ProblemId),
+        question="Which plan shape is bounded?",
+        selected_option="recorded_truth_summary",
+        rationale="The request only requires recorded truth observation.",
+        input_refs=(ref_for(AssumptionId),),
+        decided_at=UTC_NOW,
+    )
+    plan = Plan(
+        plan_id=fixed_id(PlanId),
+        problem_ref=ref_for(ProblemId),
+        objective="Create work references for the recorded truth summary.",
+        assumption_refs=(ref_for(AssumptionId),),
+        decision_refs=(ref_for(DecisionId),),
+        work_refs=(ref_for(WorkId),),
+        created_at=UTC_NOW,
+    )
 
     return (
         capability,
@@ -223,4 +272,9 @@ def _representative_contracts() -> tuple[object, ...]:
         configuration,
         secret,
         result,
+        intent,
+        problem,
+        assumption,
+        decision,
+        plan,
     )

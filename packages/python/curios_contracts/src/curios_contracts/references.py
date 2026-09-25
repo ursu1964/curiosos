@@ -11,12 +11,17 @@ from curios_contracts.identifiers import (
     AgentInstanceId,
     ApplicationId,
     ArtifactId,
+    AssumptionId,
     CapabilityId,
     CuriosId,
+    DecisionId,
     EventId,
     EvidenceId,
     ExecutionId,
+    IntentId,
     MilestoneId,
+    PlanId,
+    ProblemId,
     ProjectId,
     ProviderId,
     TraceId,
@@ -44,6 +49,11 @@ class ReferenceKind(StrEnum):
     VERIFICATION = "verification"
     EVENT = "event"
     TRACE = "trace"
+    INTENT = "intent"
+    PROBLEM = "problem"
+    ASSUMPTION = "assumption"
+    DECISION = "decision"
+    PLAN = "plan"
 
 
 _REFERENCE_ID_TYPES: dict[ReferenceKind, type[CuriosId]] = {
@@ -62,6 +72,11 @@ _REFERENCE_ID_TYPES: dict[ReferenceKind, type[CuriosId]] = {
     ReferenceKind.VERIFICATION: VerificationId,
     ReferenceKind.EVENT: EventId,
     ReferenceKind.TRACE: TraceId,
+    ReferenceKind.INTENT: IntentId,
+    ReferenceKind.PROBLEM: ProblemId,
+    ReferenceKind.ASSUMPTION: AssumptionId,
+    ReferenceKind.DECISION: DecisionId,
+    ReferenceKind.PLAN: PlanId,
 }
 _REFERENCE_KIND_BY_ID_TYPE: dict[type[CuriosId], ReferenceKind] = {
     id_type: kind for kind, id_type in _REFERENCE_ID_TYPES.items()

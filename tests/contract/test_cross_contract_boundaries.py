@@ -30,12 +30,16 @@ from curios_contracts import (
     ArtifactId,
     ArtifactKind,
     ArtifactReference,
+    Assumption,
+    AssumptionId,
     Authority,
     Capability,
     CapabilityCategory,
     CapabilityId,
     CapabilityRequirement,
     CorrelationId,
+    Decision,
+    DecisionId,
     EffectClassification,
     EventEnvelope,
     EventId,
@@ -45,11 +49,17 @@ from curios_contracts import (
     ExecutionId,
     ExecutionRecord,
     ExecutionState,
+    Intent,
+    IntentId,
     ObjectReference,
     ObservabilityContext,
+    Plan,
+    PlanId,
     PolicyDecision,
     PolicyDecisionOutcome,
     Principal,
+    ProblemId,
+    ProjectId,
     ProviderDescriptor,
     ProviderId,
     ProviderStatus,
@@ -130,6 +140,48 @@ def test_object_reference_is_the_generic_cross_contract_reference() -> None:
 
     with pytest.raises(TypeError, match="work references require WorkId"):
         ObjectReference(kind=ReferenceKind.WORK, ref_id=ids.project_id)
+
+
+def test_cognitive_records_reference_existing_contracts_without_redefining_work() -> None:
+    intent = Intent(
+        intent_id=fixed_id(IntentId),
+        objective="Summarize recorded project status.",
+        source_ref=ref_for(ProjectId),
+        submitted_at=UTC_NOW,
+    )
+    assumption = Assumption(
+        assumption_id=fixed_id(AssumptionId),
+        subject_ref=ref_for(IntentId),
+        statement="Recorded evidence is authoritative.",
+        created_at=UTC_NOW,
+    )
+    decision = Decision(
+        decision_id=fixed_id(DecisionId),
+        subject_ref=ref_for(IntentId),
+        question="Which plan shape is bounded?",
+        selected_option="recorded_truth_summary",
+        rationale="The request only requires recorded truth observation.",
+        decided_at=UTC_NOW,
+    )
+    plan = Plan(
+        plan_id=fixed_id(PlanId),
+        problem_ref=ref_for(ProblemId),
+        objective="Create work references for the recorded truth summary.",
+        assumption_refs=(ref_for(AssumptionId),),
+        decision_refs=(ref_for(DecisionId),),
+        work_refs=(ref_for(WorkId),),
+        created_at=UTC_NOW,
+    )
+
+    assert ObjectReference.from_id(intent.intent_id).kind is ReferenceKind.INTENT
+    assert assumption.subject_ref.kind is ReferenceKind.INTENT
+    assert decision.subject_ref.kind is ReferenceKind.INTENT
+    assert plan.work_refs == (ref_for(WorkId),)
+    assert _field_type(Plan, "work_refs") == tuple[ObjectReference, ...]
+    assert "work_id" not in _json_keys(plan.to_json_compatible())
+    assert "state" not in _json_keys(plan.to_json_compatible())
+    assert "dependencies" not in _json_keys(plan.to_json_compatible())
+    assert "required_capabilities" not in _json_keys(plan.to_json_compatible())
 
 
 def test_work_items_keep_security_and_policy_links_as_references() -> None:

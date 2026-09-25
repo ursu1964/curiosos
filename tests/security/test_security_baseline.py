@@ -647,10 +647,26 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/security/TASK-M1-001-topology-guardrails.md",
             "docs/tasks/TASK-M1-001-evidence.md",
+            "docs/tasks/TASK-M1-001-validation-evidence.md",
             "tests/architecture/test_architecture_conformance.py",
             "tests/security/test_security_baseline.py",
         }
-    )
+    ),
+    "TASK-M1-002": frozenset(
+        {
+            "docs/contracts/TASK-M1-002-cognitive-contracts.md",
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-002-evidence.md",
+            "packages/python/curios_contracts/src/curios_contracts/__init__.py",
+            "packages/python/curios_contracts/src/curios_contracts/cognitive.py",
+            "packages/python/curios_contracts/src/curios_contracts/identifiers.py",
+            "packages/python/curios_contracts/src/curios_contracts/references.py",
+            "packages/python/curios_contracts/tests/test_task_m1_002_cognitive_contracts.py",
+            "tests/contract/test_cross_contract_boundaries.py",
+            "tests/schema/test_contract_serialization.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -725,6 +741,7 @@ ALLOWED_CONTRACTS_SOURCE_FILES = frozenset(
         "agents.py",
         "artifacts.py",
         "capabilities.py",
+        "cognitive.py",
         "errors.py",
         "events.py",
         "evidence.py",
@@ -775,6 +792,13 @@ FROZEN_CONTRACT_DECLARATIONS_BY_MODULE = {
         ("CAPABILITY_CATEGORY_VALUES", "annotation"),
         ("CAPABILITY_QUALITY_VALUES", "annotation"),
     ),
+    "cognitive.py": (
+        ("Intent", "class"),
+        ("Problem", "class"),
+        ("Assumption", "class"),
+        ("Decision", "class"),
+        ("Plan", "class"),
+    ),
     "errors.py": (
         ("ErrorCode", "class"),
         ("ErrorCategory", "class"),
@@ -818,6 +842,11 @@ FROZEN_CONTRACT_DECLARATIONS_BY_MODULE = {
         ("EventId", "class"),
         ("TraceId", "class"),
         ("CorrelationId", "class"),
+        ("IntentId", "class"),
+        ("ProblemId", "class"),
+        ("AssumptionId", "class"),
+        ("DecisionId", "class"),
+        ("PlanId", "class"),
         ("ensure_id_type", "function"),
         ("ID_TYPES", "annotation"),
         ("ID_PREFIXES", "annotation"),
@@ -951,6 +980,58 @@ FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE = {
             ("to_json_compatible", "method"),
         ),
     },
+    "cognitive.py": {
+        "Intent": (
+            ("intent_id", "annotation"),
+            ("objective", "annotation"),
+            ("submitted_at", "annotation"),
+            ("source_ref", "annotation"),
+            ("context_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "Problem": (
+            ("problem_id", "annotation"),
+            ("intent_ref", "annotation"),
+            ("objective", "annotation"),
+            ("statement", "annotation"),
+            ("created_at", "annotation"),
+            ("context_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "Assumption": (
+            ("assumption_id", "annotation"),
+            ("subject_ref", "annotation"),
+            ("statement", "annotation"),
+            ("created_at", "annotation"),
+            ("basis_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "Decision": (
+            ("decision_id", "annotation"),
+            ("subject_ref", "annotation"),
+            ("question", "annotation"),
+            ("selected_option", "annotation"),
+            ("rationale", "annotation"),
+            ("decided_at", "annotation"),
+            ("input_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "Plan": (
+            ("plan_id", "annotation"),
+            ("problem_ref", "annotation"),
+            ("objective", "annotation"),
+            ("created_at", "annotation"),
+            ("assumption_refs", "annotation"),
+            ("decision_refs", "annotation"),
+            ("work_refs", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+    },
     "executions.py": {
         "ExecutionRecord": (
             ("execution_id", "annotation"),
@@ -1023,6 +1104,11 @@ FROZEN_CONTRACT_CLASS_MEMBERS_BY_MODULE = {
             ("VERIFICATION", "assignment"),
             ("EVENT", "assignment"),
             ("TRACE", "assignment"),
+            ("INTENT", "assignment"),
+            ("PROBLEM", "assignment"),
+            ("ASSUMPTION", "assignment"),
+            ("DECISION", "assignment"),
+            ("PLAN", "assignment"),
         ),
     },
     "security.py": {
@@ -1128,6 +1214,16 @@ FROZEN_CONTRACT_INIT_IMPORTS = (
         ),
     ),
     (
+        "curios_contracts.cognitive",
+        (
+            ("Assumption", None),
+            ("Decision", None),
+            ("Intent", None),
+            ("Plan", None),
+            ("Problem", None),
+        ),
+    ),
+    (
         "curios_contracts.errors",
         (
             ("ERROR_CATEGORY_VALUES", None),
@@ -1173,13 +1269,18 @@ FROZEN_CONTRACT_INIT_IMPORTS = (
             ("AgentInstanceId", None),
             ("ApplicationId", None),
             ("ArtifactId", None),
+            ("AssumptionId", None),
             ("CapabilityId", None),
             ("CorrelationId", None),
             ("CuriosId", None),
+            ("DecisionId", None),
             ("EventId", None),
             ("EvidenceId", None),
             ("ExecutionId", None),
+            ("IntentId", None),
             ("MilestoneId", None),
+            ("PlanId", None),
+            ("ProblemId", None),
             ("ProjectId", None),
             ("ProviderId", None),
             ("TraceId", None),
@@ -1323,6 +1424,8 @@ FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "AgentInstanceId",
     "AgentInstanceState",
     "ApplicationId",
+    "Assumption",
+    "AssumptionId",
     "Approval",
     "ApprovalOutcome",
     "ArtifactId",
@@ -1339,6 +1442,8 @@ FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "ContractError",
     "CorrelationId",
     "CuriosId",
+    "Decision",
+    "DecisionId",
     "DurationMilliseconds",
     "EffectClassification",
     "EngineeringLifecycle",
@@ -1356,14 +1461,20 @@ FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "ExecutionId",
     "IntegrityAlgorithm",
     "IntegrityDescriptor",
+    "Intent",
+    "IntentId",
     "MilestoneId",
     "ObjectReference",
     "ObservabilityContext",
     "Permission",
     "PolicyDecision",
     "PolicyDecisionOutcome",
+    "Plan",
+    "PlanId",
     "Principal",
     "PrincipalType",
+    "Problem",
+    "ProblemId",
     "ProjectId",
     "ProviderDescriptor",
     "ProviderId",
@@ -1391,19 +1502,25 @@ FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "to_json_compatible",
 )
 M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK = {
+    "TASK-M1-004": frozenset({"bounded work-DAG records"}),
+    "TASK-M1-009": frozenset({"model/profile discovery records"}),
+    "TASK-M1-010": frozenset({"routing decision records"}),
+}
+M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK = {
     "TASK-M1-002": frozenset(
         {
             "Intent",
-            "Objective",
             "Problem",
             "Assumption",
             "Decision",
             "Plan",
+            "IntentId",
+            "ProblemId",
+            "AssumptionId",
+            "DecisionId",
+            "PlanId",
         }
-    ),
-    "TASK-M1-004": frozenset({"bounded work-DAG records"}),
-    "TASK-M1-009": frozenset({"model/profile discovery records"}),
-    "TASK-M1-010": frozenset({"routing decision records"}),
+    )
 }
 M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS = frozenset(
     {
@@ -5285,7 +5402,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-016",
         "TASK-M1-017",
     } == M1_PLANNED_SURFACE_TASKS
-    assert {"TASK-M1-001"} == M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    assert {"TASK-M1-001", "TASK-M1-002"} == M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
         "packages/python/curios_contracts",
@@ -5299,18 +5416,24 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
 
 def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contracts() -> None:
     assert {
-        "TASK-M1-002": {
-            "Intent",
-            "Objective",
-            "Problem",
-            "Assumption",
-            "Decision",
-            "Plan",
-        },
         "TASK-M1-004": {"bounded work-DAG records"},
         "TASK-M1-009": {"model/profile discovery records"},
         "TASK-M1-010": {"routing decision records"},
     } == M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK
+    assert {
+        "TASK-M1-002": {
+            "Intent",
+            "Problem",
+            "Assumption",
+            "Decision",
+            "Plan",
+            "IntentId",
+            "ProblemId",
+            "AssumptionId",
+            "DecisionId",
+            "PlanId",
+        }
+    } == M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK
     assert {
         "AgentDefinition",
         "AgentInstance",
@@ -5321,6 +5444,8 @@ def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contr
     } == M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS
     planned_new_names = frozenset().union(*M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK.values())
     assert planned_new_names.isdisjoint(FROZEN_CONTRACT_PACKAGE_EXPORTS)
+    authorized_names = frozenset().union(*M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK.values())
+    assert authorized_names.issubset(FROZEN_CONTRACT_PACKAGE_EXPORTS)
 
 
 def test_fastapi_application_route_authority_matches_frozen_boot_m0_inventory() -> None:

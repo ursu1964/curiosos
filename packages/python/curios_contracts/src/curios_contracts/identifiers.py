@@ -127,6 +127,26 @@ class CorrelationId(CuriosId):
     prefix = "cor"
 
 
+class IntentId(CuriosId):
+    prefix = "int"
+
+
+class ProblemId(CuriosId):
+    prefix = "prb"
+
+
+class AssumptionId(CuriosId):
+    prefix = "asm"
+
+
+class DecisionId(CuriosId):
+    prefix = "dcn"
+
+
+class PlanId(CuriosId):
+    prefix = "pln"
+
+
 def ensure_id_type[IdT: CuriosId](value: CuriosId, expected_type: type[IdT]) -> IdT:
     """Return ``value`` only when it already has the expected concrete ID type."""
     if not isinstance(value, expected_type):
@@ -152,6 +172,11 @@ ID_TYPES: tuple[type[CuriosId], ...] = (
     EventId,
     TraceId,
     CorrelationId,
+    IntentId,
+    ProblemId,
+    AssumptionId,
+    DecisionId,
+    PlanId,
 )
 
 ID_PREFIXES: dict[str, str] = {id_type.__name__: id_type.prefix for id_type in ID_TYPES}
