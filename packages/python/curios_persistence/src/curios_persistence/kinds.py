@@ -6,7 +6,7 @@ from enum import StrEnum
 
 
 class PersistenceRecordKind(StrEnum):
-    """M0 runtime record classes owned by the persistence foundation."""
+    """Runtime record classes owned by the persistence foundation."""
 
     WORK = "work"
     EXECUTION = "execution"
@@ -15,3 +15,4 @@ class PersistenceRecordKind(StrEnum):
     ARTIFACT = "artifact"
     POLICY_DECISION = "policy_decision"
     VERIFICATION = "verification"
+    WORK_DAG = "work_dag"

@@ -9,6 +9,7 @@ members = [
     "curios-config",
     "curios-contracts",
     "curios-core",
+    "curios-dag",
     "curios-observability",
     "curios-ollama",
     "curios-persistence",
@@ -212,6 +213,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "curios-contracts", editable = "packages/python/curios_contracts" }]
+
+[[package]]
+name = "curios-dag"
+version = "0.0.0"
+source = { editable = "packages/python/curios_dag" }
+dependencies = [
+    { name = "curios-contracts" },
+    { name = "curios-persistence" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "curios-contracts", editable = "packages/python/curios_contracts" },
+    { name = "curios-persistence", editable = "packages/python/curios_persistence" },
+]
 
 [[package]]
 name = "curios-observability"

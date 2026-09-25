@@ -1,4 +1,4 @@
-"""SQLAlchemy Core schema owned by the M0 persistence package."""
+"""SQLAlchemy Core schema owned by the Curios persistence package."""
 
 from __future__ import annotations
 
@@ -40,6 +40,7 @@ EVIDENCE_RECORDS = _record_table("curios_m0_evidence_records")
 ARTIFACT_RECORDS = _record_table("curios_m0_artifact_records")
 POLICY_DECISION_RECORDS = _record_table("curios_m0_policy_decision_records")
 VERIFICATION_RECORDS = _record_table("curios_m0_verification_records")
+WORK_DAG_RECORDS = _record_table("curios_m1_work_dag_records")
 
 TABLES_BY_RECORD_KIND: dict[PersistenceRecordKind, Table] = {
     PersistenceRecordKind.WORK: WORK_RECORDS,
@@ -49,8 +50,12 @@ TABLES_BY_RECORD_KIND: dict[PersistenceRecordKind, Table] = {
     PersistenceRecordKind.ARTIFACT: ARTIFACT_RECORDS,
     PersistenceRecordKind.POLICY_DECISION: POLICY_DECISION_RECORDS,
     PersistenceRecordKind.VERIFICATION: VERIFICATION_RECORDS,
+    PersistenceRecordKind.WORK_DAG: WORK_DAG_RECORDS,
 }
 
-M0_PERSISTENCE_TABLE_NAMES: tuple[str, ...] = tuple(
+PERSISTENCE_TABLE_NAMES: tuple[str, ...] = tuple(
     table.name for table in m0_persistence_metadata.sorted_tables
+)
+M0_PERSISTENCE_TABLE_NAMES: tuple[str, ...] = tuple(
+    table_name for table_name in PERSISTENCE_TABLE_NAMES if table_name.startswith("curios_m0_")
 )

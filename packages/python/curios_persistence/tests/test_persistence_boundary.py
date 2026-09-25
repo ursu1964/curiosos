@@ -48,7 +48,7 @@ from curios_persistence import (
     record_to_canonical,
 )
 from curios_persistence.boundary import _translate_error
-from curios_persistence.schema import M0_PERSISTENCE_TABLE_NAMES
+from curios_persistence.schema import M0_PERSISTENCE_TABLE_NAMES, PERSISTENCE_TABLE_NAMES
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError, SQLAlchemyError
 
 _NATIVE_STATEMENT = "SELECT provider_native_detail"
@@ -88,7 +88,7 @@ def test_public_boundary_does_not_export_provider_native_objects() -> None:
     )
 
 
-def test_schema_owns_only_m0_runtime_record_tables() -> None:
+def test_schema_preserves_m0_runtime_tables_and_adds_m1_work_dag_table() -> None:
     assert M0_PERSISTENCE_TABLE_NAMES == (
         "curios_m0_artifact_records",
         "curios_m0_event_records",
@@ -98,6 +98,11 @@ def test_schema_owns_only_m0_runtime_record_tables() -> None:
         "curios_m0_verification_records",
         "curios_m0_work_records",
     )
+    expected_table_names = (
+        *M0_PERSISTENCE_TABLE_NAMES,
+        "curios_m1_work_dag_records",
+    )
+    assert expected_table_names == PERSISTENCE_TABLE_NAMES
 
 
 @pytest.mark.parametrize(
@@ -324,6 +329,26 @@ def test_record_operation_failures_do_not_chain_native_schema_errors() -> None:
         code=PersistenceErrorCode.SCHEMA,
         retryable=False,
         operation="read_work",
+        cause_type="ProgrammingError",
+    )
+
+
+def test_m1_work_dag_record_operation_failures_are_bounded() -> None:
+    native_error = ProgrammingError(
+        _NATIVE_STATEMENT,
+        {"parameter": _NATIVE_DETAIL},
+        Exception(_NATIVE_DETAIL),
+    )
+    transaction = persistence_boundary.PersistenceTransaction(_FailingConnection(native_error))
+
+    with pytest.raises(PersistenceError) as translated:
+        transaction.read_record(PersistenceRecordKind.WORK_DAG, "dag_missing")
+
+    _assert_public_error_is_bounded(
+        translated.value,
+        code=PersistenceErrorCode.SCHEMA,
+        retryable=False,
+        operation="read_work_dag",
         cause_type="ProgrammingError",
     )
 

@@ -679,6 +679,17 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "tests/security/test_security_baseline.py",
         }
     ),
+    "TASK-M1-004": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-004-evidence.md",
+            "packages/python/curios_dag",
+            "packages/python/curios_persistence",
+            "pyproject.toml",
+            "tests/architecture/test_architecture_conformance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -690,7 +701,6 @@ M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS = frozenset(
     {
         "packages/python/curios_agents",
         "packages/python/curios_capability",
-        "packages/python/curios_dag",
         "packages/python/curios_executor",
         "packages/python/curios_model_profiles",
         "packages/python/curios_routing",
@@ -1513,7 +1523,6 @@ FROZEN_CONTRACT_PACKAGE_EXPORTS = (
     "to_json_compatible",
 )
 M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK = {
-    "TASK-M1-004": frozenset({"bounded work-DAG records"}),
     "TASK-M1-009": frozenset({"model/profile discovery records"}),
     "TASK-M1-010": frozenset({"routing decision records"}),
 }
@@ -1531,7 +1540,8 @@ M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK = {
             "DecisionId",
             "PlanId",
         }
-    )
+    ),
+    "TASK-M1-004": frozenset({"bounded work-DAG records"}),
 }
 M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS = frozenset(
     {
@@ -1781,6 +1791,7 @@ ALLOWED_PACKAGE_ROOTS = frozenset(
         "packages/python/curios_contracts",
         "packages/python/curios_core",
         "packages/python/curios_cognitive",
+        "packages/python/curios_dag",
         "packages/python/curios_ollama",
         "packages/python/curios_observability",
         "packages/python/curios_persistence",
@@ -5414,7 +5425,9 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-016",
         "TASK-M1-017",
     } == M1_PLANNED_SURFACE_TASKS
-    assert {"TASK-M1-001", "TASK-M1-002", "TASK-M1-003"} == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
+    assert {"TASK-M1-001", "TASK-M1-002", "TASK-M1-003", "TASK-M1-004"} == (
+        M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    )
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
         "packages/python/curios_contracts",
@@ -5428,7 +5441,6 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
 
 def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contracts() -> None:
     assert {
-        "TASK-M1-004": {"bounded work-DAG records"},
         "TASK-M1-009": {"model/profile discovery records"},
         "TASK-M1-010": {"routing decision records"},
     } == M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK
@@ -5444,7 +5456,8 @@ def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contr
             "AssumptionId",
             "DecisionId",
             "PlanId",
-        }
+        },
+        "TASK-M1-004": {"bounded work-DAG records"},
     } == M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK
     assert {
         "AgentDefinition",
@@ -5456,8 +5469,12 @@ def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contr
     } == M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS
     planned_new_names = frozenset().union(*M1_PLANNED_CANONICAL_AUTHORITY_BY_TASK.values())
     assert planned_new_names.isdisjoint(FROZEN_CONTRACT_PACKAGE_EXPORTS)
-    authorized_names = frozenset().union(*M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK.values())
-    assert authorized_names.issubset(FROZEN_CONTRACT_PACKAGE_EXPORTS)
+    assert M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK["TASK-M1-002"].issubset(
+        FROZEN_CONTRACT_PACKAGE_EXPORTS
+    )
+    assert M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK["TASK-M1-004"].isdisjoint(
+        FROZEN_CONTRACT_PACKAGE_EXPORTS
+    )
 
 
 def test_fastapi_application_route_authority_matches_frozen_boot_m0_inventory() -> None:
@@ -6730,6 +6747,7 @@ def test_later_task_security_provider_runtime_surfaces_match_authorized_current_
             "packages/python/curios_config",
             "packages/python/curios_contracts",
             "packages/python/curios_core",
+            "packages/python/curios_dag",
             "packages/python/curios_ollama",
             "packages/python/curios_observability",
             "packages/python/curios_persistence",

@@ -1,0 +1,17 @@
+[project]
+name = "curios-dag"
+version = "0.0.0"
+description = "M1 bounded work DAG records and state derivation."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "curios-contracts",
+  "curios-persistence",
+]
+
+[tool.uv.sources]
+curios-contracts = { workspace = true }
+curios-persistence = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"

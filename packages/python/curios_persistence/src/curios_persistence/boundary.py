@@ -385,6 +385,9 @@ def record_to_canonical(record: PersistenceRecord) -> object:
             return PolicyDecision.from_json_compatible(record.payload)
         case PersistenceRecordKind.VERIFICATION:
             return VerificationReference.from_json_compatible(record.payload)
+        case PersistenceRecordKind.WORK_DAG:
+            msg = "work_dag records are decoded by the M1 DAG package"
+            raise TypeError(msg)
 
 
 def apply_schema_migrations(config: PersistenceConfig, *, revision: str = "head") -> None:

@@ -28,6 +28,8 @@ RUNTIME_PACKAGE = REPO_ROOT / "packages/python/curios_runtime"
 RUNTIME_SOURCE = RUNTIME_PACKAGE / "src/curios_runtime"
 COGNITIVE_PACKAGE = REPO_ROOT / "packages/python/curios_cognitive"
 COGNITIVE_SOURCE = COGNITIVE_PACKAGE / "src/curios_cognitive"
+DAG_PACKAGE = REPO_ROOT / "packages/python/curios_dag"
+DAG_SOURCE = DAG_PACKAGE / "src/curios_dag"
 
 ARCHITECTURE_FAILURE = "ARCHITECTURE_FAILURE"
 
@@ -146,6 +148,25 @@ COGNITIVE_FORBIDDEN_IMPORTS = frozenset(
         "curios_agents",
         "curios_capability",
         "curios_dag",
+        "curios_executor",
+        "curios_model_profiles",
+        "curios_routing",
+        "curios_verification_loop",
+        *FASTAPI_IMPORTS,
+        *SQLALCHEMY_IMPORTS,
+        *POSTGRES_IMPORTS,
+        *OLLAMA_PROVIDER_SDK_IMPORTS,
+        *OTEL_IMPLEMENTATION_IMPORTS,
+        *DOCKER_TOOLING_IMPORTS,
+        *REPOSITORY_TOOLING_IMPORTS,
+    }
+)
+DAG_FORBIDDEN_IMPORTS = frozenset(
+    {
+        "curios_core",
+        "curios_cognitive",
+        "curios_agents",
+        "curios_capability",
         "curios_executor",
         "curios_model_profiles",
         "curios_routing",
@@ -595,6 +616,23 @@ def test_m1_planned_implementation_roots_are_not_inward_dependencies() -> None:
             rule=M0_INWARD_DEPENDENCY_RULE,
             pyproject_path=CORE_PACKAGE / "pyproject.toml",
             forbidden_dependencies=M1_IMPLEMENTATION_IMPORTS,
+        ),
+    )
+
+    _assert_no_violations(violations)
+
+
+def test_curios_dag_depends_only_on_authorized_inward_surfaces() -> None:
+    violations = (
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=DAG_SOURCE,
+            forbidden_imports=DAG_FORBIDDEN_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=DAG_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=DAG_FORBIDDEN_IMPORTS,
         ),
     )
 
