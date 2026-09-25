@@ -1,7 +1,7 @@
 ---
 id: TASK-M1-001-EVIDENCE
 title: TASK-M1-001 M1 Topology and Guardrail Transition Evidence
-lifecycle: TESTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M1-001
@@ -306,7 +306,7 @@ CI workflow content, API behavior, web behavior, or runtime implementation.
 | Boundary semantic-authority targeted suite | Passed: `81` passed, 2 known dependency warnings. |
 | Initializer/export adversarial matrix | Passed: `58` passed. |
 | Canonical-authority targeted suite | Passed: `76` passed, `237` deselected. |
-| Security and architecture focused suite | Passed: `346 passed` (`313` security, `33` architecture). |
+| Security and architecture focused suite | Passed: `390 passed` (`357` security, `33` architecture). |
 | TOML validation | Passed: `11` `pyproject.toml` files parsed. |
 | `uv lock --check` | Passed: `47` packages resolved. |
 | `uv sync --locked --all-groups --all-packages` | Passed: `47` packages resolved, `44` packages checked. |
@@ -317,14 +317,14 @@ CI workflow content, API behavior, web behavior, or runtime implementation.
 | Package/API/provider tests | Passed: 168 passed, 2 known dependency warnings. |
 | M0 runtime, persistence, and policy package tests | Passed: 128 passed, 4 deselected. |
 | Contract and schema tests | Passed: 15 passed. |
-| Security tests | Passed: 313 passed. |
+| Security tests | Passed: 357 passed, 2 known dependency warnings. |
 | Architecture tests | Passed: 33 passed. |
 | API integration tests | Passed: 6 passed, 2 known dependency warnings. |
-| PostgreSQL provider integration test | Passed: 1 passed. |
-| M0 PostgreSQL integration tests | Passed: 4 passed. |
-| M0 vertical-slice integration tests | Passed: 2 passed, 2 known dependency warnings. |
-| BOOT/M0 acceptance tests | Passed: 8 passed, 2 known dependency warnings. |
-| Full pytest suite | Passed: 678 passed, 2 known dependency warnings. |
+| PostgreSQL provider integration test | Environment skip: 1 skipped because the Docker daemon was unavailable. |
+| M0 PostgreSQL integration tests | Environment skip: 4 skipped because the Docker daemon was unavailable. |
+| M0 vertical-slice integration tests | Passed where runnable: 1 passed, 1 skipped because the Docker daemon was unavailable, 2 known dependency warnings. |
+| BOOT/M0 acceptance tests | Passed where runnable: 7 passed, 1 skipped because the Docker daemon was unavailable, 2 known dependency warnings. |
+| Full pytest suite | Passed where runnable: 715 passed, 7 skipped because the Docker daemon was unavailable, 2 known dependency warnings. |
 | Frontend checks | Passed: frozen install, `pnpm check`, apps/web tests (6 passed), typecheck, and production build (`18` modules transformed). |
 | Workflow Prettier/static audit | Passed: workflow Prettier check and quality-gate static audit (`127` passed, `186` deselected). |
 | `git diff --check` | Passed. |
@@ -333,8 +333,41 @@ The warnings are the existing Starlette/TestClient `httpx` deprecation and
 anyio `BlockingPortal` alias deprecation warnings previously classified as
 non-blocking dependency warnings.
 
+Docker-backed PostgreSQL integration and acceptance cases were collected and
+run, but their own availability guard skipped them because this validation
+environment has no Docker daemon socket.
+
+## Independent Validation
+
+TASK-M1-001 independent validation passed against candidate
+`8e854d785d4dbd6f933c8593f161eaca20d78b33`.
+
+Validation confirmed:
+
+- implementation scope is limited to topology/security/architecture guardrails,
+  documentation, evidence, and status ledger updates;
+- no cognitive contracts, runtime behavior, persistence schemas, API routes,
+  web UI, integration tests, acceptance tests, CI workflow changes, dependency
+  changes, or M2+ behavior were added;
+- planned M1 surfaces are represented by owning task while only TASK-M1-001
+  guardrail surfaces are currently authorized;
+- canonical contract authority is frozen inside existing `curios_contracts`
+  files and package exports;
+- existing FastAPI route authority and web API/control authority are frozen at
+  the BOOT+M0 boundary until TASK-M1-013 and TASK-M1-014 transition them;
+- Correction 5 closes the computed web authority bypass by forbidding direct or
+  indirect App network capability and by reducing JSX handlers to frozen
+  API-boundary capabilities;
+- architecture direction blocks inward dependencies on representative M1
+  implementation roots;
+- full available verification passed, with Docker-backed checks skipped only by
+  their documented daemon-availability guard.
+
 ## Lifecycle State
 
-TASK-M1-001 is `IMPLEMENTED, TESTED`.
+TASK-M1-001 is `VALIDATED, FROZEN`.
 
-TASK-M1-002 through TASK-M1-019 remain `BLOCKED`.
+TASK-M1-002, TASK-M1-005, TASK-M1-006, and TASK-M1-009 are `READY` after
+TASK-M1-001 is integrated into the main M1 baseline. TASK-M1-003,
+TASK-M1-004, TASK-M1-007, and TASK-M1-008 through TASK-M1-019 remain
+`BLOCKED`.

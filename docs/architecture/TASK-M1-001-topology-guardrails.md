@@ -1,7 +1,7 @@
 ---
 id: TASK-M1-001-ARCHITECTURE-GUARDRAILS
 title: TASK-M1-001 M1 Topology Architecture Guardrails
-lifecycle: IMPLEMENTED
+lifecycle: FROZEN
 artifact_type: architecture_guardrail
 authority: implementation
 task_id: TASK-M1-001

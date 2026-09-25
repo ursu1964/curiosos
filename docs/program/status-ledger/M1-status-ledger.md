@@ -14,22 +14,22 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M1 | PLANNING VALIDATED / FROZEN | M1-000A passed independent readiness validation and is the authoritative executable M1 program. Only TASK-M1-001 is ready. |
+| M1 | PLANNING VALIDATED / FROZEN | M1-000A passed independent readiness validation and is the authoritative executable M1 program. TASK-M1-001 is validated/frozen; first downstream tasks become ready after integration. |
 
 ## Task Status
 
 | Task | Title | Dependencies | Parallel Group | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | M1-000A | M1 Milestone Definition and Executable Task Pack | M0 final freeze | PG-M1-00 | VALIDATED, FROZEN | Independent readiness validation accepted the M1 execution program. |
-| TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | IMPLEMENTED, TESTED | M1 topology/security/architecture guardrails were implemented; independent validation remains required. |
-| TASK-M1-002 | Cognitive Intent and Problem Contracts | TASK-M1-001 | PG-M1-02A | BLOCKED | Requires topology guardrails. |
+| TASK-M1-001 | M1 Topology and Guardrail Transition | M1-READINESS | PG-M1-01 | VALIDATED, FROZEN | Independent validation accepted the M1 topology/security/architecture guardrail transition, including Correction 5 web authority hardening. |
+| TASK-M1-002 | Cognitive Intent and Problem Contracts | TASK-M1-001 | PG-M1-02A | READY | TASK-M1-001 is validated/frozen; may begin after TASK-M1-001 is integrated into the main M1 baseline. |
 | TASK-M1-003 | Deterministic Intent Decomposition | TASK-M1-002 | PG-M1-02B | BLOCKED | Requires cognitive contracts. |
 | TASK-M1-004 | Work DAG Records and State | TASK-M1-002 | PG-M1-02B | BLOCKED | Requires cognitive contracts. |
-| TASK-M1-005 | Capability Resolver Foundation | TASK-M1-001 | PG-M1-02A | BLOCKED | Requires topology guardrails. |
-| TASK-M1-006 | Agent Definition and Instance Persistence | TASK-M1-001 | PG-M1-02A | BLOCKED | Requires topology guardrails. |
+| TASK-M1-005 | Capability Resolver Foundation | TASK-M1-001 | PG-M1-02A | READY | TASK-M1-001 is validated/frozen; may begin after TASK-M1-001 is integrated into the main M1 baseline. |
+| TASK-M1-006 | Agent Definition and Instance Persistence | TASK-M1-001 | PG-M1-02A | READY | TASK-M1-001 is validated/frozen; may begin after TASK-M1-001 is integrated into the main M1 baseline. |
 | TASK-M1-007 | Agent Lifecycle Repository and Events | TASK-M1-005, TASK-M1-006 | PG-M1-03 | BLOCKED | Requires capability and agent foundations. |
 | TASK-M1-008 | Executor Seam and Deterministic Executors | TASK-M1-003, TASK-M1-004, TASK-M1-005, TASK-M1-007 | PG-M1-04 | BLOCKED | Requires decomposition, DAG, capability, and agent lifecycle boundaries. |
-| TASK-M1-009 | Model/Profile Discovery Records | TASK-M1-001 | PG-M1-02A | BLOCKED | Requires topology guardrails. |
+| TASK-M1-009 | Model/Profile Discovery Records | TASK-M1-001 | PG-M1-02A | READY | TASK-M1-001 is validated/frozen; may begin after TASK-M1-001 is integrated into the main M1 baseline. |
 | TASK-M1-010 | Routing Decision Records | TASK-M1-008, TASK-M1-009 | PG-M1-05 | BLOCKED | Requires executor seam and profile discovery. |
 | TASK-M1-011 | Bounded DAG Runner | TASK-M1-004, TASK-M1-007, TASK-M1-008, TASK-M1-010 | PG-M1-06 | BLOCKED | Requires DAG, agent lifecycle, executor, and routing records. |
 | TASK-M1-012 | Verification Loop and Evidence Binding | TASK-M1-011 | PG-M1-07 | BLOCKED | Requires bounded runner. |
