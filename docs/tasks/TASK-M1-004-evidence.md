@@ -1,7 +1,7 @@
 ---
 id: TASK-M1-004-EVIDENCE
 title: TASK-M1-004 Work DAG Records and State Evidence
-lifecycle: IMPLEMENTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M1-004
@@ -103,7 +103,9 @@ did not reproduce in the isolated slice or full-suite rerun.
 
 ## Lifecycle State
 
-TASK-M1-004 is `IMPLEMENTED, TESTED`.
+TASK-M1-004 is `VALIDATED, FROZEN`.
 
-This implementation is not independently validated or frozen. It must undergo
-independent validation before integration into the main M1 baseline.
+Independent validation accepted implementation commit
+`f93b4e610c4ac4cff79fa4dfacd8799d9c5ab888`. TASK-M1-004 still requires
+integration into the main M1 baseline before downstream tasks may consume it as
+an integrated prerequisite.
