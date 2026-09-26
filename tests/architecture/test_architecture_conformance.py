@@ -30,6 +30,8 @@ COGNITIVE_PACKAGE = REPO_ROOT / "packages/python/curios_cognitive"
 COGNITIVE_SOURCE = COGNITIVE_PACKAGE / "src/curios_cognitive"
 DAG_PACKAGE = REPO_ROOT / "packages/python/curios_dag"
 DAG_SOURCE = DAG_PACKAGE / "src/curios_dag"
+CAPABILITY_PACKAGE = REPO_ROOT / "packages/python/curios_capability"
+CAPABILITY_SOURCE = CAPABILITY_PACKAGE / "src/curios_capability"
 
 ARCHITECTURE_FAILURE = "ARCHITECTURE_FAILURE"
 
@@ -167,6 +169,26 @@ DAG_FORBIDDEN_IMPORTS = frozenset(
         "curios_cognitive",
         "curios_agents",
         "curios_capability",
+        "curios_executor",
+        "curios_model_profiles",
+        "curios_routing",
+        "curios_verification_loop",
+        *FASTAPI_IMPORTS,
+        *SQLALCHEMY_IMPORTS,
+        *POSTGRES_IMPORTS,
+        *OLLAMA_PROVIDER_SDK_IMPORTS,
+        *OTEL_IMPLEMENTATION_IMPORTS,
+        *DOCKER_TOOLING_IMPORTS,
+        *REPOSITORY_TOOLING_IMPORTS,
+    }
+)
+CAPABILITY_FORBIDDEN_IMPORTS = frozenset(
+    {
+        "curios_core",
+        *M0_IMPLEMENTATION_IMPORTS,
+        "curios_agents",
+        "curios_cognitive",
+        "curios_dag",
         "curios_executor",
         "curios_model_profiles",
         "curios_routing",
@@ -633,6 +655,23 @@ def test_curios_dag_depends_only_on_authorized_inward_surfaces() -> None:
             rule=M0_INWARD_DEPENDENCY_RULE,
             pyproject_path=DAG_PACKAGE / "pyproject.toml",
             forbidden_dependencies=DAG_FORBIDDEN_IMPORTS,
+        ),
+    )
+
+    _assert_no_violations(violations)
+
+
+def test_curios_capability_depends_only_on_authorized_inward_surfaces() -> None:
+    violations = (
+        *_forbidden_import_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            source_root=CAPABILITY_SOURCE,
+            forbidden_imports=CAPABILITY_FORBIDDEN_IMPORTS,
+        ),
+        *_metadata_violations(
+            rule=M0_INWARD_DEPENDENCY_RULE,
+            pyproject_path=CAPABILITY_PACKAGE / "pyproject.toml",
+            forbidden_dependencies=CAPABILITY_FORBIDDEN_IMPORTS,
         ),
     )
 

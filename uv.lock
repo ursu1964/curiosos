@@ -5,6 +5,7 @@ requires-python = "==3.14.*"
 [manifest]
 members = [
     "curios-api",
+    "curios-capability",
     "curios-cognitive",
     "curios-config",
     "curios-contracts",
@@ -175,6 +176,17 @@ requires-dist = [
     { name = "curios-runtime", editable = "packages/python/curios_runtime" },
     { name = "fastapi", specifier = ">=0.118.0" },
 ]
+
+[[package]]
+name = "curios-capability"
+version = "0.0.0"
+source = { editable = "packages/python/curios_capability" }
+dependencies = [
+    { name = "curios-contracts" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "curios-contracts", editable = "packages/python/curios_contracts" }]
 
 [[package]]
 name = "curios-cognitive"
