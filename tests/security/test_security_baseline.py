@@ -173,6 +173,7 @@ M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M1-007": frozenset({"agent_lifecycle_repository.py"}),
     "TASK-M1-008": frozenset({"executor_seam.py"}),
     "TASK-M1-010": frozenset({"routing_decision_repository.py"}),
+    "TASK-M1-011": frozenset({"m1_bounded_dag_runner.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -506,6 +507,17 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("M1Executor", "class"),
         ("DeterministicM1Executor", "class"),
     ),
+    "m1_bounded_dag_runner.py": (
+        ("M1DagRunnerStatus", "class"),
+        ("M1DagRunnerNodeStatus", "class"),
+        ("M1DagRunnerReasonCode", "class"),
+        ("M1DagRunnerErrorCode", "class"),
+        ("M1DagRunnerError", "class"),
+        ("M1DagRunnerRequest", "class"),
+        ("M1DagRunnerNodeResult", "class"),
+        ("M1DagRunnerResult", "class"),
+        ("BoundedM1DagRunner", "class"),
+    ),
     "event_evidence_store.py": (
         ("RuntimeStoreErrorCode", "class"),
         ("RuntimeStoreError", "class"),
@@ -624,6 +636,74 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
         ),
         "M1Executor": (("execute", "method"),),
         "DeterministicM1Executor": (("execute", "method"),),
+    },
+    "m1_bounded_dag_runner.py": {
+        "M1DagRunnerStatus": (
+            ("COMPLETED", "assignment"),
+            ("BLOCKED", "assignment"),
+            ("FAILED", "assignment"),
+        ),
+        "M1DagRunnerNodeStatus": (
+            ("EXECUTED", "assignment"),
+            ("FAILED", "assignment"),
+            ("BLOCKED", "assignment"),
+            ("WAITING", "assignment"),
+            ("TERMINAL", "assignment"),
+            ("DEFERRED", "assignment"),
+        ),
+        "M1DagRunnerReasonCode": (
+            ("EXECUTOR_COMPLETED", "assignment"),
+            ("EXECUTOR_BLOCKED", "assignment"),
+            ("EXECUTOR_FAILED", "assignment"),
+            ("WAITING_ON_DEPENDENCY", "assignment"),
+            ("BLOCKED_BY_DEPENDENCY_FAILURE", "assignment"),
+            ("TERMINAL_WORK", "assignment"),
+            ("CONCURRENCY_LIMIT", "assignment"),
+            ("NO_ROUTE", "assignment"),
+            ("ROUTE_NOT_EXECUTABLE", "assignment"),
+        ),
+        "M1DagRunnerErrorCode": (
+            ("INVALID_CONCURRENCY", "assignment"),
+            ("INVALID_REQUEST", "assignment"),
+            ("MISSING_AGENT", "assignment"),
+            ("MISSING_EXECUTOR_IDENTITY", "assignment"),
+            ("MISSING_ROUTING_DECISION", "assignment"),
+        ),
+        "M1DagRunnerError": (("to_json_compatible", "method"),),
+        "M1DagRunnerRequest": (
+            ("dag", "annotation"),
+            ("work_items", "annotation"),
+            ("routing_decisions", "annotation"),
+            ("agent_instances", "annotation"),
+            ("capability_resolutions_by_work_id", "annotation"),
+            ("event_ids_by_work_id", "annotation"),
+            ("evidence_ids_by_work_id", "annotation"),
+            ("producer_ref", "annotation"),
+            ("occurred_at", "annotation"),
+            ("observability_context", "annotation"),
+            ("max_concurrency", "annotation"),
+        ),
+        "M1DagRunnerNodeResult": (
+            ("work_ref", "annotation"),
+            ("readiness", "annotation"),
+            ("status", "annotation"),
+            ("reason", "annotation"),
+            ("routing_decision_ref", "annotation"),
+            ("executor_outcome", "annotation"),
+            ("to_json_compatible", "method"),
+        ),
+        "M1DagRunnerResult": (
+            ("status", "annotation"),
+            ("dag_state", "annotation"),
+            ("node_results", "annotation"),
+            ("events", "method"),
+            ("evidence_refs", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "BoundedM1DagRunner": (
+            ("executor", "annotation"),
+            ("run_once", "method"),
+        ),
     },
     "event_evidence_store.py": {
         "RuntimeStoreErrorCode": (
@@ -945,6 +1025,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/tasks/TASK-M1-010-evidence.md",
             "docs/tasks/TASK-M1-010-validation-evidence.md",
             "packages/python/curios_persistence",
+            "packages/python/curios_runtime",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-011": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-011-evidence.md",
             "packages/python/curios_runtime",
             "tests/security/test_security_baseline.py",
         }
@@ -5641,6 +5729,7 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
     assert M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M1-007"] == {
         "agent_lifecycle_repository.py"
     }
+    assert M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M1-011"] == {"m1_bounded_dag_runner.py"}
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-008"] == {"apps/api"}
     assert M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK["TASK-M0-008"] == {
         "composition.py",
@@ -5699,6 +5788,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-008",
         "TASK-M1-009",
         "TASK-M1-010",
+        "TASK-M1-011",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
@@ -6804,7 +6894,6 @@ def test_m1_typescript_contract_topology_rejects_premature_canonical_authority(
         "m1_executor_seam.py",
         "m1_model_profiles.py",
         "m1_routing_decisions.py",
-        "m1_bounded_dag_runner.py",
         "m1_verification_loop.py",
     ),
 )

@@ -31,6 +31,17 @@ from curios_runtime.executor_seam import (
     ExecutorRequest,
     M1Executor,
 )
+from curios_runtime.m1_bounded_dag_runner import (
+    BoundedM1DagRunner,
+    M1DagRunnerError,
+    M1DagRunnerErrorCode,
+    M1DagRunnerNodeResult,
+    M1DagRunnerNodeStatus,
+    M1DagRunnerReasonCode,
+    M1DagRunnerRequest,
+    M1DagRunnerResult,
+    M1DagRunnerStatus,
+)
 from curios_runtime.provider_inventory_executor import ProviderInventoryExecutor
 from curios_runtime.routing_decision_repository import (
     M1RoutingDecisionRepository,
@@ -82,11 +93,20 @@ __all__ = (
     "AgentRepositoryErrorCode",
     "EventEvidenceRuntimeStore",
     "M1_EXECUTOR_EVENT_TYPE",
+    "BoundedM1DagRunner",
     "DeterministicM1Executor",
     "ExecutorErrorCode",
     "ExecutorOutcome",
     "ExecutorOutcomeStatus",
     "ExecutorRequest",
+    "M1DagRunnerError",
+    "M1DagRunnerErrorCode",
+    "M1DagRunnerNodeResult",
+    "M1DagRunnerNodeStatus",
+    "M1DagRunnerReasonCode",
+    "M1DagRunnerRequest",
+    "M1DagRunnerResult",
+    "M1DagRunnerStatus",
     "M1AgentLifecycleRepository",
     "M0WorkRepository",
     "M1AgentRepository",
