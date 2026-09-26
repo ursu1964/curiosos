@@ -771,6 +771,7 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
         {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-007-evidence.md",
+            "docs/tasks/TASK-M1-007-validation-evidence.md",
             "packages/python/curios_runtime",
             "tests/security/test_security_baseline.py",
         }
