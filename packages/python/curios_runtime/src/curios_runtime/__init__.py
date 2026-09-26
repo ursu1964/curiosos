@@ -42,6 +42,16 @@ from curios_runtime.m1_bounded_dag_runner import (
     M1DagRunnerResult,
     M1DagRunnerStatus,
 )
+from curios_runtime.m1_verification_loop import (
+    BoundedM1VerificationLoop,
+    M1VerificationAttempt,
+    M1VerificationCompletionDecision,
+    M1VerificationError,
+    M1VerificationErrorCode,
+    M1VerificationLoopRequest,
+    M1VerificationLoopResult,
+    M1VerificationReasonCode,
+)
 from curios_runtime.provider_inventory_executor import ProviderInventoryExecutor
 from curios_runtime.routing_decision_repository import (
     M1RoutingDecisionRepository,
@@ -107,6 +117,13 @@ __all__ = (
     "M1DagRunnerRequest",
     "M1DagRunnerResult",
     "M1DagRunnerStatus",
+    "M1VerificationAttempt",
+    "M1VerificationCompletionDecision",
+    "M1VerificationError",
+    "M1VerificationErrorCode",
+    "M1VerificationLoopRequest",
+    "M1VerificationLoopResult",
+    "M1VerificationReasonCode",
     "M1AgentLifecycleRepository",
     "M0WorkRepository",
     "M1AgentRepository",
@@ -126,6 +143,7 @@ __all__ = (
     "RoutingRationaleCode",
     "RuntimeStoreError",
     "RuntimeStoreErrorCode",
+    "BoundedM1VerificationLoop",
     "SingleStepExecutionOutcome",
     "SingleStepExecutionRequest",
     "SingleStepExecutor",

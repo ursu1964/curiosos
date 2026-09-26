@@ -174,6 +174,7 @@ M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M1-008": frozenset({"executor_seam.py"}),
     "TASK-M1-010": frozenset({"routing_decision_repository.py"}),
     "TASK-M1-011": frozenset({"m1_bounded_dag_runner.py"}),
+    "TASK-M1-012": frozenset({"m1_verification_loop.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -518,6 +519,16 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("M1DagRunnerResult", "class"),
         ("BoundedM1DagRunner", "class"),
     ),
+    "m1_verification_loop.py": (
+        ("M1VerificationCompletionDecision", "class"),
+        ("M1VerificationReasonCode", "class"),
+        ("M1VerificationErrorCode", "class"),
+        ("M1VerificationError", "class"),
+        ("M1VerificationAttempt", "class"),
+        ("M1VerificationLoopRequest", "class"),
+        ("M1VerificationLoopResult", "class"),
+        ("BoundedM1VerificationLoop", "class"),
+    ),
     "event_evidence_store.py": (
         ("RuntimeStoreErrorCode", "class"),
         ("RuntimeStoreError", "class"),
@@ -704,6 +715,57 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("executor", "annotation"),
             ("run_once", "method"),
         ),
+    },
+    "m1_verification_loop.py": {
+        "M1VerificationCompletionDecision": (
+            ("APPROVED", "assignment"),
+            ("REJECTED", "assignment"),
+            ("DEFERRED", "assignment"),
+        ),
+        "M1VerificationReasonCode": (
+            ("VERIFICATION_PASSED", "assignment"),
+            ("VERIFICATION_FAILED", "assignment"),
+            ("VERIFICATION_INCONCLUSIVE", "assignment"),
+            ("NO_VERIFICATION_ATTEMPTS", "assignment"),
+        ),
+        "M1VerificationErrorCode": (
+            ("EXECUTION_NOT_COMPLETED", "assignment"),
+            ("EVIDENCE_SUBJECT_MISMATCH", "assignment"),
+            ("INVALID_EVIDENCE", "assignment"),
+            ("INVALID_ITERATION_BOUND", "assignment"),
+            ("INVALID_REQUEST", "assignment"),
+            ("MISSING_EVIDENCE", "assignment"),
+        ),
+        "M1VerificationError": (("to_json_compatible", "method"),),
+        "M1VerificationAttempt": (
+            ("outcome", "annotation"),
+            ("evidence_refs", "annotation"),
+            ("to_json_compatible", "method"),
+        ),
+        "M1VerificationLoopRequest": (
+            ("work", "annotation"),
+            ("runner_node_result", "annotation"),
+            ("attempts", "annotation"),
+            ("max_iterations", "annotation"),
+            ("verification_id", "annotation"),
+            ("event_id", "annotation"),
+            ("verified_at", "annotation"),
+            ("verifier_ref", "annotation"),
+            ("producer_ref", "annotation"),
+            ("observability_context", "annotation"),
+        ),
+        "M1VerificationLoopResult": (
+            ("completion_decision", "annotation"),
+            ("reason", "annotation"),
+            ("work_ref", "annotation"),
+            ("outcome", "annotation"),
+            ("iterations_used", "annotation"),
+            ("verification_ref", "annotation"),
+            ("event", "annotation"),
+            ("evidence_refs", "annotation"),
+            ("to_json_compatible", "method"),
+        ),
+        "BoundedM1VerificationLoop": (("verify", "method"),),
     },
     "event_evidence_store.py": {
         "RuntimeStoreErrorCode": (
@@ -1033,6 +1095,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
         {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-011-evidence.md",
+            "packages/python/curios_runtime",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-012": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-012-evidence.md",
             "packages/python/curios_runtime",
             "tests/security/test_security_baseline.py",
         }
@@ -5730,6 +5800,7 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
         "agent_lifecycle_repository.py"
     }
     assert M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M1-011"] == {"m1_bounded_dag_runner.py"}
+    assert M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M1-012"] == {"m1_verification_loop.py"}
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-008"] == {"apps/api"}
     assert M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK["TASK-M0-008"] == {
         "composition.py",
@@ -5789,6 +5860,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-009",
         "TASK-M1-010",
         "TASK-M1-011",
+        "TASK-M1-012",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
@@ -6894,7 +6966,6 @@ def test_m1_typescript_contract_topology_rejects_premature_canonical_authority(
         "m1_executor_seam.py",
         "m1_model_profiles.py",
         "m1_routing_decisions.py",
-        "m1_verification_loop.py",
     ),
 )
 def test_m0_runtime_module_topology_rejects_unvalidated_future_runtime_surfaces(
