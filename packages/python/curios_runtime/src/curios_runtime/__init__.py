@@ -22,6 +22,15 @@ from curios_runtime.event_evidence_store import (
     RuntimeStoreError,
     RuntimeStoreErrorCode,
 )
+from curios_runtime.executor_seam import (
+    M1_EXECUTOR_EVENT_TYPE,
+    DeterministicM1Executor,
+    ExecutorErrorCode,
+    ExecutorOutcome,
+    ExecutorOutcomeStatus,
+    ExecutorRequest,
+    M1Executor,
+)
 from curios_runtime.provider_inventory_executor import ProviderInventoryExecutor
 from curios_runtime.single_step_runtime import (
     SingleStepExecutionOutcome,
@@ -58,9 +67,16 @@ __all__ = (
     "AgentRepositoryError",
     "AgentRepositoryErrorCode",
     "EventEvidenceRuntimeStore",
+    "M1_EXECUTOR_EVENT_TYPE",
+    "DeterministicM1Executor",
+    "ExecutorErrorCode",
+    "ExecutorOutcome",
+    "ExecutorOutcomeStatus",
+    "ExecutorRequest",
     "M1AgentLifecycleRepository",
     "M0WorkRepository",
     "M1AgentRepository",
+    "M1Executor",
     "ProviderInventoryExecutor",
     "RepositoryError",
     "RepositoryErrorCode",

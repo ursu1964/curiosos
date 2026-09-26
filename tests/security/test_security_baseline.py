@@ -171,6 +171,7 @@ M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
 M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M1-006": frozenset({"agent_repository.py"}),
     "TASK-M1-007": frozenset({"agent_lifecycle_repository.py"}),
+    "TASK-M1-008": frozenset({"executor_seam.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -495,6 +496,15 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("StoredAgentInstance", "class"),
         ("M1AgentRepository", "class"),
     ),
+    "executor_seam.py": (
+        ("M1_EXECUTOR_EVENT_TYPE", "assignment"),
+        ("ExecutorOutcomeStatus", "class"),
+        ("ExecutorErrorCode", "class"),
+        ("ExecutorRequest", "class"),
+        ("ExecutorOutcome", "class"),
+        ("M1Executor", "class"),
+        ("DeterministicM1Executor", "class"),
+    ),
     "event_evidence_store.py": (
         ("RuntimeStoreErrorCode", "class"),
         ("RuntimeStoreError", "class"),
@@ -560,6 +570,45 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("read_instance", "method"),
             ("list_instances", "method"),
         ),
+    },
+    "executor_seam.py": {
+        "ExecutorOutcomeStatus": (
+            ("COMPLETED", "assignment"),
+            ("FAILED", "assignment"),
+            ("BLOCKED", "assignment"),
+        ),
+        "ExecutorErrorCode": (
+            ("AGENT_DEFINITION_MISMATCH", "assignment"),
+            ("AGENT_NOT_ACTIVE", "assignment"),
+            ("AGENT_WORK_MISMATCH", "assignment"),
+            ("CAPABILITY_AMBIGUOUS", "assignment"),
+            ("CAPABILITY_MISSING", "assignment"),
+            ("CAPABILITY_SHAPE_INVALID", "assignment"),
+            ("EXECUTOR_FAILURE", "assignment"),
+            ("MISSING_AGENT_INSTANCE", "assignment"),
+            ("UNSUPPORTED_WORK_TYPE", "assignment"),
+            ("WORK_NOT_READY", "assignment"),
+        ),
+        "ExecutorRequest": (
+            ("work", "annotation"),
+            ("dag_readiness", "annotation"),
+            ("capability_resolutions", "annotation"),
+            ("agent_instance", "annotation"),
+            ("producer_ref", "annotation"),
+            ("event_id", "annotation"),
+            ("evidence_id", "annotation"),
+            ("occurred_at", "annotation"),
+            ("observability_context", "annotation"),
+        ),
+        "ExecutorOutcome": (
+            ("status", "annotation"),
+            ("result", "annotation"),
+            ("event", "annotation"),
+            ("evidence_refs", "annotation"),
+            ("to_json_compatible", "method"),
+        ),
+        "M1Executor": (("execute", "method"),),
+        "DeterministicM1Executor": (("execute", "method"),),
     },
     "event_evidence_store.py": {
         "RuntimeStoreErrorCode": (
@@ -772,6 +821,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-007-evidence.md",
             "docs/tasks/TASK-M1-007-validation-evidence.md",
+            "packages/python/curios_runtime",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-008": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-008-evidence.md",
             "packages/python/curios_runtime",
             "tests/security/test_security_baseline.py",
         }
@@ -5523,6 +5580,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-005",
         "TASK-M1-006",
         "TASK-M1-007",
+        "TASK-M1-008",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {

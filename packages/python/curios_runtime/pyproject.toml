@@ -4,15 +4,19 @@ version = "0.0.0"
 description = "M0 runtime event/evidence, work repository, step, and provider-inventory boundaries."
 requires-python = ">=3.14,<3.15"
 dependencies = [
+  "curios-capability",
   "curios-core",
   "curios-contracts",
+  "curios-dag",
   "curios-persistence",
   "curios-policy",
 ]
 
 [tool.uv.sources]
+curios-capability = { workspace = true }
 curios-core = { workspace = true }
 curios-contracts = { workspace = true }
+curios-dag = { workspace = true }
 curios-persistence = { workspace = true }
 curios-policy = { workspace = true }
 
