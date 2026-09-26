@@ -172,6 +172,7 @@ M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M1-006": frozenset({"agent_repository.py"}),
     "TASK-M1-007": frozenset({"agent_lifecycle_repository.py"}),
     "TASK-M1-008": frozenset({"executor_seam.py"}),
+    "TASK-M1-010": frozenset({"routing_decision_repository.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -511,6 +512,20 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("EventEvidenceRuntimeStore", "class"),
     ),
     "provider_inventory_executor.py": (("ProviderInventoryExecutor", "class"),),
+    "routing_decision_repository.py": (
+        ("RouteCandidateKind", "class"),
+        ("RoutingDecisionStatus", "class"),
+        ("RoutingRationaleCode", "class"),
+        ("RoutingDecisionErrorCode", "class"),
+        ("RoutingDecisionError", "class"),
+        ("RoutingCandidate", "class"),
+        ("RoutingDecisionRationale", "class"),
+        ("RoutingDecisionRequest", "class"),
+        ("RoutingDecisionRecord", "class"),
+        ("StoredRoutingDecision", "class"),
+        ("M1RoutingDecisionRepository", "class"),
+        ("select_m1_route", "function"),
+    ),
     "single_step_runtime.py": (
         ("SingleStepRuntimeErrorCode", "class"),
         ("SingleStepRuntimeStatus", "class"),
@@ -639,6 +654,87 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("provider_catalogs", "annotation"),
             ("execute", "method"),
         )
+    },
+    "routing_decision_repository.py": {
+        "RouteCandidateKind": (
+            ("DETERMINISTIC_EXECUTOR", "assignment"),
+            ("MODEL_PROFILE", "assignment"),
+            ("NO_MODEL", "assignment"),
+        ),
+        "RoutingDecisionStatus": (
+            ("SELECTED", "assignment"),
+            ("NO_ROUTE", "assignment"),
+        ),
+        "RoutingRationaleCode": (
+            ("SELECTED_SINGLE_VALID_ROUTE", "assignment"),
+            ("NO_VALID_ROUTE", "assignment"),
+            ("AMBIGUOUS_ROUTE", "assignment"),
+        ),
+        "RoutingDecisionErrorCode": (
+            ("CONFLICT", "assignment"),
+            ("CORRUPT_RECORD", "assignment"),
+            ("INVALID_CANDIDATE", "assignment"),
+            ("INVALID_CONSTRAINT", "assignment"),
+            ("INVALID_REQUEST", "assignment"),
+            ("NOT_FOUND", "assignment"),
+            ("PERSISTENCE_FAILURE", "assignment"),
+        ),
+        "RoutingDecisionError": (("to_json_compatible", "method"),),
+        "RoutingCandidate": (
+            ("candidate_key", "annotation"),
+            ("kind", "annotation"),
+            ("work_ref", "annotation"),
+            ("provider_ref", "annotation"),
+            ("model_name", "annotation"),
+            ("model_status", "annotation"),
+            ("executor_name", "annotation"),
+            ("supported_work_types", "annotation"),
+            ("deterministic_executor", "method"),
+            ("model_profile", "method"),
+            ("no_model", "method"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "RoutingDecisionRationale": (
+            ("code", "annotation"),
+            ("message", "annotation"),
+            ("details", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "RoutingDecisionRequest": (
+            ("decision_id", "annotation"),
+            ("work", "annotation"),
+            ("candidates", "annotation"),
+            ("requested_at", "annotation"),
+            ("producer_ref", "annotation"),
+            ("observability_context", "annotation"),
+            ("resource_constraints", "annotation"),
+        ),
+        "RoutingDecisionRecord": (
+            ("decision_id", "annotation"),
+            ("work_ref", "annotation"),
+            ("status", "annotation"),
+            ("candidates", "annotation"),
+            ("selected_route", "annotation"),
+            ("rationale", "annotation"),
+            ("resource_constraints", "annotation"),
+            ("decided_at", "annotation"),
+            ("producer_ref", "annotation"),
+            ("observability_context", "annotation"),
+            ("schema_version", "annotation"),
+            ("from_json_compatible", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "StoredRoutingDecision": (
+            ("decision", "annotation"),
+            ("version", "annotation"),
+        ),
+        "M1RoutingDecisionRepository": (
+            ("create_decision", "method"),
+            ("read_decision", "method"),
+            ("list_decisions", "method"),
+        ),
     },
     "single_step_runtime.py": {
         "SingleStepRuntimeErrorCode": (
@@ -840,6 +936,15 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/tasks/TASK-M1-009-evidence.md",
             "docs/tasks/TASK-M1-009-validation-evidence.md",
             "packages/python/curios_ollama",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-010": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-010-evidence.md",
+            "packages/python/curios_persistence",
+            "packages/python/curios_runtime",
             "tests/security/test_security_baseline.py",
         }
     ),
@@ -5592,6 +5697,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-007",
         "TASK-M1-008",
         "TASK-M1-009",
+        "TASK-M1-010",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {

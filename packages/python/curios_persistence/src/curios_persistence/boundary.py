@@ -406,6 +406,9 @@ def record_to_canonical(record: PersistenceRecord) -> object:
             return AgentDefinition.from_json_compatible(record.payload)
         case PersistenceRecordKind.AGENT_INSTANCE:
             return AgentInstance.from_json_compatible(record.payload)
+        case PersistenceRecordKind.ROUTING_DECISION:
+            msg = "routing_decision records are decoded by the M1 runtime package"
+            raise TypeError(msg)
 
 
 def apply_schema_migrations(config: PersistenceConfig, *, revision: str = "head") -> None:

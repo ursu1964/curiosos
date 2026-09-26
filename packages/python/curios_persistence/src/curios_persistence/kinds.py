@@ -18,3 +18,4 @@ class PersistenceRecordKind(StrEnum):
     WORK_DAG = "work_dag"
     AGENT_DEFINITION = "agent_definition"
     AGENT_INSTANCE = "agent_instance"
+    ROUTING_DECISION = "routing_decision"

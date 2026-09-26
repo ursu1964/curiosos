@@ -15,6 +15,7 @@ from curios_contracts import (
     ArtifactId,
     ArtifactKind,
     ArtifactReference,
+    DecisionId,
     EffectClassification,
     EventEnvelope,
     EventId,
@@ -107,6 +108,7 @@ def test_schema_preserves_m0_runtime_tables_and_adds_m1_record_tables() -> None:
         *M0_PERSISTENCE_TABLE_NAMES,
         "curios_m1_agent_definition_records",
         "curios_m1_agent_instance_records",
+        "curios_m1_routing_decision_records",
         "curios_m1_work_dag_records",
     )
     assert expected_table_names == PERSISTENCE_TABLE_NAMES
@@ -263,6 +265,17 @@ def test_policy_decision_requires_canonical_decision_id_for_persistence() -> Non
 
     with pytest.raises(ValueError, match="requires decision_id"):
         canonical_to_record(decision)
+
+
+def test_routing_decision_records_are_decoded_by_m1_runtime_package() -> None:
+    record = PersistenceRecord(
+        PersistenceRecordKind.ROUTING_DECISION,
+        str(fixed_id(DecisionId)),
+        {"decision_id": str(fixed_id(DecisionId))},
+    )
+
+    with pytest.raises(TypeError, match="M1 runtime package"):
+        record_to_canonical(record)
 
 
 def test_persistence_failures_translate_sqlalchemy_errors_deterministically() -> None:

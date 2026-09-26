@@ -43,6 +43,7 @@ VERIFICATION_RECORDS = _record_table("curios_m0_verification_records")
 WORK_DAG_RECORDS = _record_table("curios_m1_work_dag_records")
 AGENT_DEFINITION_RECORDS = _record_table("curios_m1_agent_definition_records")
 AGENT_INSTANCE_RECORDS = _record_table("curios_m1_agent_instance_records")
+ROUTING_DECISION_RECORDS = _record_table("curios_m1_routing_decision_records")
 
 TABLES_BY_RECORD_KIND: dict[PersistenceRecordKind, Table] = {
     PersistenceRecordKind.WORK: WORK_RECORDS,
@@ -55,6 +56,7 @@ TABLES_BY_RECORD_KIND: dict[PersistenceRecordKind, Table] = {
     PersistenceRecordKind.WORK_DAG: WORK_DAG_RECORDS,
     PersistenceRecordKind.AGENT_DEFINITION: AGENT_DEFINITION_RECORDS,
     PersistenceRecordKind.AGENT_INSTANCE: AGENT_INSTANCE_RECORDS,
+    PersistenceRecordKind.ROUTING_DECISION: ROUTING_DECISION_RECORDS,
 }
 
 PERSISTENCE_TABLE_NAMES: tuple[str, ...] = tuple(
