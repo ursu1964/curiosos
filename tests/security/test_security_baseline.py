@@ -834,6 +834,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "tests/security/test_security_baseline.py",
         }
     ),
+    "TASK-M1-009": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-009-evidence.md",
+            "packages/python/curios_ollama",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -5582,6 +5590,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-006",
         "TASK-M1-007",
         "TASK-M1-008",
+        "TASK-M1-009",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
