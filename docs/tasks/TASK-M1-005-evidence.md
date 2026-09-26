@@ -1,7 +1,7 @@
 ---
 id: TASK-M1-005-EVIDENCE
 title: TASK-M1-005 Capability Resolver Foundation Evidence
-lifecycle: IMPLEMENTED
+lifecycle: VALIDATED
 artifact_type: task_evidence
 authority: implementation
 task_id: TASK-M1-005
@@ -112,7 +112,9 @@ implementation commit.
 
 ## Lifecycle State
 
-TASK-M1-005 is `IMPLEMENTED, TESTED`.
+TASK-M1-005 is `VALIDATED, FROZEN`.
 
-Independent validation/freeze is still required before TASK-M1-005 can be
-treated as a frozen downstream prerequisite.
+Independent validation accepted implementation commit
+`e474167679a0ce891cc8557a93010ac2cfe055f3`. TASK-M1-005 still requires
+integration into the main M1 baseline before downstream tasks may consume it as
+an integrated prerequisite.
