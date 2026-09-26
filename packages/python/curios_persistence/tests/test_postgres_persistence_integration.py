@@ -312,7 +312,7 @@ def _assert_migration_downgrade_removes_record_tables(config: PersistenceConfig)
             assert not [
                 table
                 for table in inspector.get_table_names(schema=config.schema)
-                if table.startswith("curios_m0_")
+                if table.startswith(("curios_m0_", "curios_m1_"))
             ]
     finally:
         engine.dispose()

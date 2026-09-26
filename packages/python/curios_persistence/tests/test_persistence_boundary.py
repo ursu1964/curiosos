@@ -7,6 +7,11 @@ import curios_persistence.boundary as persistence_boundary
 import pytest
 from contract_fixtures import UTC_NOW, fixed_id, human_principal, ref_for
 from curios_contracts import (
+    AgentDefinition,
+    AgentDefinitionId,
+    AgentInstance,
+    AgentInstanceId,
+    AgentInstanceState,
     ArtifactId,
     ArtifactKind,
     ArtifactReference,
@@ -88,7 +93,7 @@ def test_public_boundary_does_not_export_provider_native_objects() -> None:
     )
 
 
-def test_schema_preserves_m0_runtime_tables_and_adds_m1_work_dag_table() -> None:
+def test_schema_preserves_m0_runtime_tables_and_adds_m1_record_tables() -> None:
     assert M0_PERSISTENCE_TABLE_NAMES == (
         "curios_m0_artifact_records",
         "curios_m0_event_records",
@@ -100,6 +105,8 @@ def test_schema_preserves_m0_runtime_tables_and_adds_m1_work_dag_table() -> None
     )
     expected_table_names = (
         *M0_PERSISTENCE_TABLE_NAMES,
+        "curios_m1_agent_definition_records",
+        "curios_m1_agent_instance_records",
         "curios_m1_work_dag_records",
     )
     assert expected_table_names == PERSISTENCE_TABLE_NAMES
@@ -202,6 +209,31 @@ def test_schema_preserves_m0_runtime_tables_and_adds_m1_work_dag_table() -> None
             PersistenceRecordKind.VERIFICATION,
             str(fixed_id(VerificationId)),
             id="verification",
+        ),
+        pytest.param(
+            AgentDefinition(
+                agent_definition_id=fixed_id(AgentDefinitionId),
+                name="local_agent",
+                version=SchemaVersion(1, 0, 0),
+                purpose="Handle deterministic local assignment.",
+                allowed_capability_ids=(),
+            ),
+            PersistenceRecordKind.AGENT_DEFINITION,
+            str(fixed_id(AgentDefinitionId)),
+            id="agent-definition",
+        ),
+        pytest.param(
+            AgentInstance(
+                agent_instance_id=fixed_id(AgentInstanceId),
+                agent_definition_id=fixed_id(AgentDefinitionId),
+                work_id=fixed_id(WorkId),
+                state=AgentInstanceState.CREATED,
+                created_at=UTC_NOW,
+                execution_id=fixed_id(ExecutionId),
+            ),
+            PersistenceRecordKind.AGENT_INSTANCE,
+            str(fixed_id(AgentInstanceId)),
+            id="agent-instance",
         ),
     ),
 )

@@ -19,6 +19,8 @@ from typing import Any, NoReturn, Self
 from alembic import command
 from alembic.config import Config
 from curios_contracts import (
+    AgentDefinition,
+    AgentInstance,
     ArtifactReference,
     EventEnvelope,
     EvidenceReference,
@@ -363,6 +365,18 @@ def canonical_to_record(value: object) -> PersistenceRecord:
                 str(value.verification_id),
                 value.to_json_compatible(),
             )
+        case AgentDefinition():
+            return _record(
+                PersistenceRecordKind.AGENT_DEFINITION,
+                str(value.agent_definition_id),
+                value.to_json_compatible(),
+            )
+        case AgentInstance():
+            return _record(
+                PersistenceRecordKind.AGENT_INSTANCE,
+                str(value.agent_instance_id),
+                value.to_json_compatible(),
+            )
         case _:
             msg = f"unsupported canonical record type {type(value).__name__}"
             raise TypeError(msg)
@@ -388,6 +402,10 @@ def record_to_canonical(record: PersistenceRecord) -> object:
         case PersistenceRecordKind.WORK_DAG:
             msg = "work_dag records are decoded by the M1 DAG package"
             raise TypeError(msg)
+        case PersistenceRecordKind.AGENT_DEFINITION:
+            return AgentDefinition.from_json_compatible(record.payload)
+        case PersistenceRecordKind.AGENT_INSTANCE:
+            return AgentInstance.from_json_compatible(record.payload)
 
 
 def apply_schema_migrations(config: PersistenceConfig, *, revision: str = "head") -> None:

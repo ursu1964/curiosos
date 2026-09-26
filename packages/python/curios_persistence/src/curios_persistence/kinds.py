@@ -16,3 +16,5 @@ class PersistenceRecordKind(StrEnum):
     POLICY_DECISION = "policy_decision"
     VERIFICATION = "verification"
     WORK_DAG = "work_dag"
+    AGENT_DEFINITION = "agent_definition"
+    AGENT_INSTANCE = "agent_instance"

@@ -1,5 +1,12 @@
 """M0 runtime boundaries for event/evidence storage, work repositories, and steps."""
 
+from curios_runtime.agent_repository import (
+    AgentRepositoryError,
+    AgentRepositoryErrorCode,
+    M1AgentRepository,
+    StoredAgentDefinition,
+    StoredAgentInstance,
+)
 from curios_runtime.event_evidence_store import (
     EventEvidenceRuntimeStore,
     RuntimeStoreError,
@@ -34,8 +41,11 @@ __version__ = "0.0.0"
 __all__ = (
     "EXECUTION_TRANSITIONS",
     "WORK_ITEM_TRANSITIONS",
+    "AgentRepositoryError",
+    "AgentRepositoryErrorCode",
     "EventEvidenceRuntimeStore",
     "M0WorkRepository",
+    "M1AgentRepository",
     "ProviderInventoryExecutor",
     "RepositoryError",
     "RepositoryErrorCode",
@@ -50,6 +60,8 @@ __all__ = (
     "SingleStepRuntimeResult",
     "SingleStepRuntimeService",
     "SingleStepRuntimeStatus",
+    "StoredAgentDefinition",
+    "StoredAgentInstance",
     "StoredExecutionRecord",
     "StoredWorkItem",
     "__version__",
