@@ -73,7 +73,8 @@ ExecutionRecord records, or complete DAG nodes.
 
 M1-010 routing decisions remain inert inputs. M1-011 may consume a supplied
 `RoutingDecisionRecord` and invoke the deterministic executor only when the
-decision selected a `DETERMINISTIC_EXECUTOR` candidate for the same ready work.
+decision selected a `DETERMINISTIC_EXECUTOR` candidate for the same ready work
+and the selected candidate still supports the actual `WorkItem.work_type`.
 
 `NO_ROUTE` and selected model-profile routes are bounded blocked node outcomes.
 They do not trigger model/profile discovery, provider instantiation, model
@@ -135,6 +136,7 @@ Executor self-report alone does not complete a DAG node.
 | Events/evidence | PASS | Executor-owned canonical events/evidence refs are surfaced for executed nodes only. |
 | Restart | PASS | A new runner object recomputes from supplied recorded WorkItem truth with no cache. |
 | No provider/model authority | PASS | Model-profile routes remain blocked; no provider/model/network imports or calls exist. |
+| Route/work compatibility | PASS | Selected deterministic executor routes must support the actual `WorkItem.work_type` before executor invocation. |
 | Downstream boundary | PASS | Verification-gated completion, API/web presentation, and milestone closure remain absent. |
 
 ## Failure And Adversarial Coverage
@@ -149,6 +151,14 @@ Focused tests cover:
 - FAILED/CANCELLED upstream dependency propagation;
 - restart/reconstruction from updated recorded WorkItem truth;
 - selected deterministic executor route;
+- selected deterministic executor route whose supported work types include the
+  actual `WorkItem.work_type`;
+- selected deterministic executor route whose supported work types exclude the
+  actual `WorkItem.work_type`;
+- mixed READY nodes where a compatible route executes and an incompatible route
+  is bounded without executor invocation;
+- concurrency-budget behavior when an incompatible selected route is among the
+  first READY nodes;
 - `NO_ROUTE`;
 - selected model-profile route without model invocation;
 - missing routing decision;
@@ -164,6 +174,33 @@ Focused tests cover:
 
 No package, third-party dependency, lockfile, pnpm manifest, schema, or
 migration change is introduced.
+
+## Correction 1
+
+Independent validation found that a selected deterministic executor route was
+treated as executable solely because its kind was `DETERMINISTIC_EXECUTOR`.
+The runner did not verify that the route's `supported_work_types` included the
+actual routed `WorkItem.work_type`, so an incompatible selected route could
+reach `M1Executor`.
+
+Correction 1 tightens the selected-route gate in
+`BoundedM1DagRunner._run_ready_node()`:
+
+- compatible selected deterministic route -> exactly one executor invocation
+  for that READY node;
+- incompatible selected deterministic route -> bounded
+  `ROUTE_NOT_EXECUTABLE` node outcome;
+- incompatible route -> no executor invocation, no executor event, and no
+  executor evidence reference;
+- no route recomputation, provider/model invocation, persistence, WorkItem
+  mutation, WorkDag mutation, AgentInstance transition, ExecutionRecord
+  mutation, retry, cancellation, or TASK-M1-012 behavior is introduced.
+
+The validator regression file
+`packages/python/curios_runtime/tests/test_task_m1_011_validation_regressions.py`
+is preserved and expanded to cover compatible routes, incompatible routes,
+mixed DAG outcomes, deterministic ordering, executor invocation counts, and
+concurrency-budget behavior.
 
 ## Verification
 

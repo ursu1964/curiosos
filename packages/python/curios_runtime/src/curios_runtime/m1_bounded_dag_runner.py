@@ -377,6 +377,7 @@ def _run_ready_node(
     if (
         decision.selected_route is None
         or decision.selected_route.kind is not RouteCandidateKind.DETERMINISTIC_EXECUTOR
+        or work.work_type not in decision.selected_route.supported_work_types
     ):
         return M1DagRunnerNodeResult(
             work_ref=ObjectReference.from_id(work.work_id),
