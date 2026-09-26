@@ -141,6 +141,37 @@ Focused tests cover:
 
 ## Verification
 
+## Correction 1: Safe Malformed-Inventory Error Translation
+
+Independent validation found that malformed-inventory handling exposed raw
+provider/client exception text through the public `ContractError.message` for
+`OLLAMA_MODEL_PROFILE_INVALID`. A credential-shaped provider exception string
+crossed the M1-009 discovery boundary unchanged.
+
+Correction 1 replaces that raw exception text with the fixed provider-neutral
+message:
+
+`Ollama model profile discovery received invalid local inventory metadata.`
+
+The correction preserves:
+
+- error code `OLLAMA_MODEL_PROFILE_INVALID`;
+- non-retryable malformed-inventory semantics;
+- no partial candidate value on failure;
+- separate unavailable-provider handling;
+- profile shape, status semantics, candidate ordering, duplicate handling, and
+  provider-local identity;
+- no routing, generation, persistence, scheduler, API, UI, prompt, or memory
+  authority.
+
+Validator regression coverage now probes representative token-like,
+password-like, API-key-like, authorization-header-like, credential-like, and
+secret-like provider exception strings plus a normal non-secret malformed
+provider message across public error message, details, JSON-compatible
+serialization, result serialization, and repr surfaces. It also verifies
+unavailable-provider errors do not leak raw client exception text and that
+discovery uses only `list_models`, not generation/chat methods.
+
 Final implementation verification:
 
 | Check | Result |
@@ -149,20 +180,23 @@ Final implementation verification:
 | Locked sync | PASS: `uv sync --locked --all-groups --all-packages` checked 47 packages after installing the task worktree environment. |
 | Frontend locked install | PASS: `pnpm install --frozen-lockfile`. |
 | Docker Compose config | PASS: `docker compose --env-file infrastructure/local/docker/.env.example -f infrastructure/local/docker/compose.yaml config --quiet`. |
-| Python formatting | PASS: `uv run ruff format --check .` reported 251 files already formatted. |
+| Python formatting | PASS: `uv run ruff format --check .` reported 252 files already formatted. |
 | Python lint | PASS: `uv run ruff check .`. |
 | Python typing | PASS: `uv run mypy apps/api/src packages/python/*/src` checked 66 source files. |
 | Frontend checks | PASS: `pnpm check`. |
 | Web tests | PASS: `pnpm --dir apps/web test` passed 6 tests. |
 | Web typecheck | PASS: `pnpm --dir apps/web typecheck`. |
 | Web build | PASS: `pnpm --dir apps/web build`. |
-| Contract/schema/architecture/security + M1-009 focused tests | PASS: combined post-refactor slice passed 434 tests with 2 known FastAPI/Starlette warnings. |
-| M1-001 through M1-008 regression slice plus M1-009 focused tests | PASS: combined focused package slice passed 229 tests. |
-| Package/API/provider tests | PASS: package-local API/core/config/provider/observability/Ollama slice passed 68 tests with 2 known FastAPI/Starlette warnings. |
+| Validator regression before correction | FAIL: `uv run pytest packages/python/curios_ollama/tests/test_task_m1_009_validation_regressions.py -q` failed because credential-shaped provider exception text appeared in `ContractError.message`. |
+| Validator regression after correction | PASS: `uv run pytest packages/python/curios_ollama/tests/test_task_m1_009_validation_regressions.py -q` passed 10 tests. |
+| Complete M1-009 provider tests | PASS: `uv run pytest packages/python/curios_ollama/tests/test_ollama_provider_boundary.py packages/python/curios_ollama/tests/test_task_m1_009_validation_regressions.py -q` passed 37 tests. |
+| Contract/schema/architecture/security | PASS: `uv run pytest tests/contract tests/schema tests/architecture tests/security -q` passed 407 tests with 2 known FastAPI/Starlette warnings. |
+| M1-001 through M1-008 regression slice plus M1-009 focused tests | PASS: combined focused package slice passed 239 tests. |
+| Package/API/provider tests | PASS: package-local API/core/config/provider/observability/Ollama slice passed 78 tests with 2 known FastAPI/Starlette warnings. |
 | Runtime/persistence/policy unit suites | PASS: non-integration slice passed 201 tests with 9 deselected integration tests. |
 | Docker-backed serial integrations | PASS: API 6, PostgreSQL provider 1, persistence 2, event/evidence 1, work repository 1, Work DAG repository 1, agent repository 1, agent lifecycle repository 1, and M0 vertical slice 2. |
 | Acceptance tests | PASS: `uv run pytest tests/acceptance -q` passed 8 tests with 2 known FastAPI/Starlette warnings. |
-| Full pytest | PASS: `uv run pytest -q` passed 894 tests with 2 known FastAPI/Starlette warnings. |
+| Full pytest | PASS: `uv run pytest -q` passed 904 tests with 2 known FastAPI/Starlette warnings. |
 | Repository whitespace | PASS: `git diff --check` and `git diff --cached --check`. |
 
 Known warning: inherited `VIRTUAL_ENV=/home/user/projects/curiosos/.venv` does

@@ -50,6 +50,9 @@ _SECRET_VALUE_RE = re.compile(
     r"(?i)(api[_-]?key|authorization|credential|password|secret|token)\s*[:=]"
 )
 _SAFE_METADATA_KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_INVALID_INVENTORY_MESSAGE = (
+    "Ollama model profile discovery received invalid local inventory metadata."
+)
 
 
 class ModelProfileStatus(StrEnum):
@@ -173,12 +176,12 @@ class OllamaModelProfileDiscovery:
             return Result.failure((_profile_error(category=ErrorCategory.TIMEOUT),))
         except OSError:
             return Result.failure((_profile_error(),))
-        except (TypeError, ValueError) as error:
+        except TypeError, ValueError:
             return Result.failure(
                 (
                     _profile_error(
                         code="OLLAMA_MODEL_PROFILE_INVALID",
-                        message=str(error),
+                        message=_INVALID_INVENTORY_MESSAGE,
                         retryable=False,
                     ),
                 )
