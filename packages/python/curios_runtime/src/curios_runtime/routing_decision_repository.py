@@ -662,7 +662,14 @@ def _normalize_resource_constraints(
             )
         )
     if _CONSTRAINT_REQUIRED_PROVIDER_REF in normalized:
-        ObjectReference.from_json_compatible(normalized[_CONSTRAINT_REQUIRED_PROVIDER_REF])
+        try:
+            provider_ref = ObjectReference.from_json_compatible(
+                normalized[_CONSTRAINT_REQUIRED_PROVIDER_REF]
+            )
+        except KeyError, TypeError, ValueError:
+            _invalid_constraint("Routing constraints require a canonical provider reference.")
+        if provider_ref.kind is not ReferenceKind.PROVIDER:
+            _invalid_constraint("Routing constraints require a canonical provider reference.")
     return normalized
 
 
@@ -784,6 +791,17 @@ def _invalid_request(message: str) -> NoReturn:
     _raise_routing_error(
         RoutingDecisionError(
             RoutingDecisionErrorCode.INVALID_REQUEST,
+            message,
+            retryable=False,
+            operation="construct_request",
+        )
+    )
+
+
+def _invalid_constraint(message: str) -> NoReturn:
+    _raise_routing_error(
+        RoutingDecisionError(
+            RoutingDecisionErrorCode.INVALID_CONSTRAINT,
             message,
             retryable=False,
             operation="construct_request",

@@ -227,6 +227,31 @@ Schema changes are limited to:
 
 No pnpm manifest/lockfile change is required.
 
+## Correction 1
+
+Independent validation found that `required_provider_ref` accepted any
+canonical `ObjectReference`, including non-provider references such as
+`kind=work`, and later interpreted the malformed provider constraint as a
+regular no-match filter. Correction 1 tightens
+`_normalize_resource_constraints()` so malformed references and structurally
+valid wrong-kind references fail request validation as
+`RoutingDecisionErrorCode.INVALID_CONSTRAINT` with a fixed bounded message:
+`Routing constraints require a canonical provider reference.`
+
+The correction preserves the required distinction:
+
+- malformed or wrong-kind `required_provider_ref` -> `INVALID_CONSTRAINT`;
+- valid provider reference with no matching candidate -> deterministic
+  `NO_ROUTE` / `NO_VALID_ROUTE`;
+- valid provider reference matching exactly one model-profile candidate ->
+  deterministic `SELECTED`.
+
+The validator regression file
+`packages/python/curios_runtime/tests/test_task_m1_010_validation_regressions.py`
+is preserved and expanded to cover matching provider references, no-match
+provider references, wrong-kind work/agent-instance/execution references,
+malformed reference payloads, and secret-shaped malformed values.
+
 ## Verification
 
 Initial focused checks after implementation:
