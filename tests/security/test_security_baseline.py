@@ -170,6 +170,7 @@ M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
 }
 M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M1-006": frozenset({"agent_repository.py"}),
+    "TASK-M1-007": frozenset({"agent_lifecycle_repository.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -477,6 +478,16 @@ FROZEN_CORE_CLASS_MEMBERS_BY_MODULE = {
 }
 FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
     "__init__.py": (),
+    "agent_lifecycle_repository.py": (
+        ("AGENT_INSTANCE_TRANSITIONS", "annotation"),
+        ("AGENT_LIFECYCLE_EVENT_TYPE", "assignment"),
+        ("AgentLifecycleErrorCode", "class"),
+        ("AgentLifecycleError", "class"),
+        ("StoredAgentLifecycleTransition", "class"),
+        ("M1AgentLifecycleRepository", "class"),
+        ("transition_agent_instance", "function"),
+        ("agent_lifecycle_event", "function"),
+    ),
     "agent_repository.py": (
         ("AgentRepositoryErrorCode", "class"),
         ("AgentRepositoryError", "class"),
@@ -514,6 +525,23 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
     ),
 }
 FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
+    "agent_lifecycle_repository.py": {
+        "AgentLifecycleErrorCode": (
+            ("CONFLICT", "assignment"),
+            ("CORRUPT_RECORD", "assignment"),
+            ("ILLEGAL_TRANSITION", "assignment"),
+            ("NOT_FOUND", "assignment"),
+            ("PERSISTENCE_FAILURE", "assignment"),
+        ),
+        "AgentLifecycleError": (("to_json_compatible", "method"),),
+        "StoredAgentLifecycleTransition": (
+            ("instance", "annotation"),
+            ("version", "annotation"),
+            ("event", "annotation"),
+            ("changed", "annotation"),
+        ),
+        "M1AgentLifecycleRepository": (("transition_instance", "method"),),
+    },
     "agent_repository.py": {
         "AgentRepositoryErrorCode": (
             ("CONFLICT", "assignment"),
@@ -735,6 +763,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-006-evidence.md",
             "packages/python/curios_persistence",
+            "packages/python/curios_runtime",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-007": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-007-evidence.md",
             "packages/python/curios_runtime",
             "tests/security/test_security_baseline.py",
         }
@@ -5428,6 +5464,9 @@ def test_m0_planned_surface_registry_is_task_scoped_and_current_authorization_is
         "provider_inventory_executor.py"
     }
     assert M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M1-006"] == {"agent_repository.py"}
+    assert M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK["TASK-M1-007"] == {
+        "agent_lifecycle_repository.py"
+    }
     assert M0_PLANNED_APP_ROOTS_BY_TASK["TASK-M0-008"] == {"apps/api"}
     assert M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK["TASK-M0-008"] == {
         "composition.py",
@@ -5482,6 +5521,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-004",
         "TASK-M1-005",
         "TASK-M1-006",
+        "TASK-M1-007",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
