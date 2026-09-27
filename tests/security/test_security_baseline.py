@@ -1213,6 +1213,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "tests/security/test_security_baseline.py",
         }
     ),
+    "TASK-M1-016": frozenset(
+        {
+            ".github/workflows/quality-gates.yml",
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-016-evidence.md",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -2088,6 +2096,59 @@ M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS = frozenset(
 M0_INTEGRATION_GATE_COMMAND = (
     "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
 )
+M1_PACKAGE_API_GATE_COMMAND = (
+    "uv run pytest apps/api/tests packages/python/curios_contracts/tests "
+    "packages/python/curios_cognitive/tests packages/python/curios_dag/tests "
+    "packages/python/curios_capability/tests packages/python/curios_runtime/tests "
+    '-m "not integration" -q'
+)
+M1_POSTGRES_WORK_DAG_TEST = (
+    "packages/python/curios_dag/tests/test_postgres_work_dag_repository_integration.py"
+)
+M1_POSTGRES_AGENT_REPOSITORY_TEST = (
+    "packages/python/curios_runtime/tests/test_postgres_agent_repository_integration.py"
+)
+M1_POSTGRES_AGENT_LIFECYCLE_TEST = (
+    "packages/python/curios_runtime/tests/test_postgres_agent_lifecycle_repository_integration.py"
+)
+M1_POSTGRES_ROUTING_REPOSITORY_TEST = (
+    "packages/python/curios_runtime/tests/test_postgres_routing_decision_repository_integration.py"
+)
+M1_POSTGRES_GATE_COMMAND = (
+    f"uv run pytest {M1_POSTGRES_WORK_DAG_TEST} "
+    f"{M1_POSTGRES_AGENT_REPOSITORY_TEST} {M1_POSTGRES_AGENT_LIFECYCLE_TEST} "
+    f"{M1_POSTGRES_ROUTING_REPOSITORY_TEST} -q"
+)
+M1_VERTICAL_SLICE_GATE_COMMAND = (
+    "uv run pytest tests/integration/test_m1_vertical_slice_integration.py -q"
+)
+M1_PACKAGE_API_GATE_WORKFLOW_SNIPPET = (
+    "      - name: M1 package and API tests\n"
+    "        run: >\n"
+    "          uv run pytest\n"
+    "          apps/api/tests\n"
+    "          packages/python/curios_contracts/tests\n"
+    "          packages/python/curios_cognitive/tests\n"
+    "          packages/python/curios_dag/tests\n"
+    "          packages/python/curios_capability/tests\n"
+    "          packages/python/curios_runtime/tests\n"
+    '          -m "not integration"\n'
+    "          -q\n\n"
+)
+M1_POSTGRES_GATE_WORKFLOW_SNIPPET = (
+    "      - name: M1 PostgreSQL integration tests\n"
+    "        run: >\n"
+    "          uv run pytest\n"
+    f"          {M1_POSTGRES_WORK_DAG_TEST}\n"
+    f"          {M1_POSTGRES_AGENT_REPOSITORY_TEST}\n"
+    f"          {M1_POSTGRES_AGENT_LIFECYCLE_TEST}\n"
+    f"          {M1_POSTGRES_ROUTING_REPOSITORY_TEST}\n"
+    "          -q\n\n"
+)
+M1_VERTICAL_SLICE_GATE_WORKFLOW_SNIPPET = (
+    "      - name: M1 vertical-slice integration tests\n"
+    f"        run: {M1_VERTICAL_SLICE_GATE_COMMAND}\n\n"
+)
 AUTHORIZED_WORKFLOW_TOP_LEVEL_KEYS = frozenset({"name", "on", "permissions", "jobs"})
 EXPECTED_QUALITY_GATES_WORKFLOW = {
     "name": "Quality Gates",
@@ -2170,6 +2231,20 @@ EXPECTED_QUALITY_GATES_WORKFLOW = {
                     """,
                 },
                 {
+                    "name": "M1 package and API tests",
+                    "run": """
+                    uv run pytest
+                    apps/api/tests
+                    packages/python/curios_contracts/tests
+                    packages/python/curios_cognitive/tests
+                    packages/python/curios_dag/tests
+                    packages/python/curios_capability/tests
+                    packages/python/curios_runtime/tests
+                    -m "not integration"
+                    -q
+                    """,
+                },
+                {
                     "name": "Repository contract and schema tests",
                     "run": "uv run pytest tests/contract tests/schema -q",
                 },
@@ -2195,7 +2270,22 @@ EXPECTED_QUALITY_GATES_WORKFLOW = {
                     -q
                     """,
                 },
+                {
+                    "name": "M1 PostgreSQL integration tests",
+                    "run": """
+                    uv run pytest
+                    packages/python/curios_dag/tests/test_postgres_work_dag_repository_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_agent_repository_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_agent_lifecycle_repository_integration.py
+                    packages/python/curios_runtime/tests/test_postgres_routing_decision_repository_integration.py
+                    -q
+                    """,
+                },
                 {"name": "M0 integration tests", "run": M0_INTEGRATION_GATE_COMMAND},
+                {
+                    "name": "M1 vertical-slice integration tests",
+                    "run": M1_VERTICAL_SLICE_GATE_COMMAND,
+                },
                 {"name": "BOOT acceptance tests", "run": "uv run pytest tests/acceptance -q"},
                 {"name": "Full pytest suite", "run": "uv run pytest -q"},
             ),
@@ -4305,15 +4395,22 @@ def test_quality_gate_workflow_preserves_boot_security_model_and_runs_m0_gates()
     m0_integration_index = normalized_workflow.index(
         "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
     )
+    m1_package_index = normalized_workflow.index(M1_PACKAGE_API_GATE_COMMAND)
+    m1_postgres_index = normalized_workflow.index(M1_POSTGRES_GATE_COMMAND)
+    m1_vertical_index = normalized_workflow.index(M1_VERTICAL_SLICE_GATE_COMMAND)
     boot_acceptance_index = normalized_workflow.index("uv run pytest tests/acceptance -q")
     full_pytest_index = normalized_workflow.index("uv run pytest -q")
     _assert_no_security_failure(
-        postgres_provider_index < m0_postgres_index < m0_integration_index,
-        "PostgreSQL and M0 integration tests must run in explicit serial gates",
+        postgres_provider_index < m0_postgres_index < m1_postgres_index < m0_integration_index,
+        "PostgreSQL, M0, and M1 repository integration tests must run in explicit serial gates",
     )
     _assert_no_security_failure(
-        m0_integration_index < boot_acceptance_index < full_pytest_index,
-        "M0 integration must run before acceptance and full pytest",
+        m0_integration_index < m1_vertical_index < boot_acceptance_index < full_pytest_index,
+        "M0 and M1 vertical-slice integration must run before acceptance and full pytest",
+    )
+    _assert_no_security_failure(
+        m1_package_index < boot_acceptance_index,
+        "M1 package and API tests must run before acceptance",
     )
 
 
@@ -4681,6 +4778,78 @@ def test_quality_gate_required_m0_integration_step_rejects_bypass_variants(
 
 def test_quality_gate_required_m0_integration_step_accepts_exact_current_gate() -> None:
     assert not _security_violations_for_workflow_text(_quality_gates_workflow_text())
+
+
+@pytest.mark.parametrize(
+    ("case_id", "original", "replacement"),
+    (
+        (
+            "m1_package_gate_removed",
+            M1_PACKAGE_API_GATE_WORKFLOW_SNIPPET,
+            "",
+        ),
+        (
+            "m1_package_gate_deselects_runtime",
+            M1_PACKAGE_API_GATE_WORKFLOW_SNIPPET,
+            "      - name: M1 package and API tests\n"
+            "        run: >\n"
+            "          uv run pytest\n"
+            "          apps/api/tests\n"
+            "          packages/python/curios_contracts/tests\n"
+            "          packages/python/curios_cognitive/tests\n"
+            "          packages/python/curios_dag/tests\n"
+            "          packages/python/curios_capability/tests\n"
+            '          -m "not integration"\n'
+            "          -q\n\n",
+        ),
+        (
+            "m1_postgres_gate_continue_on_error",
+            M1_POSTGRES_GATE_WORKFLOW_SNIPPET,
+            "      - name: M1 PostgreSQL integration tests\n"
+            "        continue-on-error: true\n"
+            "        run: >\n"
+            "          uv run pytest\n"
+            f"          {M1_POSTGRES_WORK_DAG_TEST}\n"
+            f"          {M1_POSTGRES_AGENT_REPOSITORY_TEST}\n"
+            f"          {M1_POSTGRES_AGENT_LIFECYCLE_TEST}\n"
+            f"          {M1_POSTGRES_ROUTING_REPOSITORY_TEST}\n"
+            "          -q\n\n",
+        ),
+        (
+            "m1_postgres_gate_replaced_with_broad_runtime",
+            M1_POSTGRES_GATE_WORKFLOW_SNIPPET,
+            "      - name: M1 PostgreSQL integration tests\n"
+            "        run: uv run pytest packages/python/curios_runtime/tests -q\n\n",
+        ),
+        (
+            "m1_vertical_gate_if_false",
+            M1_VERTICAL_SLICE_GATE_WORKFLOW_SNIPPET,
+            "      - name: M1 vertical-slice integration tests\n"
+            "        if: false\n"
+            f"        run: {M1_VERTICAL_SLICE_GATE_COMMAND}\n\n",
+        ),
+        (
+            "m1_vertical_gate_or_true",
+            M1_VERTICAL_SLICE_GATE_WORKFLOW_SNIPPET,
+            "      - name: M1 vertical-slice integration tests\n"
+            f"        run: {M1_VERTICAL_SLICE_GATE_COMMAND} || true\n\n",
+        ),
+        (
+            "m1_vertical_gate_wrong_path",
+            M1_VERTICAL_SLICE_GATE_WORKFLOW_SNIPPET,
+            "      - name: M1 vertical-slice integration tests\n"
+            "        run: uv run pytest tests/integration/test_m1_smoke.py -q\n\n",
+        ),
+    ),
+)
+def test_quality_gate_required_m1_steps_reject_bypass_variants(
+    case_id: str,
+    original: str,
+    replacement: str,
+) -> None:
+    workflow_text = _quality_gates_workflow_text().replace(original, replacement)
+
+    assert _security_violations_for_workflow_text(workflow_text), case_id
 
 
 @pytest.mark.parametrize(
@@ -5990,6 +6159,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-013",
         "TASK-M1-014",
         "TASK-M1-015",
+        "TASK-M1-016",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
@@ -6002,6 +6172,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
     assert AUTHORIZED_M1_INTEGRATION_TESTS_BY_TASK["TASK-M1-015"] == {
         "tests/integration/test_m1_vertical_slice_integration.py"
     }
+    assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-016"] == {".github/workflows/quality-gates.yml"}
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-017"] == {"tests/acceptance"}
 
 
