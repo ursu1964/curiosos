@@ -14,7 +14,7 @@ date: 2026-09-23
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M1 | PLANNING VALIDATED / FROZEN | M1-000A passed independent readiness validation and is the authoritative executable M1 program. TASK-M1-001 is validated/frozen; first downstream tasks become ready after integration. |
+| M1 | VALIDATED, FROZEN | M1 executable program passed readiness validation, TASK-M1-001 through TASK-M1-018 are validated/frozen and integrated, TASK-M1-018 is published and remote-CI-verified, and TASK-M1-019 final freeze records closure. No post-M1 execution unit is authorized by this ledger. |
 
 ## Task Status
 
@@ -39,7 +39,7 @@ date: 2026-09-23
 | TASK-M1-016 | M1 CI Quality Gate Update | TASK-M1-015 | PG-M1-11 | VALIDATED, FROZEN | Independent validation accepted the M1 Quality Gates workflow update, including explicit M1 package/API, PostgreSQL repository, and VS-M1-001 through VS-M1-006 gates, preserved BOOT/M0 gates, hard failure propagation, least-privilege workflow authority, no-live-model behavior, and no production changes. |
 | TASK-M1-017 | M1 Acceptance Suite | TASK-M1-016 | PG-M1-12 | VALIDATED, FROZEN | Independent validation accepted the M1 acceptance suite for VS-M1-001 through VS-M1-006, frozen CI acceptance-command discovery, PostgreSQL-backed recorded truth where required, bounded safe-error coverage, no-live-model behavior, and no production or CI workflow changes. |
 | TASK-M1-018 | M1 Independent Verification Record | TASK-M1-017 | PG-M1-13 | VALIDATED, FROZEN | Independent verification accepted the complete M1 baseline at `db7f37555219017a7b1baa8a329cdaded02e8962`, including TASK-M1-001 through TASK-M1-017 lifecycle/correction history, VS-M1 integration and acceptance proof, exact-SHA remote CI run `36312837839` attempt-2 success after attempt-1 Corepack/Node transient, architecture/security/authority, dependency/lockfile, persistence/migration, provider/model, safe-error, and repository-hygiene audits. |
-| TASK-M1-019 | M1 Final Freeze | TASK-M1-018 | PG-M1-14 | BLOCKED | Requires independent M1 verification. |
+| TASK-M1-019 | M1 Final Freeze | TASK-M1-018 | PG-M1-14 | VALIDATED, FROZEN | Final M1 freeze/status-ledger closure passed and records M1 as validated/frozen. Next program state is authorization required. |
 
 ## Status Semantics
 
