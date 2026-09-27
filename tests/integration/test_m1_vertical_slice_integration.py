@@ -1,0 +1,800 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import time
+from pathlib import Path
+from urllib.parse import quote
+from uuid import uuid4
+
+import pytest
+from contract_fixtures import UTC_NOW, fixed_id, ref_for
+from curios_api import create_api_composition, create_application
+from curios_capability import (
+    CapabilityResolution,
+    CapabilityResolutionReason,
+    CapabilityResolutionStatus,
+    resolve_capability_requirement,
+)
+from curios_contracts import (
+    AgentDefinition,
+    AgentDefinitionId,
+    AgentInstance,
+    AgentInstanceId,
+    AgentInstanceState,
+    Capability,
+    CapabilityCategory,
+    CapabilityId,
+    CapabilityRequirement,
+    DecisionId,
+    EventId,
+    EvidenceId,
+    EvidenceKind,
+    EvidenceReference,
+    IntentId,
+    ObjectReference,
+    ObservabilityContext,
+    ProviderId,
+    SchemaVersion,
+    TraceId,
+    VerificationId,
+    WorkId,
+    WorkItem,
+    WorkItemState,
+)
+from curios_dag import M1WorkDagRepository, WorkDag, WorkDagId
+from curios_persistence import PersistenceConfig, PersistenceError, PersistenceStore
+from curios_runtime import (
+    EventEvidenceRuntimeStore,
+    M1AgentLifecycleRepository,
+    M1AgentRepository,
+    RouteCandidateKind,
+    RoutingCandidate,
+    RoutingDecisionRationale,
+    RoutingDecisionRecord,
+    RoutingDecisionRequest,
+    RoutingDecisionStatus,
+    RoutingRationaleCode,
+    select_m1_route,
+)
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+COMPOSE_FILE = REPO_ROOT / "infrastructure/local/docker/compose.yaml"
+ENV_FILE = REPO_ROOT / "infrastructure/local/docker/.env.example"
+COMPOSE = (
+    "docker",
+    "compose",
+    "--env-file",
+    ENV_FILE.as_posix(),
+    "-f",
+    COMPOSE_FILE.as_posix(),
+)
+POSTGRES_VOLUME = "curios-local-docker_postgres_data"
+SUPPORTED_M1_WORK_TYPES = (
+    "inspect_current_state",
+    "apply_bounded_change",
+    "verify_bounded_change",
+)
+
+pytestmark = pytest.mark.integration
+
+
+def test_vs_m1_001_intent_to_dag_crosses_api_and_postgres_persistence() -> None:
+    """VS-M1-001: submit intent over HTTP and persist/recover the resulting DAG."""
+
+    _require_docker()
+    _run_compose("config", "--quiet")
+    _run_compose("up", "-d", "postgres")
+    config = PersistenceConfig(
+        sqlalchemy_url=_postgres_url(),
+        schema=f"m1_015_vs001_{uuid4().hex}",
+    )
+    store = PersistenceStore(config)
+    dag_repository = M1WorkDagRepository(store)
+
+    try:
+        _wait_for_store_initialization(store)
+        with TestClient(_app()) as client:
+            response = client.post(
+                "/m1/intents/decompose",
+                json=_intent_payload(objective="Implement a bounded change"),
+            )
+            unsupported = client.post(
+                "/m1/intents/decompose",
+                json=_intent_payload(
+                    ordinal=1,
+                    objective="Address a philosophical question.",
+                    dag_ordinal=1,
+                ),
+            )
+
+        assert response.status_code == 201
+        payload = response.json()
+        work_items = _work_items_from_decomposition(payload)
+        dag = WorkDag.from_json_compatible(payload["dag"])
+        stored = dag_repository.create_dag(dag)
+
+        assert payload["intent"]["objective"] == "Implement a bounded change"
+        assert payload["decomposition"]["status"] == "SUPPORTED"
+        assert [work.work_type for work in work_items] == list(SUPPORTED_M1_WORK_TYPES)
+        assert {node["work_ref"]["ref_id"] for node in payload["dag"]["nodes"]} == {
+            str(work.work_id) for work in work_items
+        }
+        assert dag_repository.read_dag(dag.dag_id) == stored
+
+        store.dispose()
+        restarted = PersistenceStore(config)
+        try:
+            recovered = M1WorkDagRepository(restarted)
+            assert recovered.read_dag(dag.dag_id) == stored
+        finally:
+            restarted.dispose()
+
+        assert unsupported.status_code == 201
+        unsupported_payload = unsupported.json()
+        assert unsupported_payload["decomposition"]["status"] == "UNSUPPORTED"
+        assert unsupported_payload["dag"] is None
+        assert unsupported_payload["decomposition"]["work_items"] == []
+    finally:
+        store.dispose()
+        _drop_schema(config)
+        _run_compose("stop", "postgres")
+
+    subprocess.run(
+        ("docker", "volume", "inspect", POSTGRES_VOLUME),
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_vs_m1_002_capability_agent_assignment_persists_lifecycle_truth() -> None:
+    """VS-M1-002: capability resolution binds deterministically to a persisted agent."""
+
+    _require_docker()
+    _run_compose("config", "--quiet")
+    _run_compose("up", "-d", "postgres")
+    config = PersistenceConfig(
+        sqlalchemy_url=_postgres_url(),
+        schema=f"m1_015_vs002_{uuid4().hex}",
+    )
+    store = PersistenceStore(config)
+    agent_repository = M1AgentRepository(store)
+    lifecycle_repository = M1AgentLifecycleRepository(store)
+    event_store = EventEvidenceRuntimeStore(store)
+
+    try:
+        _wait_for_store_initialization(store)
+        with TestClient(_app()) as client:
+            response = client.post(
+                "/m1/intents/decompose",
+                json=_intent_payload(objective="Implement a bounded change"),
+            )
+        assert response.status_code == 201
+        work = _work_items_from_decomposition(response.json())[0]
+        requirement = work.required_capabilities[0]
+        capability = _capability(requirement.capability_id)
+        definition = _agent_definition(requirement.capability_id)
+
+        resolution = resolve_capability_requirement(
+            requirement,
+            capabilities=(capability,),
+            agent_definitions=(definition,),
+        )
+        missing = resolve_capability_requirement(
+            requirement,
+            capabilities=(),
+            agent_definitions=(definition,),
+        )
+        duplicate = resolve_capability_requirement(
+            requirement,
+            capabilities=(capability, _capability(requirement.capability_id, key="duplicate")),
+            agent_definitions=(definition,),
+        )
+
+        assert resolution.status is CapabilityResolutionStatus.MATCHED
+        assert resolution.reason is CapabilityResolutionReason.EXACT_MATCH
+        assert missing.status is CapabilityResolutionStatus.MISSING
+        assert duplicate.status is CapabilityResolutionStatus.AMBIGUOUS
+
+        stored_definition = agent_repository.create_definition(definition)
+        created_instance = agent_repository.create_instance(
+            _agent(work, state=AgentInstanceState.CREATED)
+        )
+        ready = lifecycle_repository.transition_instance(
+            created_instance.instance.agent_instance_id,
+            AgentInstanceState.READY,
+            event_id=fixed_id(EventId, 20),
+            occurred_at=UTC_NOW,
+        )
+        active = lifecycle_repository.transition_instance(
+            created_instance.instance.agent_instance_id,
+            AgentInstanceState.ACTIVE,
+            event_id=fixed_id(EventId, 21),
+            occurred_at=UTC_NOW,
+        )
+
+        assert stored_definition.definition == definition
+        assert active.instance.state is AgentInstanceState.ACTIVE
+        assert active.instance.work_id == work.work_id
+        assert ready.event is not None
+        assert active.event is not None
+        assert event_store.get_event(ready.event.event_id) == ready.event
+        assert event_store.get_event(active.event.event_id) == active.event
+
+        store.dispose()
+        restarted = PersistenceStore(config)
+        try:
+            recovered_agents = M1AgentRepository(restarted)
+            recovered = recovered_agents.read_instance(created_instance.instance.agent_instance_id)
+            assert recovered is not None
+            assert recovered.instance == active.instance
+        finally:
+            restarted.dispose()
+    finally:
+        store.dispose()
+        _drop_schema(config)
+        _run_compose("stop", "postgres")
+
+
+def test_vs_m1_003_and_004_runner_uses_real_routing_capability_and_agent_gates() -> None:
+    """VS-M1-003/004: HTTP runner composes DAG, routing, capability, agent, executor."""
+
+    first = _work(0, "inspect_current_state")
+    second = _work(1, "apply_bounded_change")
+    waiting = _work(2, "verify_bounded_change", dependencies=(first.work_id, second.work_id))
+    work_items = (waiting, second, first)
+    routing_decisions = tuple(_selected_decision(work) for work in work_items)
+    payload = _runner_payload(
+        work_items=work_items,
+        routing_decisions=routing_decisions,
+        max_concurrency=2,
+    )
+
+    with TestClient(_app()) as client:
+        response = client.post("/m1/dag/run-once", json=payload)
+        no_route = client.post(
+            "/m1/dag/run-once",
+            json=_runner_payload(
+                work_items=(first,),
+                routing_decisions=(_no_route_decision(first),),
+                max_concurrency=1,
+            ),
+        )
+        incompatible = client.post(
+            "/m1/dag/run-once",
+            json=_runner_payload(
+                work_items=(first,),
+                routing_decisions=(_incompatible_selected_decision(first),),
+                max_concurrency=1,
+            ),
+        )
+        inactive_agent = client.post(
+            "/m1/dag/run-once",
+            json=_runner_payload(
+                work_items=(first,),
+                routing_decisions=(_selected_decision(first),),
+                agents=(_agent(first, state=AgentInstanceState.WAITING),),
+                max_concurrency=1,
+            ),
+        )
+
+    assert response.status_code == 200
+    result = response.json()["runner_result"]
+    node_by_work = {node["work_ref"]["ref_id"]: node for node in result["node_results"]}
+    assert node_by_work[str(first.work_id)]["status"] == "EXECUTED"
+    assert node_by_work[str(second.work_id)]["status"] == "EXECUTED"
+    assert node_by_work[str(waiting.work_id)]["status"] == "WAITING"
+    assert len(result["events"]) == 2
+    assert len(result["evidence_refs"]) == 2
+    assert result["node_results"][0]["work_ref"]["ref_id"] == str(first.work_id)
+    assert result["node_results"][1]["work_ref"]["ref_id"] == str(second.work_id)
+
+    assert no_route.status_code == 200
+    assert no_route.json()["runner_result"]["node_results"][0]["reason"] == "NO_ROUTE"
+    assert no_route.json()["runner_result"]["events"] == []
+
+    assert incompatible.status_code == 200
+    blocked = incompatible.json()["runner_result"]
+    assert blocked["node_results"][0]["status"] == "BLOCKED"
+    assert blocked["node_results"][0]["reason"] == "ROUTE_NOT_EXECUTABLE"
+    assert blocked["events"] == []
+    assert blocked["evidence_refs"] == []
+
+    assert inactive_agent.status_code == 409
+    assert inactive_agent.json()["detail"]["code"] == "MISSING_AGENT"
+
+
+def test_vs_m1_005_verification_requires_recorded_execution_and_bound_evidence() -> None:
+    """VS-M1-005: HTTP verification consumes recorded runner output and evidence."""
+
+    work = _work(0, "inspect_current_state")
+    with TestClient(_app()) as client:
+        runner_response = client.post(
+            "/m1/dag/run-once",
+            json=_runner_payload(
+                work_items=(work,),
+                routing_decisions=(_selected_decision(work),),
+                max_concurrency=1,
+            ),
+        )
+        assert runner_response.status_code == 200
+        executed_node = runner_response.json()["runner_result"]["node_results"][0]
+        evidence = executed_node["executor_outcome"]["evidence_refs"][0]
+
+        approved = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work, executed_node, attempts=[_attempt("passed", [evidence])]
+            ),
+        )
+        rejected = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work, executed_node, attempts=[_attempt("failed", [evidence])]
+            ),
+        )
+        deferred = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work,
+                executed_node,
+                attempts=[
+                    _attempt("inconclusive", [evidence]),
+                    _attempt("not_evaluated", [evidence]),
+                ],
+            ),
+        )
+        wrong_subject = dict(evidence)
+        wrong_subject["subject_ref"] = ObjectReference.from_id(
+            fixed_id(WorkId, 9)
+        ).to_json_compatible()
+        mismatch = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work,
+                executed_node,
+                attempts=[_attempt("passed", [wrong_subject])],
+            ),
+        )
+        duplicate = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work,
+                executed_node,
+                attempts=[_attempt("passed", [evidence, evidence])],
+            ),
+        )
+        no_route_runner = client.post(
+            "/m1/dag/run-once",
+            json=_runner_payload(
+                work_items=(work,),
+                routing_decisions=(_no_route_decision(work),),
+                max_concurrency=1,
+            ),
+        )
+        non_executed = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work,
+                no_route_runner.json()["runner_result"]["node_results"][0],
+                attempts=[_attempt("passed", [evidence])],
+            ),
+        )
+
+    assert approved.status_code == 200
+    assert approved.json()["verification_result"]["completion_decision"] == "APPROVED"
+    assert approved.json()["verification_result"]["event"]["event_type"] == "verification.completed"
+    assert rejected.status_code == 200
+    assert rejected.json()["verification_result"]["completion_decision"] == "REJECTED"
+    assert deferred.status_code == 200
+    assert deferred.json()["verification_result"]["completion_decision"] == "DEFERRED"
+    assert mismatch.status_code == 409
+    assert mismatch.json()["detail"]["code"] == "EVIDENCE_SUBJECT_MISMATCH"
+    assert duplicate.status_code == 400
+    assert duplicate.json()["detail"]["code"] == "INVALID_EVIDENCE"
+    assert non_executed.status_code == 409
+    assert non_executed.json()["detail"]["code"] == "EXECUTION_NOT_COMPLETED"
+
+
+def test_vs_m1_006_api_and_web_boundaries_present_recorded_truth_without_ui_authority() -> None:
+    """VS-M1-006: API route truth and web boundary stay compatible and bounded."""
+
+    app = _app()
+    with TestClient(app) as client:
+        openapi = client.get("/openapi.json").json()
+        supported = client.post(
+            "/m1/intents/decompose",
+            json=_intent_payload(objective="Implement a bounded change"),
+        )
+        malformed_json = client.post(
+            "/m1/intents/decompose",
+            content='"token=super-secret"',
+            headers={"content-type": "application/json"},
+        )
+        wrong_media = client.post(
+            "/m1/intents/decompose",
+            content=json.dumps(_intent_payload(objective="Implement a bounded change")),
+            headers={"content-type": "text/plain; token=super-secret"},
+        )
+
+    m1_paths = {path for path in openapi["paths"] if path.startswith("/m1/")}
+    assert m1_paths == {
+        "/m1/intents/decompose",
+        "/m1/dag/run-once",
+        "/m1/verification/complete",
+    }
+    assert supported.status_code == 201
+    assert supported.json()["decomposition"]["status"] == "SUPPORTED"
+    for response in (malformed_json, wrong_media):
+        assert response.status_code == 400
+        body = json.dumps(response.json()).lower()
+        assert "m1_api_malformed_request" in body
+        assert "super-secret" not in body
+
+    api_boundary = (REPO_ROOT / "apps/web/src/apiBoundary.ts").read_text(encoding="utf-8")
+    app_source = (REPO_ROOT / "apps/web/src/App.tsx").read_text(encoding="utf-8")
+    app_tests = (REPO_ROOT / "apps/web/src/App.test.tsx").read_text(encoding="utf-8")
+    assert "decomposeM1Intent" in api_boundary
+    assert "runM1DagOnce" in api_boundary
+    assert "completeM1Verification" in api_boundary
+    assert '"/m1/intents/decompose"' in api_boundary
+    assert '"/m1/dag/run-once"' in api_boundary
+    assert '"/m1/verification/complete"' in api_boundary
+    assert "fetch(" not in app_source
+    assert "XMLHttpRequest" not in app_source
+    assert "WebSocket" not in app_source
+    assert "does not combine selected intent identity with unsubmitted objective text" in app_tests
+    assert "clears downstream M1 truth when a new unsupported intent is accepted" in app_tests
+
+
+def test_m1_vertical_slices_are_deterministic_and_secret_safe() -> None:
+    """Cross-slice negative coverage: deterministic route/runner/verification and safe errors."""
+
+    work = _work(0, "inspect_current_state")
+    first_decision = _selected_decision(work)
+    second_decision = _selected_decision(work)
+    assert first_decision.to_json_compatible() == second_decision.to_json_compatible()
+
+    payload = _runner_payload(
+        work_items=(work,),
+        routing_decisions=(first_decision,),
+        max_concurrency=1,
+    )
+    with TestClient(_app()) as client:
+        first = client.post("/m1/dag/run-once", json=payload)
+        second = client.post("/m1/dag/run-once", json=payload)
+        secret_evidence = EvidenceReference(
+            evidence_id=fixed_id(EvidenceId, 9),
+            kind=EvidenceKind.OTHER,
+            subject_ref=ObjectReference.from_id(fixed_id(WorkId, 7)),
+            collected_at=UTC_NOW,
+            summary="password=hunter2 token=super-secret",
+        ).to_json_compatible()
+        secret_error = client.post(
+            "/m1/verification/complete",
+            json=_verification_payload(
+                work,
+                first.json()["runner_result"]["node_results"][0],
+                attempts=[_attempt("passed", [secret_evidence])],
+            ),
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert (
+        first.json()["runner_result"]["node_results"]
+        == second.json()["runner_result"]["node_results"]
+    )
+    assert secret_error.status_code == 409
+    body = json.dumps(secret_error.json()).lower()
+    assert "evidence_subject_mismatch" in body
+    assert "hunter2" not in body
+    assert "super-secret" not in body
+
+
+def _app():
+    return create_application(create_api_composition())
+
+
+def _intent_payload(
+    *,
+    objective: str,
+    ordinal: int = 0,
+    dag_ordinal: int = 0,
+) -> dict[str, object]:
+    return {
+        "intent_id": str(fixed_id(IntentId, ordinal)),
+        "objective": objective,
+        "submitted_at": str(UTC_NOW),
+        "created_at": str(UTC_NOW),
+        "dag_id": str(fixed_id(WorkDagId, dag_ordinal)),
+    }
+
+
+def _work_items_from_decomposition(payload: dict[str, object]) -> tuple[WorkItem, ...]:
+    decomposition = payload["decomposition"]
+    assert isinstance(decomposition, dict)
+    raw_work_items = decomposition["work_items"]
+    assert isinstance(raw_work_items, list)
+    return tuple(WorkItem.from_json_compatible(item) for item in raw_work_items)
+
+
+def _capability(capability_id: CapabilityId, *, key: str = "bounded_m1") -> Capability:
+    return Capability(
+        capability_id=capability_id,
+        key=key,
+        version=SchemaVersion(1, 0, 0),
+        description="Deterministic M1 integration capability.",
+        category=CapabilityCategory.EXECUTION,
+    )
+
+
+def _agent_definition(capability_id: CapabilityId, ordinal: int = 0) -> AgentDefinition:
+    return AgentDefinition(
+        agent_definition_id=fixed_id(AgentDefinitionId, ordinal),
+        name=f"m1_agent_{ordinal}",
+        version=SchemaVersion(1, 0, 0),
+        purpose="Handle deterministic M1 vertical-slice work.",
+        allowed_capability_ids=(capability_id,),
+    )
+
+
+def _agent(
+    work: WorkItem,
+    *,
+    ordinal: int = 0,
+    state: AgentInstanceState = AgentInstanceState.ACTIVE,
+) -> AgentInstance:
+    return AgentInstance(
+        agent_instance_id=fixed_id(AgentInstanceId, ordinal),
+        agent_definition_id=fixed_id(AgentDefinitionId, ordinal),
+        work_id=work.work_id,
+        state=state,
+        created_at=UTC_NOW,
+        started_at=UTC_NOW if state is AgentInstanceState.ACTIVE else None,
+    )
+
+
+def _work(
+    ordinal: int,
+    work_type: str,
+    *,
+    dependencies: tuple[WorkId, ...] = (),
+    state: WorkItemState = WorkItemState.READY,
+) -> WorkItem:
+    return WorkItem(
+        work_id=fixed_id(WorkId, ordinal),
+        work_type=work_type,
+        title=work_type.replace("_", " ").title(),
+        objective=f"Execute {work_type}.",
+        dependencies=dependencies,
+        required_capabilities=(
+            CapabilityRequirement(capability_id=fixed_id(CapabilityId, ordinal)),
+        ),
+        created_at=UTC_NOW,
+        updated_at=UTC_NOW,
+        state=state,
+    )
+
+
+def _selected_decision(work: WorkItem) -> RoutingDecisionRecord:
+    return select_m1_route(
+        RoutingDecisionRequest(
+            decision_id=fixed_id(DecisionId, _ordinal_from_id(work.work_id)),
+            work=work,
+            candidates=(
+                RoutingCandidate.deterministic_executor(
+                    work_id=work.work_id,
+                    executor_name="deterministic_m1",
+                    supported_work_types=SUPPORTED_M1_WORK_TYPES,
+                ),
+            ),
+            requested_at=UTC_NOW,
+            producer_ref=ref_for(ProviderId),
+            observability_context=ObservabilityContext(
+                work_id=work.work_id,
+                trace_id=fixed_id(TraceId),
+            ),
+            resource_constraints={"local_only": True},
+        )
+    )
+
+
+def _no_route_decision(work: WorkItem) -> RoutingDecisionRecord:
+    return select_m1_route(
+        RoutingDecisionRequest(
+            decision_id=fixed_id(DecisionId, 8),
+            work=work,
+            candidates=(),
+            requested_at=UTC_NOW,
+            producer_ref=ref_for(ProviderId),
+            observability_context=ObservabilityContext(
+                work_id=work.work_id,
+                trace_id=fixed_id(TraceId),
+            ),
+            resource_constraints={"local_only": True},
+        )
+    )
+
+
+def _incompatible_selected_decision(work: WorkItem) -> RoutingDecisionRecord:
+    candidate = RoutingCandidate(
+        candidate_key="executor_deterministic_m1",
+        kind=RouteCandidateKind.DETERMINISTIC_EXECUTOR,
+        work_ref=ObjectReference.from_id(work.work_id),
+        executor_name="deterministic_m1",
+        supported_work_types=("unrelated_work_type",),
+    )
+    return RoutingDecisionRecord(
+        decision_id=fixed_id(DecisionId, 9),
+        work_ref=ObjectReference.from_id(work.work_id),
+        status=RoutingDecisionStatus.SELECTED,
+        candidates=(candidate,),
+        selected_route=candidate,
+        rationale=RoutingDecisionRationale(
+            code=RoutingRationaleCode.SELECTED_SINGLE_VALID_ROUTE,
+            message="Selected the only valid M1 route candidate.",
+            details={"valid_candidate_count": 1},
+        ),
+        resource_constraints=None,
+        decided_at=UTC_NOW,
+        producer_ref=ref_for(ProviderId),
+        observability_context=ObservabilityContext(
+            work_id=work.work_id,
+            trace_id=fixed_id(TraceId),
+        ),
+    )
+
+
+def _runner_payload(
+    *,
+    work_items: tuple[WorkItem, ...],
+    routing_decisions: tuple[RoutingDecisionRecord, ...],
+    max_concurrency: int,
+    agents: tuple[AgentInstance, ...] | None = None,
+) -> dict[str, object]:
+    active_agents = agents or tuple(
+        _agent(work, ordinal=index) for index, work in enumerate(work_items)
+    )
+    return {
+        "dag": WorkDag.from_work_items(
+            fixed_id(WorkDagId),
+            work_items,
+            created_at=UTC_NOW,
+        ).to_json_compatible(),
+        "work_items": [work.to_json_compatible() for work in work_items],
+        "routing_decisions": [decision.to_json_compatible() for decision in routing_decisions],
+        "agent_instances": [agent.to_json_compatible() for agent in active_agents],
+        "capability_resolutions_by_work_id": {
+            str(work.work_id): [_resolution(work, ordinal=index).to_json_compatible()]
+            for index, work in enumerate(work_items)
+        },
+        "event_ids_by_work_id": {
+            str(work.work_id): str(fixed_id(EventId, index))
+            for index, work in enumerate(work_items)
+        },
+        "evidence_ids_by_work_id": {
+            str(work.work_id): str(fixed_id(EvidenceId, index))
+            for index, work in enumerate(work_items)
+        },
+        "producer_ref": ref_for(ProviderId).to_json_compatible(),
+        "occurred_at": str(UTC_NOW),
+        "observability_context": ObservabilityContext(
+            trace_id=fixed_id(TraceId),
+            work_id=work_items[0].work_id if work_items else None,
+        ).to_json_compatible(),
+        "max_concurrency": max_concurrency,
+    }
+
+
+def _resolution(work: WorkItem, ordinal: int) -> CapabilityResolution:
+    return CapabilityResolution(
+        requirement=work.required_capabilities[0],
+        status=CapabilityResolutionStatus.MATCHED,
+        reason=CapabilityResolutionReason.EXACT_MATCH,
+        capability_ref=ObjectReference.from_id(work.required_capabilities[0].capability_id),
+        agent_definition_ref=ObjectReference.from_id(fixed_id(AgentDefinitionId, ordinal)),
+    )
+
+
+def _verification_payload(
+    work: WorkItem,
+    runner_node_result: dict[str, object],
+    *,
+    attempts: list[dict[str, object]],
+) -> dict[str, object]:
+    return {
+        "work": work.to_json_compatible(),
+        "runner_node_result": runner_node_result,
+        "attempts": attempts,
+        "max_iterations": 2,
+        "verification_id": str(fixed_id(VerificationId)),
+        "event_id": str(fixed_id(EventId, 30)),
+        "verified_at": str(UTC_NOW),
+        "verifier_ref": ref_for(ProviderId).to_json_compatible(),
+        "producer_ref": ref_for(ProviderId).to_json_compatible(),
+        "observability_context": ObservabilityContext(
+            work_id=work.work_id,
+            trace_id=fixed_id(TraceId),
+        ).to_json_compatible(),
+    }
+
+
+def _attempt(outcome: str, evidence_refs: list[dict[str, object]]) -> dict[str, object]:
+    return {"outcome": outcome, "evidence_refs": evidence_refs}
+
+
+def _ordinal_from_id(work_id: WorkId) -> int:
+    return int(str(work_id)[-1], 36) % 10
+
+
+def _wait_for_store_initialization(store: PersistenceStore) -> None:
+    last_error: PersistenceError | None = None
+    for _ in range(30):
+        try:
+            store.initialize()
+            return
+        except PersistenceError as exc:
+            last_error = exc
+            time.sleep(1)
+    assert last_error is not None
+    raise last_error
+
+
+def _drop_schema(config: PersistenceConfig) -> None:
+    if config.schema is None:
+        return
+    engine = create_engine(config.sqlalchemy_url, future=True)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA IF EXISTS "{config.schema}" CASCADE'))
+    finally:
+        engine.dispose()
+
+
+def _postgres_url() -> str:
+    user = quote(_env_value("CURIOS_POSTGRES_USER"), safe="")
+    credential = quote(_env_value("CURIOS_POSTGRES_PASSWORD"), safe="")
+    host = os.environ.get("CURIOS_POSTGRES_HOST", "127.0.0.1")
+    port = os.environ.get("CURIOS_POSTGRES_PORT", _env_value("CURIOS_POSTGRES_PORT"))
+    database = quote(_env_value("CURIOS_POSTGRES_DB"), safe="")
+    return f"postgresql+psycopg://{user}:{credential}@{host}:{port}/{database}"
+
+
+def _env_value(name: str) -> str:
+    value = os.environ.get(name)
+    if value:
+        return value
+    prefix = f"{name}="
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        if line.startswith(prefix):
+            return line.removeprefix(prefix)
+    msg = f"missing {name}"
+    raise RuntimeError(msg)
+
+
+def _require_docker() -> None:
+    result = subprocess.run(
+        ("docker", "info"),
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Docker is unavailable: {result.stderr.strip() or result.stdout.strip()}")
+
+
+def _run_compose(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        (*COMPOSE, *args),
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )

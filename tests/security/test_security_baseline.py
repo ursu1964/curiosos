@@ -1204,6 +1204,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "tests/security/test_security_baseline.py",
         }
     ),
+    "TASK-M1-015": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-015-evidence.md",
+            "tests/integration/test_m1_vertical_slice_integration.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -1244,6 +1252,16 @@ AUTHORIZED_M0_INTEGRATION_TESTS_BY_TASK = {
 }
 AUTHORIZED_M0_INTEGRATION_TESTS = frozenset().union(
     *AUTHORIZED_M0_INTEGRATION_TESTS_BY_TASK.values()
+)
+AUTHORIZED_M1_INTEGRATION_TESTS_BY_TASK = {
+    "TASK-M1-015": frozenset(
+        {
+            "tests/integration/test_m1_vertical_slice_integration.py",
+        }
+    ),
+}
+AUTHORIZED_M1_INTEGRATION_TESTS = frozenset().union(
+    *AUTHORIZED_M1_INTEGRATION_TESTS_BY_TASK.values()
 )
 AUTHORIZED_BOOT026_ACCEPTANCE_TESTS = frozenset(
     {
@@ -3878,7 +3896,12 @@ def _unauthorized_web_source_files(paths: frozenset[str]) -> frozenset[str]:
 
 
 def _unauthorized_integration_tests(paths: frozenset[str]) -> frozenset[str]:
-    return paths - AUTHORIZED_BOOT019_INTEGRATION_TESTS - AUTHORIZED_M0_INTEGRATION_TESTS
+    return (
+        paths
+        - AUTHORIZED_BOOT019_INTEGRATION_TESTS
+        - AUTHORIZED_M0_INTEGRATION_TESTS
+        - AUTHORIZED_M1_INTEGRATION_TESTS
+    )
 
 
 def _unauthorized_acceptance_tests(paths: frozenset[str]) -> frozenset[str]:
@@ -5965,6 +5988,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-012",
         "TASK-M1-013",
         "TASK-M1-014",
+        "TASK-M1-015",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
@@ -5974,6 +5998,9 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-013"] == {"apps/api"}
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-014"] == {"apps/web"}
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-015"] == {"tests/integration"}
+    assert AUTHORIZED_M1_INTEGRATION_TESTS_BY_TASK["TASK-M1-015"] == {
+        "tests/integration/test_m1_vertical_slice_integration.py"
+    }
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-017"] == {"tests/acceptance"}
 
 
