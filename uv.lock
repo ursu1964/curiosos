@@ -151,9 +151,12 @@ name = "curios-api"
 version = "0.0.0"
 source = { editable = "apps/api" }
 dependencies = [
+    { name = "curios-capability" },
+    { name = "curios-cognitive" },
     { name = "curios-config" },
     { name = "curios-contracts" },
     { name = "curios-core" },
+    { name = "curios-dag" },
     { name = "curios-observability" },
     { name = "curios-ollama" },
     { name = "curios-persistence" },
@@ -165,9 +168,12 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "curios-capability", editable = "packages/python/curios_capability" },
+    { name = "curios-cognitive", editable = "packages/python/curios_cognitive" },
     { name = "curios-config", editable = "packages/python/curios_config" },
     { name = "curios-contracts", editable = "packages/python/curios_contracts" },
     { name = "curios-core", editable = "packages/python/curios_core" },
+    { name = "curios-dag", editable = "packages/python/curios_dag" },
     { name = "curios-observability", editable = "packages/python/curios_observability" },
     { name = "curios-ollama", editable = "packages/python/curios_ollama" },
     { name = "curios-persistence", editable = "packages/python/curios_persistence" },

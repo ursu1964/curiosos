@@ -226,8 +226,11 @@ def test_application_package_dependencies_remain_outer_boundary_dependencies() -
     dependencies = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]["dependencies"]
 
     assert "fastapi>=0.118.0" in dependencies
+    assert "curios-capability" in dependencies
     assert "curios-contracts" in dependencies
     assert "curios-core" in dependencies
+    assert "curios-cognitive" in dependencies
+    assert "curios-dag" in dependencies
     assert "curios-config" in dependencies
     assert "curios-postgres-provider" in dependencies
     assert "curios-ollama" in dependencies

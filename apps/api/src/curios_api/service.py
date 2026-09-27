@@ -4,22 +4,51 @@ from __future__ import annotations
 
 from typing import Annotated, Any, NoReturn
 
+from curios_capability import CapabilityResolution
+from curios_cognitive import decompose_intent
 from curios_contracts import (
+    AgentInstance,
+    CuriosId,
     EffectClassification,
+    EventEnvelope,
+    EventId,
+    EvidenceId,
+    EvidenceReference,
     ExecutionId,
+    Intent,
+    IntentId,
     ObjectReference,
     ObservabilityContext,
     Result,
     ResultStatus,
     TraceId,
     UtcTimestamp,
+    VerificationId,
+    VerificationOutcome,
     WorkId,
     WorkItem,
     to_json_compatible,
 )
+from curios_dag import WorkDag, WorkDagId, WorkDagNodeReadiness
 from curios_policy import M0_PROVIDER_INVENTORY_WORK_TYPE
 from curios_runtime import (
+    BoundedM1DagRunner,
+    BoundedM1VerificationLoop,
+    DeterministicM1Executor,
+    ExecutorOutcome,
+    ExecutorOutcomeStatus,
+    M1DagRunnerError,
+    M1DagRunnerErrorCode,
+    M1DagRunnerNodeResult,
+    M1DagRunnerNodeStatus,
+    M1DagRunnerReasonCode,
+    M1DagRunnerRequest,
+    M1VerificationAttempt,
+    M1VerificationError,
+    M1VerificationErrorCode,
+    M1VerificationLoopRequest,
     RepositoryError,
+    RoutingDecisionRecord,
     RuntimeStoreError,
     SingleStepRuntimeError,
     SingleStepRuntimeErrorCode,
@@ -180,6 +209,61 @@ def create_application(composition: ApiComposition | None = None) -> FastAPI:
             _raise_runtime_store_error(exc)
         return {"evidence": to_json_compatible(evidence_refs)}
 
+    @app.post("/m1/intents/decompose", status_code=status.HTTP_201_CREATED)
+    async def decompose_m1_intent(payload: Annotated[JsonBody, Body()] = None) -> JsonObject:
+        data = _require_body(payload)
+        try:
+            intent = _m1_intent_from_body(data)
+            created_at = _optional_timestamp(data, "created_at", intent.submitted_at)
+            proposal = decompose_intent(intent, created_at=created_at)
+            dag = (
+                WorkDag.from_work_items(
+                    _optional_work_dag_id(data),
+                    proposal.work_items,
+                    created_at=created_at,
+                )
+                if proposal.work_items
+                else None
+            )
+        except TypeError:
+            _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+        except ValueError:
+            _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+
+        return {
+            "intent": to_json_compatible(intent),
+            "decomposition": proposal.to_json_compatible(),
+            "dag": to_json_compatible(dag),
+        }
+
+    @app.post("/m1/dag/run-once")
+    async def run_m1_dag_once(payload: Annotated[JsonBody, Body()] = None) -> JsonObject:
+        data = _require_body(payload)
+        try:
+            request = _m1_dag_runner_request_from_body(data)
+            result = BoundedM1DagRunner(DeterministicM1Executor()).run_once(request)
+        except M1DagRunnerError as exc:
+            _raise_m1_runner_error(exc)
+        except TypeError:
+            _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+        except ValueError:
+            _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+        return {"runner_result": result.to_json_compatible()}
+
+    @app.post("/m1/verification/complete")
+    async def complete_m1_verification(payload: Annotated[JsonBody, Body()] = None) -> JsonObject:
+        data = _require_body(payload)
+        try:
+            request = _m1_verification_request_from_body(data)
+            result = BoundedM1VerificationLoop().verify(request)
+        except M1VerificationError as exc:
+            _raise_m1_verification_error(exc)
+        except TypeError:
+            _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+        except ValueError:
+            _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+        return {"verification_result": result.to_json_compatible()}
+
     return app
 
 
@@ -209,6 +293,258 @@ def _require_body(payload: JsonBody) -> dict[str, object]:
             {},
         )
     return payload
+
+
+def _m1_intent_from_body(data: dict[str, object]) -> Intent:
+    submitted_at = _optional_timestamp(data, "submitted_at", UtcTimestamp.now())
+    return Intent(
+        intent_id=_optional_intent_id(data),
+        objective=_required_text(data, "objective"),
+        submitted_at=submitted_at,
+        source_ref=_optional_object_reference(data.get("source_ref")),
+        context_refs=tuple(
+            ObjectReference.from_json_compatible(item)
+            for item in _optional_sequence(data.get("context_refs"), "context_refs")
+        ),
+    )
+
+
+def _optional_intent_id(data: dict[str, object]) -> IntentId:
+    value = data.get("intent_id")
+    if value is None:
+        return IntentId.generate()
+    if not isinstance(value, str):
+        raise TypeError
+    return IntentId(value)
+
+
+def _optional_work_dag_id(data: dict[str, object]) -> WorkDagId:
+    value = data.get("dag_id")
+    if value is None:
+        return WorkDagId.generate()
+    if not isinstance(value, str):
+        raise TypeError
+    return WorkDagId(value)
+
+
+def _m1_dag_runner_request_from_body(data: dict[str, object]) -> M1DagRunnerRequest:
+    return M1DagRunnerRequest(
+        dag=WorkDag.from_json_compatible(_required_field(data, "dag")),
+        work_items=tuple(
+            WorkItem.from_json_compatible(item)
+            for item in _required_sequence(_required_field(data, "work_items"), "work_items")
+        ),
+        routing_decisions=tuple(
+            RoutingDecisionRecord.from_json_compatible(item)
+            for item in _required_sequence(
+                _required_field(data, "routing_decisions"),
+                "routing_decisions",
+            )
+        ),
+        agent_instances=tuple(
+            AgentInstance.from_json_compatible(item)
+            for item in _required_sequence(
+                _required_field(data, "agent_instances"),
+                "agent_instances",
+            )
+        ),
+        capability_resolutions_by_work_id=_capability_resolution_map(
+            _required_field(data, "capability_resolutions_by_work_id")
+        ),
+        event_ids_by_work_id=_id_map(
+            _required_field(data, "event_ids_by_work_id"),
+            EventId,
+            "event_ids_by_work_id",
+        ),
+        evidence_ids_by_work_id=_id_map(
+            _required_field(data, "evidence_ids_by_work_id"),
+            EvidenceId,
+            "evidence_ids_by_work_id",
+        ),
+        producer_ref=ObjectReference.from_json_compatible(_required_field(data, "producer_ref")),
+        occurred_at=_required_timestamp(data, "occurred_at"),
+        observability_context=ObservabilityContext.from_json(
+            _required_field(data, "observability_context")
+        ),
+        max_concurrency=_required_int(data, "max_concurrency"),
+    )
+
+
+def _m1_verification_request_from_body(data: dict[str, object]) -> M1VerificationLoopRequest:
+    return M1VerificationLoopRequest(
+        work=WorkItem.from_json_compatible(_required_field(data, "work")),
+        runner_node_result=_runner_node_result_from_json(
+            _required_field(data, "runner_node_result")
+        ),
+        attempts=tuple(
+            _verification_attempt_from_json(item)
+            for item in _required_sequence(_required_field(data, "attempts"), "attempts")
+        ),
+        max_iterations=_required_int(data, "max_iterations"),
+        verification_id=_required_id(data, "verification_id", VerificationId),
+        event_id=_required_id(data, "event_id", EventId),
+        verified_at=_required_timestamp(data, "verified_at"),
+        verifier_ref=ObjectReference.from_json_compatible(_required_field(data, "verifier_ref")),
+        producer_ref=ObjectReference.from_json_compatible(_required_field(data, "producer_ref")),
+        observability_context=ObservabilityContext.from_json(
+            _required_field(data, "observability_context")
+        ),
+    )
+
+
+def _runner_node_result_from_json(value: object) -> M1DagRunnerNodeResult:
+    if not isinstance(value, dict):
+        raise TypeError
+    routing_decision_ref = value.get("routing_decision_ref")
+    return M1DagRunnerNodeResult(
+        work_ref=ObjectReference.from_json_compatible(_required_field(value, "work_ref")),
+        readiness=WorkDagNodeReadiness(_required_text(value, "readiness")),
+        status=M1DagRunnerNodeStatus(_required_text(value, "status")),
+        reason=M1DagRunnerReasonCode(_required_text(value, "reason")),
+        routing_decision_ref=(
+            ObjectReference.from_json_compatible(routing_decision_ref)
+            if routing_decision_ref is not None
+            else None
+        ),
+        executor_outcome=_optional_executor_outcome(value.get("executor_outcome")),
+    )
+
+
+def _optional_executor_outcome(value: object) -> ExecutorOutcome | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise TypeError
+    return ExecutorOutcome(
+        status=ExecutorOutcomeStatus(_required_text(value, "status")),
+        result=Result.from_json_compatible(_required_field(value, "result")),
+        event=EventEnvelope.from_json(_required_field(value, "event")),
+        evidence_refs=tuple(
+            EvidenceReference.from_json_compatible(item)
+            for item in _optional_sequence(value.get("evidence_refs"), "evidence_refs")
+        ),
+    )
+
+
+def _verification_attempt_from_json(value: object) -> M1VerificationAttempt:
+    if not isinstance(value, dict):
+        raise TypeError
+    return M1VerificationAttempt(
+        outcome=VerificationOutcome(_required_text(value, "outcome")),
+        evidence_refs=tuple(
+            EvidenceReference.from_json_compatible(item)
+            for item in _optional_sequence(value.get("evidence_refs"), "evidence_refs")
+        ),
+    )
+
+
+def _capability_resolution_map(value: object) -> dict[WorkId, tuple[CapabilityResolution, ...]]:
+    if not isinstance(value, dict):
+        raise TypeError
+    result: dict[WorkId, tuple[CapabilityResolution, ...]] = {}
+    for raw_work_id, raw_resolutions in value.items():
+        if not isinstance(raw_work_id, str):
+            raise TypeError
+        result[WorkId(raw_work_id)] = tuple(
+            CapabilityResolution.from_json_compatible(item)
+            for item in _required_sequence(raw_resolutions, "capability_resolutions")
+        )
+    return result
+
+
+def _id_map[IdT: CuriosId](
+    value: object,
+    id_type: type[IdT],
+    field_name: str,
+) -> dict[WorkId, IdT]:
+    if not isinstance(value, dict):
+        raise TypeError
+    result: dict[WorkId, IdT] = {}
+    for raw_work_id, raw_id in value.items():
+        if not isinstance(raw_work_id, str) or not isinstance(raw_id, str):
+            raise TypeError
+        result[WorkId(raw_work_id)] = id_type(raw_id)
+    return result
+
+
+def _required_field(data: dict[str, object], field_name: str) -> object:
+    if field_name not in data:
+        _raise_bad_request(
+            "M1_API_MALFORMED_REQUEST",
+            "M1 API request is missing a required canonical field.",
+            {"field": field_name},
+        )
+    return data[field_name]
+
+
+def _required_sequence(value: object, field_name: str) -> tuple[object, ...]:
+    if not isinstance(value, list | tuple):
+        _raise_bad_request(
+            "M1_API_MALFORMED_REQUEST",
+            "M1 API field must be a JSON array.",
+            {"field": field_name},
+        )
+    return tuple(value)
+
+
+def _optional_sequence(value: object, field_name: str) -> tuple[object, ...]:
+    if value is None:
+        return ()
+    return _required_sequence(value, field_name)
+
+
+def _required_text(data: dict[str, object], field_name: str) -> str:
+    value = _required_field(data, field_name)
+    if not isinstance(value, str):
+        _raise_bad_request(
+            "M1_API_MALFORMED_REQUEST",
+            "M1 API field must be a string.",
+            {"field": field_name},
+        )
+    return value
+
+
+def _required_int(data: dict[str, object], field_name: str) -> int:
+    value = _required_field(data, field_name)
+    if not isinstance(value, int) or isinstance(value, bool):
+        _raise_bad_request(
+            "M1_API_MALFORMED_REQUEST",
+            "M1 API field must be an integer.",
+            {"field": field_name},
+        )
+    return value
+
+
+def _required_timestamp(data: dict[str, object], field_name: str) -> UtcTimestamp:
+    value = _required_text(data, field_name)
+    return UtcTimestamp(value)
+
+
+def _optional_timestamp(
+    data: dict[str, object],
+    field_name: str,
+    default: UtcTimestamp,
+) -> UtcTimestamp:
+    value = data.get(field_name)
+    if value is None:
+        return default
+    if not isinstance(value, str):
+        raise TypeError
+    return UtcTimestamp(value)
+
+
+def _required_id[IdT: CuriosId](
+    data: dict[str, object],
+    field_name: str,
+    id_type: type[IdT],
+) -> IdT:
+    return id_type(_required_text(data, field_name))
+
+
+def _optional_object_reference(value: object) -> ObjectReference | None:
+    if value is None:
+        return None
+    return ObjectReference.from_json_compatible(value)
 
 
 def _optional_text(data: dict[str, object], field_name: str, default: str) -> str:
@@ -376,6 +712,43 @@ def _raise_runtime_error(exc: SingleStepRuntimeError) -> NoReturn:
     raise HTTPException(
         status_code=status_code_by_code.get(exc.code, 503),
         detail=exc.to_json_compatible(),
+    )
+
+
+def _raise_m1_runner_error(exc: M1DagRunnerError) -> NoReturn:
+    status_code_by_code = {
+        M1DagRunnerErrorCode.INVALID_CONCURRENCY: 400,
+        M1DagRunnerErrorCode.INVALID_REQUEST: 400,
+        M1DagRunnerErrorCode.MISSING_AGENT: 409,
+        M1DagRunnerErrorCode.MISSING_EXECUTOR_IDENTITY: 409,
+        M1DagRunnerErrorCode.MISSING_ROUTING_DECISION: 409,
+    }
+    raise HTTPException(
+        status_code=status_code_by_code.get(exc.code, 409),
+        detail=exc.to_json_compatible(),
+    )
+
+
+def _raise_m1_verification_error(exc: M1VerificationError) -> NoReturn:
+    status_code_by_code = {
+        M1VerificationErrorCode.INVALID_ITERATION_BOUND: 400,
+        M1VerificationErrorCode.INVALID_REQUEST: 400,
+        M1VerificationErrorCode.INVALID_EVIDENCE: 400,
+        M1VerificationErrorCode.EVIDENCE_SUBJECT_MISMATCH: 409,
+        M1VerificationErrorCode.EXECUTION_NOT_COMPLETED: 409,
+        M1VerificationErrorCode.MISSING_EVIDENCE: 409,
+    }
+    raise HTTPException(
+        status_code=status_code_by_code.get(exc.code, 409),
+        detail=exc.to_json_compatible(),
+    )
+
+
+def _raise_m1_bad_request(error_code: str) -> NoReturn:
+    _raise_bad_request(
+        error_code,
+        "M1 API request is not canonical.",
+        {},
     )
 
 

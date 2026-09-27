@@ -190,9 +190,11 @@ M0_PLANNED_APP_ROOTS_BY_TASK = {
 }
 M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK = {
     "TASK-M0-008": frozenset({"composition.py", "service.py"}),
+    "TASK-M1-013": frozenset({"service.py"}),
 }
 M0_AUTHORIZED_API_TEST_FILES_BY_TASK = {
     "TASK-M0-008": frozenset({"test_fastapi_service_composition.py", "test_m0_work_endpoints.py"}),
+    "TASK-M1-013": frozenset({"test_m1_cognitive_loop_endpoints.py"}),
 }
 M0_AUTHORIZED_API_SOURCE_FILES = frozenset(
     {
@@ -285,6 +287,30 @@ FROZEN_FASTAPI_APPLICATION_ROUTES = (
         "list_work_evidence",
         "curios_api.service",
         "create_application.<locals>.list_work_evidence",
+        True,
+    ),
+    (
+        "/m1/intents/decompose",
+        ("POST",),
+        "decompose_m1_intent",
+        "curios_api.service",
+        "create_application.<locals>.decompose_m1_intent",
+        True,
+    ),
+    (
+        "/m1/dag/run-once",
+        ("POST",),
+        "run_m1_dag_once",
+        "curios_api.service",
+        "create_application.<locals>.run_m1_dag_once",
+        True,
+    ),
+    (
+        "/m1/verification/complete",
+        ("POST",),
+        "complete_m1_verification",
+        "curios_api.service",
+        "create_application.<locals>.complete_m1_verification",
         True,
     ),
 )
@@ -1105,6 +1131,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/tasks/TASK-M1-012-evidence.md",
             "docs/tasks/TASK-M1-012-validation-evidence.md",
             "packages/python/curios_runtime",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-013": frozenset(
+        {
+            "apps/api",
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-013-evidence.md",
             "tests/security/test_security_baseline.py",
         }
     ),
@@ -5862,6 +5896,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-010",
         "TASK-M1-011",
         "TASK-M1-012",
+        "TASK-M1-013",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
@@ -7007,8 +7042,8 @@ def test_m0_api_source_topology_rejects_unvalidated_future_api_surfaces(
         "test_agent_runtime_endpoints.py",
         "test_scheduler_routes.py",
         "test_model_generation_api.py",
-        "test_m1_cognitive_loop_endpoints.py",
         "test_m1_intent_routes.py",
+        "test_m1_web_console_api.py",
     ),
 )
 def test_m0_api_test_topology_rejects_unvalidated_future_api_tests(
