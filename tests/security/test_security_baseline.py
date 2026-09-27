@@ -2143,6 +2143,7 @@ M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
         {
             "docs/program/status-ledger/M2-status-ledger.md",
             "docs/tasks/TASK-M2-001-evidence.md",
+            "docs/tasks/TASK-M2-001-validation-evidence.md",
             "tests/architecture/test_architecture_conformance.py",
             "tests/security/test_security_baseline.py",
         }
@@ -6468,6 +6469,7 @@ def test_m2_planned_surface_registry_authorizes_only_task_m2_001_initially() -> 
     assert M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK["TASK-M2-001"] == {
         "docs/program/status-ledger/M2-status-ledger.md",
         "docs/tasks/TASK-M2-001-evidence.md",
+        "docs/tasks/TASK-M2-001-validation-evidence.md",
         "tests/architecture/test_architecture_conformance.py",
         "tests/security/test_security_baseline.py",
     }
