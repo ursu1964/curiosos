@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -116,13 +117,21 @@ def test_vs_m1_001_intent_to_dag_crosses_api_and_postgres_persistence() -> None:
         work_items = _work_items_from_decomposition(payload)
         dag = WorkDag.from_json_compatible(payload["dag"])
         stored = dag_repository.create_dag(dag)
+        decomposition = payload["decomposition"]
+        assert isinstance(decomposition, dict)
 
         assert payload["intent"]["objective"] == "Implement a bounded change"
-        assert payload["decomposition"]["status"] == "SUPPORTED"
+        assert decomposition["status"] == "SUPPORTED"
         assert [work.work_type for work in work_items] == list(SUPPORTED_M1_WORK_TYPES)
+        _assert_supported_decomposition_links(
+            decomposition,
+            intent_id=str(payload["intent"]["intent_id"]),
+            work_ids={str(work.work_id) for work in work_items},
+        )
         assert {node["work_ref"]["ref_id"] for node in payload["dag"]["nodes"]} == {
             str(work.work_id) for work in work_items
         }
+        _assert_dag_is_acyclic(payload["dag"])
         assert dag_repository.read_dag(dag.dag_id) == stored
 
         store.dispose()
@@ -439,12 +448,25 @@ def test_vs_m1_006_api_and_web_boundaries_present_recorded_truth_without_ui_auth
     api_boundary = (REPO_ROOT / "apps/web/src/apiBoundary.ts").read_text(encoding="utf-8")
     app_source = (REPO_ROOT / "apps/web/src/App.tsx").read_text(encoding="utf-8")
     app_tests = (REPO_ROOT / "apps/web/src/App.test.tsx").read_text(encoding="utf-8")
+    for path in sorted(m1_paths):
+        operations = openapi["paths"][path]
+        assert set(operations) == {"post"}
+        request_body = operations["post"]["requestBody"]
+        assert request_body["required"] is True
+        assert set(request_body["content"]) == {"application/json"}
+        assert request_body["content"]["application/json"]["schema"]["type"] == "object"
+    assert _m1_request_paths_from_api_boundary(api_boundary) == {
+        "/m1/intents/decompose",
+        "/m1/dag/run-once",
+        "/m1/verification/complete",
+    }
     assert "decomposeM1Intent" in api_boundary
     assert "runM1DagOnce" in api_boundary
     assert "completeM1Verification" in api_boundary
     assert '"/m1/intents/decompose"' in api_boundary
     assert '"/m1/dag/run-once"' in api_boundary
     assert '"/m1/verification/complete"' in api_boundary
+    assert "export async function requestJson" not in api_boundary
     assert "fetch(" not in app_source
     assert "XMLHttpRequest" not in app_source
     assert "WebSocket" not in app_source
@@ -522,6 +544,95 @@ def _work_items_from_decomposition(payload: dict[str, object]) -> tuple[WorkItem
     raw_work_items = decomposition["work_items"]
     assert isinstance(raw_work_items, list)
     return tuple(WorkItem.from_json_compatible(item) for item in raw_work_items)
+
+
+def _assert_supported_decomposition_links(
+    decomposition: dict[str, object],
+    *,
+    intent_id: str,
+    work_ids: set[str],
+) -> None:
+    assert decomposition["intent_ref"] == {"kind": "intent", "ref_id": intent_id}
+    problem = decomposition["problem"]
+    plan = decomposition["plan"]
+    assumptions = decomposition["assumptions"]
+    decisions = decomposition["decisions"]
+    assert isinstance(problem, dict)
+    assert isinstance(plan, dict)
+    assert isinstance(assumptions, list)
+    assert isinstance(decisions, list)
+    assert problem["intent_ref"] == {"kind": "intent", "ref_id": intent_id}
+    assert len(assumptions) == 1
+    assert len(decisions) == 1
+    assumption = assumptions[0]
+    decision = decisions[0]
+    assert isinstance(assumption, dict)
+    assert isinstance(decision, dict)
+    assert assumption["subject_ref"] == {
+        "kind": "problem",
+        "ref_id": problem["problem_id"],
+    }
+    assert decision["subject_ref"] == {
+        "kind": "problem",
+        "ref_id": problem["problem_id"],
+    }
+    assert plan["problem_ref"] == {"kind": "problem", "ref_id": problem["problem_id"]}
+    assert plan["assumption_refs"] == [
+        {"kind": "assumption", "ref_id": assumption["assumption_id"]}
+    ]
+    assert plan["decision_refs"] == [{"kind": "decision", "ref_id": decision["decision_id"]}]
+    assert {ref["ref_id"] for ref in plan["work_refs"]} == work_ids
+    assert all(ref["kind"] == "work" for ref in plan["work_refs"])
+
+
+def _assert_dag_is_acyclic(raw_dag: object) -> None:
+    assert isinstance(raw_dag, dict)
+    raw_nodes = raw_dag["nodes"]
+    raw_edges = raw_dag["edges"]
+    assert isinstance(raw_nodes, list)
+    assert isinstance(raw_edges, list)
+    edges = {}
+    for raw_node in raw_nodes:
+        assert isinstance(raw_node, dict)
+        work_ref = raw_node["work_ref"]
+        assert isinstance(work_ref, dict)
+        edges[work_ref["ref_id"]] = []
+    for raw_edge in raw_edges:
+        assert isinstance(raw_edge, dict)
+        upstream_ref = raw_edge["upstream_work_ref"]
+        downstream_ref = raw_edge["downstream_work_ref"]
+        assert isinstance(upstream_ref, dict)
+        assert isinstance(downstream_ref, dict)
+        assert upstream_ref["kind"] == "work"
+        assert downstream_ref["kind"] == "work"
+        edges[downstream_ref["ref_id"]].append(upstream_ref["ref_id"])
+
+    visited: set[str] = set()
+    active: set[str] = set()
+
+    def visit(work_id: str) -> None:
+        assert work_id not in active
+        if work_id in visited:
+            return
+        active.add(work_id)
+        for dependency in edges[work_id]:
+            assert dependency in edges
+            visit(dependency)
+        active.remove(work_id)
+        visited.add(work_id)
+
+    for work_id in edges:
+        visit(work_id)
+    assert visited == set(edges)
+
+
+def _m1_request_paths_from_api_boundary(source: str) -> set[str]:
+    return set(
+        re.findall(
+            r'return requestJson<[^>]+>\("(/m1/[^"]+)"',
+            source,
+        )
+    )
 
 
 def _capability(capability_id: CapabilityId, *, key: str = "bounded_m1") -> Capability:
