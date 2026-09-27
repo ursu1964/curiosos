@@ -482,6 +482,15 @@ def test_vs_m1_006_accepts_recorded_truth_api_web_and_safe_error_boundaries() ->
             content='"token=super-secret password=hunter2"',
             headers={"content-type": "application/json"},
         )
+        malformed_secret = client.post(
+            "/m1/intents/decompose",
+            content='{"api_key=secret-value": ',
+            headers={"content-type": "application/json"},
+        )
+        missing_media = client.post(
+            "/m1/intents/decompose",
+            content=json.dumps(_intent_payload(objective="Implement a bounded change")),
+        )
         wrong_media = client.post(
             "/m1/intents/decompose",
             content=json.dumps(_intent_payload(objective="Implement a bounded change")),
@@ -504,13 +513,14 @@ def test_vs_m1_006_accepts_recorded_truth_api_web_and_safe_error_boundaries() ->
 
     assert supported.status_code == 201
     assert supported.json()["decomposition"]["status"] == "SUPPORTED"
-    for response in (scalar_secret, wrong_media):
+    for response in (scalar_secret, malformed_secret, missing_media, wrong_media):
         assert response.status_code == 400
         serialized = json.dumps(dict(response.headers)) + json.dumps(response.json())
         lowered = serialized.lower()
         assert "m1_api_malformed_request" in lowered
         assert "super-secret" not in lowered
         assert "hunter2" not in lowered
+        assert "secret-value" not in lowered
         assert "secret-token" not in lowered
 
     api_boundary = (REPO_ROOT / "apps/web/src/apiBoundary.ts").read_text(encoding="utf-8")
