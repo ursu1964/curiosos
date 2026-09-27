@@ -336,6 +336,9 @@ FROZEN_WEB_API_BOUNDARY_PATHS = (
     "/work/{work_id}/executions/{execution_id}",
     "/work/{work_id}/events",
     "/work/{work_id}/evidence",
+    "/m1/intents/decompose",
+    "/m1/dag/run-once",
+    "/m1/verification/complete",
 )
 FROZEN_WEB_API_BOUNDARY_PATH_LITERALS = (
     "/health/live",
@@ -347,6 +350,9 @@ FROZEN_WEB_API_BOUNDARY_PATH_LITERALS = (
     "/work/{work_id}/executions/{execution_id}",
     "/work/{work_id}/events",
     "/work/{work_id}/evidence",
+    "/m1/intents/decompose",
+    "/m1/dag/run-once",
+    "/m1/verification/complete",
     "/",
     "/work/${encodeURIComponent(workId)}",
     "/work/${encodeURIComponent(workId)}/run",
@@ -354,8 +360,11 @@ FROZEN_WEB_API_BOUNDARY_PATH_LITERALS = (
     "/work/${encodeURIComponent(workId)}/events",
     "/work/${encodeURIComponent(workId)}/evidence",
     "/work/provider-inventory",
+    "/m1/intents/decompose",
+    "/m1/dag/run-once",
+    "/m1/verification/complete",
 )
-FROZEN_WEB_API_BOUNDARY_METHODS = ("POST", "POST")
+FROZEN_WEB_API_BOUNDARY_METHODS = ("POST", "POST", "POST", "POST", "POST")
 FROZEN_WEB_API_BOUNDARY_REQUESTS = (
     ("createProviderInventoryWork", '"/work/provider-inventory"', "POST"),
     ("runProviderInventoryWork", "runWorkPath(workId)", "POST"),
@@ -363,6 +372,9 @@ FROZEN_WEB_API_BOUNDARY_REQUESTS = (
     ("readExecution", "executionPath(workId, executionId)", "GET"),
     ("listWorkEvents", "eventsPath(workId)", "GET"),
     ("listWorkEvidence", "evidencePath(workId)", "GET"),
+    ("decomposeM1Intent", '"/m1/intents/decompose"', "POST"),
+    ("runM1DagOnce", '"/m1/dag/run-once"', "POST"),
+    ("completeM1Verification", '"/m1/verification/complete"', "POST"),
 )
 FROZEN_WEB_API_BOUNDARY_EXPORTS = (
     "apiBoundaryPaths",
@@ -375,6 +387,7 @@ FROZEN_WEB_API_BOUNDARY_EXPORTS = (
     "RuntimeEventPayload",
     "EvidencePayload",
     "ObjectReferencePayload",
+    "CapabilityRequirementPayload",
     "ProviderDescriptorPayload",
     "ProviderInventoryValue",
     "ResultPayload",
@@ -386,6 +399,24 @@ FROZEN_WEB_API_BOUNDARY_EXPORTS = (
     "ApiErrorDetail",
     "ApiFailure",
     "ApiResult",
+    "M1DecompositionStatus",
+    "M1IntentPayload",
+    "M1ProblemPayload",
+    "M1DecompositionPayload",
+    "M1DagNodePayload",
+    "M1DagPayload",
+    "M1DecomposeIntentResponse",
+    "M1DagNodeStatus",
+    "M1ExecutorOutcomePayload",
+    "M1DagNodeResultPayload",
+    "M1DagRunnerResultPayload",
+    "M1DagRunResponse",
+    "M1VerificationDecision",
+    "VerificationReferencePayload",
+    "M1VerificationResultPayload",
+    "M1VerificationResponse",
+    "M1DagRunRequest",
+    "M1VerificationRequest",
     "apiBoundaryUrl",
     "workPath",
     "runWorkPath",
@@ -398,6 +429,9 @@ FROZEN_WEB_API_BOUNDARY_EXPORTS = (
     "readExecution",
     "listWorkEvents",
     "listWorkEvidence",
+    "decomposeM1Intent",
+    "runM1DagOnce",
+    "completeM1Verification",
 )
 FROZEN_WEB_APP_IMPORTS = (
     (
@@ -421,15 +455,24 @@ FROZEN_WEB_APP_IMPORTS = (
         "./apiBoundary",
         (
             ("apiBoundaryPaths", None, False),
+            ("completeM1Verification", None, False),
             ("createProviderInventoryWork", None, False),
+            ("decomposeM1Intent", None, False),
             ("listWorkEvidence", None, False),
             ("listWorkEvents", None, False),
             ("readExecution", None, False),
             ("readWork", None, False),
+            ("runM1DagOnce", None, False),
             ("runProviderInventoryWork", None, False),
             ("ApiFailure", None, True),
             ("EvidencePayload", None, True),
             ("ExecutionPayload", None, True),
+            ("M1DagNodeResultPayload", None, True),
+            ("M1DagRunRequest", None, True),
+            ("M1DagRunnerResultPayload", None, True),
+            ("M1DecomposeIntentResponse", None, True),
+            ("M1VerificationRequest", None, True),
+            ("M1VerificationResultPayload", None, True),
             ("ProviderDescriptorPayload", None, True),
             ("RuntimeEventPayload", None, True),
             ("RuntimeStatus", None, True),
@@ -448,6 +491,9 @@ FROZEN_WEB_APP_INTERACTIVE_CAPABILITIES = (
     ("button", "onClick", ("createProviderInventoryWork",)),
     ("button", "onClick", ("runProviderInventoryWork",)),
     ("button", "onClick", ("listWorkEvents", "listWorkEvidence", "readExecution", "readWork")),
+    ("button", "onClick", ("decomposeM1Intent",)),
+    ("button", "onClick", ("runM1DagOnce",)),
+    ("button", "onClick", ("completeM1Verification",)),
 )
 WEB_APP_FORBIDDEN_CAPABILITY_IDENTIFIERS = frozenset(
     {
@@ -1146,6 +1192,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-013-evidence.md",
             "docs/tasks/TASK-M1-013-validation-evidence.md",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M1-014": frozenset(
+        {
+            "apps/web",
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-014-evidence.md",
             "tests/security/test_security_baseline.py",
         }
     ),
@@ -2817,9 +2871,11 @@ def _network_primitive_hits(source: str, *, allow_fetch: bool) -> tuple[str, ...
 
 def _future_backend_path_hits(source: str) -> tuple[str, ...]:
     literals = _typescript_string_literals(source)
+    authorized_web_boundary_literals = frozenset(FROZEN_WEB_API_BOUNDARY_PATH_LITERALS)
     return tuple(
         literal
         for literal in literals
+        if literal not in authorized_web_boundary_literals
         if any(token in literal.lower() for token in FUTURE_WEB_BACKEND_PATH_TOKENS)
     )
 
@@ -3035,6 +3091,9 @@ def _exported_api_boundary_request_authority(source: str) -> tuple[tuple[str, st
         "readExecution",
         "listWorkEvents",
         "listWorkEvidence",
+        "decomposeM1Intent",
+        "runM1DagOnce",
+        "completeM1Verification",
     ):
         body = functions.get(function_name, "")
         match = re.search(r"\brequestJson(?:<[^>]+>)?\s*\(", body)
@@ -5904,6 +5963,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-011",
         "TASK-M1-012",
         "TASK-M1-013",
+        "TASK-M1-014",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {

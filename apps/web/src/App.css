@@ -33,6 +33,17 @@ button {
   cursor: pointer;
 }
 
+input {
+  box-sizing: border-box;
+  min-height: 40px;
+  width: min(520px, 100%);
+  padding: 0 12px;
+  border: 1px solid #9fb0aa;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #172026;
+}
+
 button:disabled {
   border-color: #a8b4b2;
   background: #d3dcda;
@@ -131,6 +142,24 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.work-console__toolbar--m1 {
+  margin-top: 18px;
+}
+
+.work-console__m1-input {
+  display: grid;
+  flex: 1 1 420px;
+  gap: 8px;
+  min-width: min(420px, 100%);
+}
+
+.work-console__m1-input label {
+  color: #53645c;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .work-console__status,

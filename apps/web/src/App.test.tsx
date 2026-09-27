@@ -68,6 +68,9 @@ describe("TASK-M0-009 web work console", () => {
       "/work/{work_id}/executions/{execution_id}",
       "/work/{work_id}/events",
       "/work/{work_id}/evidence",
+      "/m1/intents/decompose",
+      "/m1/dag/run-once",
+      "/m1/verification/complete",
     ]);
     expect(
       apiBoundaryUrl("/work/provider-inventory", "http://localhost:8000"),
@@ -234,6 +237,199 @@ describe("TASK-M0-009 web work console", () => {
   });
 });
 
+describe("TASK-M1-014 web cognitive loop console", () => {
+  it("decomposes a supported intent through the exact M1 API boundary", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+
+    expect(calls.map((call) => call.path)).toEqual(["/m1/intents/decompose"]);
+    expect(JSON.parse(calls[0]?.body ?? "{}")).toEqual({
+      objective: "Implement a bounded change",
+    });
+    expect(text(container)).toContain("Intent decomposed into 3 work item(s).");
+    expect(text(container)).toContain("SUPPORTED");
+    expect(text(container)).toContain("inspect_current_state");
+  });
+
+  it("renders unsupported decomposition as a bounded domain outcome", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      [
+        "/m1/intents/decompose",
+        created({
+          ...m1DecompositionResponse(),
+          dag: null,
+          decomposition: {
+            ...m1DecompositionResponse().decomposition,
+            status: "UNSUPPORTED",
+            work_items: [],
+          },
+        }),
+      ],
+    ]);
+    const container = render(<App />);
+    changeInput(container, "Address a philosophical question.");
+
+    await click(button(container, "Decompose Intent"));
+
+    expect(text(container)).toContain("UNSUPPORTED");
+    expect(text(container)).toContain("unsupported M1 domain outcome");
+    expect(text(container)).not.toContain("M1_API_MALFORMED_REQUEST");
+  });
+
+  it("runs the DAG through BoundedM1DagRunner request authority", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", ok(m1RunnerResponse())],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+
+    const request = JSON.parse(calls[1]?.body ?? "{}") as Record<
+      string,
+      unknown
+    >;
+    expect(calls.map((call) => call.path)).toEqual([
+      "/m1/intents/decompose",
+      "/m1/dag/run-once",
+    ]);
+    expect(request["max_concurrency"]).toBe(1);
+    expect(request["work_items"]).toBeInstanceOf(Array);
+    expect(request["routing_decisions"]).toBeInstanceOf(Array);
+    expect(text(container)).toContain(
+      "DAG run COMPLETED with 1 executed node(s).",
+    );
+    expect(text(container)).toContain("EXECUTED");
+    expect(text(container)).toContain("execution.completed");
+  });
+
+  it("preserves ROUTE_NOT_EXECUTABLE as domain truth without executor artifacts", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      [
+        "/m1/dag/run-once",
+        ok(m1RunnerResponse("BLOCKED", "ROUTE_NOT_EXECUTABLE")),
+      ],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+
+    expect(text(container)).toContain("ROUTE_NOT_EXECUTABLE");
+    expect(text(container)).toContain("Evidence0");
+    expect(text(container)).not.toContain("verification.completed");
+  });
+
+  it("completes verification through the bounded verification loop", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", ok(m1RunnerResponse())],
+      ["/m1/verification/complete", ok(m1VerificationResponse("APPROVED"))],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+    await click(button(container, "Complete Verification"));
+
+    expect(calls.map((call) => call.path)).toEqual([
+      "/m1/intents/decompose",
+      "/m1/dag/run-once",
+      "/m1/verification/complete",
+    ]);
+    expect(JSON.parse(calls[2]?.body ?? "{}")).toMatchObject({
+      attempts: [{ outcome: "passed" }],
+      max_iterations: 2,
+    });
+    expect(text(container)).toContain("Verification APPROVED.");
+    expect(text(container)).toContain("verification.completed");
+  });
+
+  it("renders REJECTED and DEFERRED verification decisions as domain outcomes", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", ok(m1RunnerResponse())],
+      ["/m1/verification/complete", ok(m1VerificationResponse("REJECTED"))],
+      ["/m1/verification/complete", ok(m1VerificationResponse("DEFERRED"))],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+    await click(button(container, "Complete Verification"));
+    await click(button(container, "Complete Verification"));
+
+    expect(text(container)).toContain("Verification DEFERRED.");
+    expect(text(container)).toContain("DEFERRED");
+    expect(text(container)).not.toContain("HTTP_");
+  });
+
+  it("renders bounded API errors without raw secret-shaped details", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      [
+        "/m1/intents/decompose",
+        boundedFailure(400, {
+          detail: secretProbe(),
+          error_code: "M1_API_MALFORMED_REQUEST",
+          message: "M1 API request is malformed.",
+        }),
+      ],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+
+    expect(text(container)).toContain("M1_API_MALFORMED_REQUEST");
+    expect(text(container)).toContain("M1 API request is malformed.");
+    expect(text(container)).not.toContain(secretProbe());
+  });
+
+  it("prevents double-submit while an M1 request is in flight", async () => {
+    const pending = deferredResponse();
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [["/m1/intents/decompose", pending.promise]]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Decomposing..."));
+    pending.resolve({ body: m1DecompositionResponse(), status: 201 });
+    await flush();
+
+    expect(calls).toHaveLength(1);
+  });
+
+  it("replaces prior M1 results when a new intent is selected", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", ok(m1RunnerResponse())],
+      ["/m1/intents/decompose", created(m1DecompositionResponse(2))],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+    changeInput(container, "Implement another bounded change");
+    await click(button(container, "Decompose Intent"));
+
+    expect(text(container)).toContain("int_00000000000000000000000002");
+    expect(text(container)).not.toContain("DAG run COMPLETED");
+  });
+});
+
 function installFetchMock(
   calls: FetchCall[],
   responses: [string, Promise<Response>][],
@@ -271,6 +467,10 @@ function ok(body: unknown): Promise<Response> {
   return Promise.resolve(response(body, 200));
 }
 
+function created(body: unknown): Promise<Response> {
+  return Promise.resolve(response(body, 201));
+}
+
 function boundedFailure(status: number, detail: unknown): Promise<Response> {
   return Promise.resolve(response({ detail }, status));
 }
@@ -304,6 +504,17 @@ async function click(element: HTMLButtonElement): Promise<void> {
   await act(async () => {
     element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await Promise.resolve();
+  });
+}
+
+function changeInput(container: HTMLElement, value: string): void {
+  const input = container.querySelector("#m1-intent-objective");
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error("M1 intent input not found");
+  }
+  act(() => {
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
 
@@ -444,4 +655,191 @@ function evidenceA(summary: string): {
     subject_ref: { kind: "work", ref_id: "wrk_00000000000000000000000001" },
     summary,
   };
+}
+
+function m1DecompositionResponse(ordinal = 1): {
+  dag: {
+    created_at: string;
+    dag_id: string;
+    nodes: {
+      dependencies: string[];
+      node_id: string;
+      work_ref: { kind: string; ref_id: string };
+    }[];
+  };
+  decomposition: {
+    problem: {
+      intent_ref: { kind: string; ref_id: string };
+      problem_id: string;
+      statement: string;
+    };
+    status: string;
+    work_items: ReturnType<typeof m1Work>[];
+  };
+  intent: {
+    context_refs: unknown[];
+    intent_id: string;
+    objective: string;
+    source_ref: null;
+    submitted_at: string;
+  };
+} {
+  const work = [
+    m1Work("inspect_current_state", ordinal),
+    m1Work("apply_bounded_change", ordinal + 1),
+    m1Work("verify_bounded_change", ordinal + 2),
+  ];
+  return {
+    dag: {
+      created_at: "2026-09-27T00:00:00Z",
+      dag_id: fixedId("dag", ordinal),
+      nodes: work.map((item, index) => ({
+        dependencies: index === 0 ? [] : [work[index - 1]?.work_id ?? ""],
+        node_id: item.work_id,
+        work_ref: { kind: "work", ref_id: item.work_id },
+      })),
+    },
+    decomposition: {
+      problem: {
+        intent_ref: { kind: "intent", ref_id: fixedId("int", ordinal) },
+        problem_id: fixedId("prb", ordinal),
+        statement: "Implement a bounded change.",
+      },
+      status: "SUPPORTED",
+      work_items: work,
+    },
+    intent: {
+      context_refs: [],
+      intent_id: fixedId("int", ordinal),
+      objective: "Implement a bounded change",
+      source_ref: null,
+      submitted_at: "2026-09-27T00:00:00Z",
+    },
+  };
+}
+
+function m1Work(
+  workType: string,
+  ordinal: number,
+): {
+  created_at: string;
+  objective: string;
+  required_capabilities: { capability_id: string }[];
+  state: string;
+  title: string;
+  updated_at: string;
+  work_id: string;
+  work_type: string;
+} {
+  return {
+    created_at: "2026-09-27T00:00:00Z",
+    objective: `Run ${workType}.`,
+    required_capabilities: [{ capability_id: fixedId("cap", ordinal) }],
+    state: "READY",
+    title: workType.replaceAll("_", " "),
+    updated_at: "2026-09-27T00:00:00Z",
+    work_id: fixedId("wrk", ordinal),
+    work_type: workType,
+  };
+}
+
+function m1RunnerResponse(
+  status = "EXECUTED",
+  reason = "EXECUTED",
+): {
+  runner_result: {
+    dag_state: Record<string, unknown>;
+    evidence_refs: ReturnType<typeof evidenceA>[];
+    events: ReturnType<typeof eventA>[];
+    node_results: unknown[];
+    status: string;
+  };
+} {
+  const executed = status === "EXECUTED";
+  const nodeResult = {
+    executor_outcome: executed
+      ? {
+          event: eventA("execution.completed"),
+          evidence_refs: [evidenceA("M1 deterministic executor evidence.")],
+          result: {
+            errors: [],
+            evidence_refs: [evidenceA("M1 deterministic executor evidence.")],
+            status: "success",
+            value: { work_type: "inspect_current_state" },
+            warnings: [],
+          },
+          status: "COMPLETED",
+        }
+      : null,
+    readiness: "READY",
+    reason,
+    routing_decision_ref: {
+      kind: "routing_decision",
+      ref_id: fixedId("dec", 1),
+    },
+    status,
+    work_ref: { kind: "work", ref_id: fixedId("wrk", 1) },
+  };
+  return {
+    runner_result: {
+      dag_state: { status: executed ? "COMPLETED" : "BLOCKED" },
+      evidence_refs: executed
+        ? [evidenceA("M1 deterministic executor evidence.")]
+        : [],
+      events: executed ? [eventA("execution.completed")] : [],
+      node_results: [nodeResult],
+      status: executed ? "COMPLETED" : "BLOCKED",
+    },
+  };
+}
+
+function m1VerificationResponse(decision: string): {
+  verification_result: {
+    completion_decision: string;
+    event: ReturnType<typeof eventA> | null;
+    evidence_refs: ReturnType<typeof evidenceA>[];
+    iterations_used: number;
+    outcome: string;
+    reason: string;
+    verification_ref: {
+      status: string;
+      subject_ref: { kind: string; ref_id: string };
+      verification_id: string;
+    };
+    work_ref: { kind: string; ref_id: string };
+  };
+} {
+  return {
+    verification_result: {
+      completion_decision: decision,
+      event: decision === "DEFERRED" ? null : eventA("verification.completed"),
+      evidence_refs:
+        decision === "DEFERRED" ? [] : [evidenceA("verified evidence")],
+      iterations_used: decision === "DEFERRED" ? 2 : 1,
+      outcome:
+        decision === "APPROVED"
+          ? "passed"
+          : decision === "REJECTED"
+            ? "failed"
+            : "inconclusive",
+      reason:
+        decision === "DEFERRED"
+          ? "VERIFICATION_EXHAUSTED"
+          : "TERMINAL_ATTEMPT_RECORDED",
+      verification_ref: {
+        status: decision,
+        subject_ref: { kind: "work", ref_id: fixedId("wrk", 1) },
+        verification_id: fixedId("ver", 1),
+      },
+      work_ref: { kind: "work", ref_id: fixedId("wrk", 1) },
+    },
+  };
+}
+
+function fixedId(prefix: string, ordinal: number): string {
+  return `${prefix}_${String(ordinal).padStart(26, "0")}`;
+}
+
+function secretProbe(): string {
+  return ["tok", "en"].join("") + "=" + ["super", "secret"].join("-");
 }

@@ -8,6 +8,9 @@ export const apiBoundaryPaths = [
   "/work/{work_id}/executions/{execution_id}",
   "/work/{work_id}/events",
   "/work/{work_id}/evidence",
+  "/m1/intents/decompose",
+  "/m1/dag/run-once",
+  "/m1/verification/complete",
 ] as const;
 
 export type ApiBoundaryPath = (typeof apiBoundaryPaths)[number];
@@ -34,6 +37,7 @@ export interface WorkItemPayload {
   state: WorkState;
   created_at: string;
   updated_at: string;
+  required_capabilities?: CapabilityRequirementPayload[];
 }
 
 export interface ExecutionPayload {
@@ -64,6 +68,10 @@ export interface EvidencePayload {
 export interface ObjectReferencePayload {
   kind: string;
   ref_id: string;
+}
+
+export interface CapabilityRequirementPayload {
+  capability_id: string;
 }
 
 export interface ProviderDescriptorPayload {
@@ -131,6 +139,103 @@ export interface ApiFailure {
 
 export type ApiResult<ValueT> =
   { ok: true; value: ValueT } | { ok: false; failure: ApiFailure };
+
+export type M1DecompositionStatus = "SUPPORTED" | "UNSUPPORTED";
+
+export interface M1IntentPayload {
+  context_refs: ObjectReferencePayload[];
+  intent_id: string;
+  objective: string;
+  source_ref: ObjectReferencePayload | null;
+  submitted_at: string;
+}
+
+export interface M1ProblemPayload {
+  intent_ref: ObjectReferencePayload;
+  problem_id: string;
+  statement: string;
+}
+
+export interface M1DecompositionPayload {
+  problem: M1ProblemPayload;
+  status: M1DecompositionStatus;
+  work_items: WorkItemPayload[];
+}
+
+export interface M1DagNodePayload {
+  dependencies: string[];
+  node_id: string;
+  work_ref: ObjectReferencePayload;
+}
+
+export interface M1DagPayload {
+  created_at: string;
+  dag_id: string;
+  nodes: M1DagNodePayload[];
+}
+
+export interface M1DecomposeIntentResponse {
+  dag: M1DagPayload | null;
+  decomposition: M1DecompositionPayload;
+  intent: M1IntentPayload;
+}
+
+export type M1DagNodeStatus =
+  "EXECUTED" | "WAITING" | "BLOCKED" | "TERMINAL" | "DEFERRED";
+
+export interface M1ExecutorOutcomePayload {
+  event: RuntimeEventPayload;
+  evidence_refs: EvidencePayload[];
+  result: ResultPayload<unknown>;
+  status: string;
+}
+
+export interface M1DagNodeResultPayload {
+  executor_outcome: M1ExecutorOutcomePayload | null;
+  readiness: string;
+  reason: string;
+  routing_decision_ref: ObjectReferencePayload | null;
+  status: M1DagNodeStatus;
+  work_ref: ObjectReferencePayload;
+}
+
+export interface M1DagRunnerResultPayload {
+  dag_state: Record<string, unknown>;
+  evidence_refs: EvidencePayload[];
+  events: RuntimeEventPayload[];
+  node_results: M1DagNodeResultPayload[];
+  status: string;
+}
+
+export interface M1DagRunResponse {
+  runner_result: M1DagRunnerResultPayload;
+}
+
+export type M1VerificationDecision = "APPROVED" | "REJECTED" | "DEFERRED";
+
+export interface VerificationReferencePayload {
+  status: string;
+  subject_ref: ObjectReferencePayload;
+  verification_id: string;
+}
+
+export interface M1VerificationResultPayload {
+  completion_decision: M1VerificationDecision;
+  event: RuntimeEventPayload | null;
+  evidence_refs: EvidencePayload[];
+  iterations_used: number;
+  outcome: string;
+  reason: string;
+  verification_ref: VerificationReferencePayload;
+  work_ref: ObjectReferencePayload;
+}
+
+export interface M1VerificationResponse {
+  verification_result: M1VerificationResultPayload;
+}
+
+export type M1DagRunRequest = Record<string, unknown>;
+export type M1VerificationRequest = Record<string, unknown>;
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -217,6 +322,36 @@ export async function listWorkEvidence(
   workId: string,
 ): Promise<ApiResult<EvidenceResponse>> {
   return requestJson<EvidenceResponse>(evidencePath(workId));
+}
+
+export async function decomposeM1Intent(
+  objective: string,
+): Promise<ApiResult<M1DecomposeIntentResponse>> {
+  return requestJson<M1DecomposeIntentResponse>("/m1/intents/decompose", {
+    body: JSON.stringify({ objective }),
+    headers: JSON_HEADERS,
+    method: "POST",
+  });
+}
+
+export async function runM1DagOnce(
+  request: M1DagRunRequest,
+): Promise<ApiResult<M1DagRunResponse>> {
+  return requestJson<M1DagRunResponse>("/m1/dag/run-once", {
+    body: JSON.stringify(request),
+    headers: JSON_HEADERS,
+    method: "POST",
+  });
+}
+
+export async function completeM1Verification(
+  request: M1VerificationRequest,
+): Promise<ApiResult<M1VerificationResponse>> {
+  return requestJson<M1VerificationResponse>("/m1/verification/complete", {
+    body: JSON.stringify(request),
+    headers: JSON_HEADERS,
+    method: "POST",
+  });
 }
 
 async function requestJson<ValueT>(
