@@ -57,12 +57,23 @@ from curios_runtime import (
     SingleStepRuntimeStatus,
     StoredWorkItem,
 )
-from fastapi import Body, FastAPI, HTTPException, status
+from fastapi import Body, FastAPI, HTTPException, Request, status
 
 from curios_api.composition import ApiComposition, M0WorkApiComposition, create_api_composition
 
 type JsonObject = dict[str, object]
 type JsonBody = dict[str, object] | None
+
+_M1_JSON_OBJECT_REQUEST_BODY = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {"type": "object", "additionalProperties": True},
+            }
+        },
+    }
+}
 
 
 def create_application(composition: ApiComposition | None = None) -> FastAPI:
@@ -209,9 +220,13 @@ def create_application(composition: ApiComposition | None = None) -> FastAPI:
             _raise_runtime_store_error(exc)
         return {"evidence": to_json_compatible(evidence_refs)}
 
-    @app.post("/m1/intents/decompose", status_code=status.HTTP_201_CREATED)
-    async def decompose_m1_intent(payload: Annotated[JsonBody, Body()] = None) -> JsonObject:
-        data = _require_body(payload)
+    @app.post(
+        "/m1/intents/decompose",
+        status_code=status.HTTP_201_CREATED,
+        openapi_extra=_M1_JSON_OBJECT_REQUEST_BODY,
+    )
+    async def decompose_m1_intent(http_request: Request) -> JsonObject:
+        data = await _require_m1_body(http_request)
         try:
             intent = _m1_intent_from_body(data)
             created_at = _optional_timestamp(data, "created_at", intent.submitted_at)
@@ -236,12 +251,12 @@ def create_application(composition: ApiComposition | None = None) -> FastAPI:
             "dag": to_json_compatible(dag),
         }
 
-    @app.post("/m1/dag/run-once")
-    async def run_m1_dag_once(payload: Annotated[JsonBody, Body()] = None) -> JsonObject:
-        data = _require_body(payload)
+    @app.post("/m1/dag/run-once", openapi_extra=_M1_JSON_OBJECT_REQUEST_BODY)
+    async def run_m1_dag_once(http_request: Request) -> JsonObject:
+        data = await _require_m1_body(http_request)
         try:
-            request = _m1_dag_runner_request_from_body(data)
-            result = BoundedM1DagRunner(DeterministicM1Executor()).run_once(request)
+            runner_request = _m1_dag_runner_request_from_body(data)
+            result = BoundedM1DagRunner(DeterministicM1Executor()).run_once(runner_request)
         except M1DagRunnerError as exc:
             _raise_m1_runner_error(exc)
         except TypeError:
@@ -250,12 +265,12 @@ def create_application(composition: ApiComposition | None = None) -> FastAPI:
             _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
         return {"runner_result": result.to_json_compatible()}
 
-    @app.post("/m1/verification/complete")
-    async def complete_m1_verification(payload: Annotated[JsonBody, Body()] = None) -> JsonObject:
-        data = _require_body(payload)
+    @app.post("/m1/verification/complete", openapi_extra=_M1_JSON_OBJECT_REQUEST_BODY)
+    async def complete_m1_verification(http_request: Request) -> JsonObject:
+        data = await _require_m1_body(http_request)
         try:
-            request = _m1_verification_request_from_body(data)
-            result = BoundedM1VerificationLoop().verify(request)
+            verification_request = _m1_verification_request_from_body(data)
+            result = BoundedM1VerificationLoop().verify(verification_request)
         except M1VerificationError as exc:
             _raise_m1_verification_error(exc)
         except TypeError:
@@ -292,6 +307,16 @@ def _require_body(payload: JsonBody) -> dict[str, object]:
             "request body must be a JSON object",
             {},
         )
+    return payload
+
+
+async def _require_m1_body(request: Request) -> dict[str, object]:
+    try:
+        payload = await request.json()
+    except ValueError:
+        _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
+    if not isinstance(payload, dict):
+        _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
     return payload
 
 

@@ -194,7 +194,9 @@ M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK = {
 }
 M0_AUTHORIZED_API_TEST_FILES_BY_TASK = {
     "TASK-M0-008": frozenset({"test_fastapi_service_composition.py", "test_m0_work_endpoints.py"}),
-    "TASK-M1-013": frozenset({"test_m1_cognitive_loop_endpoints.py"}),
+    "TASK-M1-013": frozenset(
+        {"test_m1_cognitive_loop_endpoints.py", "test_task_m1_013_validation_regressions.py"}
+    ),
 }
 M0_AUTHORIZED_API_SOURCE_FILES = frozenset(
     {

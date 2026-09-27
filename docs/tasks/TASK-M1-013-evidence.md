@@ -139,6 +139,38 @@ Tests cover:
 - OpenAPI contains only the intended M1 paths and no model-generation or web
   console path.
 
+## Correction 1
+
+Independent validation found that FastAPI/Pydantic preempted the M1 bounded
+request parser for non-object JSON request bodies because the three M1 endpoint
+parameters were annotated as `dict[str, object] | None`. A non-object JSON
+scalar carrying token-like text therefore returned FastAPI HTTP 422 validation
+detail containing the raw body instead of the authoritative bounded M1 API
+error.
+
+Correction 1 changes only the M1 endpoint transport intake. The endpoints now
+read the raw request JSON through the FastAPI `Request`, map syntactically
+invalid JSON and non-object JSON values to HTTP 400
+`M1_API_MALFORMED_REQUEST`, and then explicitly require canonical object-shaped
+payloads before constructing frozen Curios records. The OpenAPI request body
+remains an application/json object schema for the three M1 endpoints.
+
+The preserved validator regression covers all three M1 endpoints and six
+secret-shaped scalar bodies spanning token, password, API-key, authorization,
+credential, and generic secret patterns.
+
+Additional correction coverage probes empty object, empty string, integer,
+float, booleans, array, nested array, `null`, and syntactically malformed JSON.
+All malformed M1 transport cases return bounded HTTP 400 without raw body echo.
+Valid domain outcomes remain unchanged: `NO_ROUTE`, `ROUTE_NOT_EXECUTABLE`,
+`DEFERRED`, `REJECTED`, and `APPROVED` continue to be canonical domain
+responses rather than framework validation failures.
+
+Correction 1 does not change M0 endpoint behavior, M1-011 runner semantics,
+M1-012 verification semantics, persistence, provider/model authority, outbound
+network authority, dependencies, lockfiles, schema, migrations, web behavior, or
+M1-014 scope.
+
 ## Dependencies And Schema
 
 `apps/api` now declares workspace-local dependencies on `curios-capability`,
@@ -164,6 +196,7 @@ Implementation verification:
 - apps/web production build: PASS;
 - contract/schema/architecture tests: PASS, `52 passed`;
 - API tests including M1-013 endpoints: PASS, `23 passed`;
+- TASK-M1-013 Correction 1 validator regression: PASS, `48 passed`;
 - package/provider/runtime/persistence non-Docker suites: PASS, `107 passed`;
 - security baseline: PASS, `353 passed`;
 - API and M0 vertical-slice integration: PASS, `8 passed`;
@@ -192,6 +225,7 @@ green.
 | `apps/api/src/curios_api/service.py` | REQUIRED | Exact M1 endpoint implementation and canonical parsing/error mapping. |
 | `apps/api/tests/test_fastapi_service_composition.py` | JUSTIFIED SUPPORT | Dependency boundary assertion updated for required workspace-local dependencies. |
 | `apps/api/tests/test_m1_cognitive_loop_endpoints.py` | REQUIRED | Focused M1-013 API contract and adversarial coverage. |
+| `apps/api/tests/test_task_m1_013_validation_regressions.py` | REQUIRED | Correction 1 validator regression for bounded malformed M1 transport handling and no raw body echo. |
 | `docs/program/status-ledger/M1-status-ledger.md` | REQUIRED | Reconciles stale M1-013 row to implementation lifecycle. |
 | `docs/tasks/TASK-M1-013-evidence.md` | REQUIRED | Implementation evidence. |
 | `tests/security/test_security_baseline.py` | JUSTIFIED SUPPORT | Authorizes only exact M1-013 API route/test surface. |
