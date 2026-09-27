@@ -26,6 +26,8 @@ POLICY_PACKAGE = REPO_ROOT / "packages/python/curios_policy"
 POLICY_SOURCE = POLICY_PACKAGE / "src/curios_policy"
 RUNTIME_PACKAGE = REPO_ROOT / "packages/python/curios_runtime"
 RUNTIME_SOURCE = RUNTIME_PACKAGE / "src/curios_runtime"
+PERSISTENCE_PACKAGE = REPO_ROOT / "packages/python/curios_persistence"
+PERSISTENCE_SOURCE = PERSISTENCE_PACKAGE / "src/curios_persistence"
 COGNITIVE_PACKAGE = REPO_ROOT / "packages/python/curios_cognitive"
 COGNITIVE_SOURCE = COGNITIVE_PACKAGE / "src/curios_cognitive"
 DAG_PACKAGE = REPO_ROOT / "packages/python/curios_dag"
@@ -47,6 +49,15 @@ INFRASTRUCTURE_RULE = "canonical domain packages must not import tooling or infr
 API_BOUNDARY_RULE = "FastAPI service composition must remain an outer application boundary"
 WEB_BOUNDARY_RULE = "web bootstrap must remain an outer frontend boundary"
 M0_INWARD_DEPENDENCY_RULE = "M0 implementation packages must not become inward dependencies"
+M2_DATALAB_CONTRACT_RULE = (
+    "M2 DataLab canonical contracts must remain owned by their frozen owner tasks"
+)
+M2_DATALAB_RUNTIME_RULE = (
+    "DataLab run lifecycle semantics must be runtime-owned, not persistence-owned"
+)
+M2_DATALAB_AUTHORITY_RULE = (
+    "M2 DataLab surfaces must not gain forbidden execution/model/network authority"
+)
 
 FASTAPI_IMPORTS = frozenset({"fastapi", "starlette"})
 SQLALCHEMY_IMPORTS = frozenset({"alembic", "sqlalchemy", "sqlmodel"})
@@ -73,6 +84,49 @@ OTEL_IMPLEMENTATION_IMPORTS = frozenset(
 DOCKER_TOOLING_IMPORTS = frozenset({"compose", "docker", "python_on_whales"})
 FRONTEND_RUNTIME_IMPORTS = frozenset({"node", "npm", "react", "typescript", "vite"})
 REPOSITORY_TOOLING_IMPORTS = frozenset({"infrastructure", "tooling"})
+M2_DATALAB_FORBIDDEN_IMPORTS = frozenset(
+    {
+        "anthropic",
+        "boto3",
+        "google.genai",
+        "httpx",
+        "importlib",
+        "langchain",
+        "llama_index",
+        "ollama",
+        "openai",
+        "requests",
+        "socket",
+        "subprocess",
+        "urllib",
+    }
+)
+M2_DATALAB_FORBIDDEN_CALLS = frozenset(
+    {
+        "__import__",
+        "eval",
+        "exec",
+        "importlib.import_module",
+        "os.popen",
+        "os.spawn",
+        "os.system",
+        "subprocess.Popen",
+        "subprocess.call",
+        "subprocess.check_call",
+        "subprocess.check_output",
+        "subprocess.run",
+    }
+)
+M2_DATALAB_CANONICAL_CONTRACT_NAMES = frozenset(
+    {
+        "DataLabAnalysisRequest",
+        "DatasetProfile",
+        "DataLabFinding",
+        "DataLabAnalysisResult",
+    }
+)
+M2_DATALAB_RUNTIME_RECORD_NAMES = frozenset({"DataLabRunState", "DataLabRunRecord"})
+M2_FORBIDDEN_DUPLICATE_REFERENCE_NAMES = frozenset({"DatasetReference"})
 M0_IMPLEMENTATION_IMPORTS = frozenset(
     {
         "curios_persistence",
@@ -556,6 +610,109 @@ def _class_field_names(class_def: ast.ClassDef) -> frozenset[str]:
     return frozenset(fields)
 
 
+def _declared_class_locations(
+    source_root: Path,
+    class_names: frozenset[str],
+) -> tuple[Violation, ...]:
+    violations: list[Violation] = []
+    for source_file in _python_files(source_root):
+        tree = _parse_python(source_file)
+        for class_def in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)):
+            if class_def.name in class_names:
+                violations.append(
+                    Violation(
+                        rule=M2_DATALAB_CONTRACT_RULE,
+                        file=source_file,
+                        dependency=class_def.name,
+                        lineno=class_def.lineno,
+                        detail="class declaration",
+                    )
+                )
+    return tuple(violations)
+
+
+def _datalab_python_files(source_root: Path) -> tuple[Path, ...]:
+    return tuple(
+        path
+        for path in _python_files(source_root)
+        if "datalab" in path.relative_to(source_root).as_posix().lower()
+    )
+
+
+def _import_aliases(source_file: Path) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    tree = _parse_python(source_file)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                aliases[alias.asname or alias.name.split(".", maxsplit=1)[0]] = alias.name
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module is not None:
+            for alias in node.names:
+                aliases[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+    return aliases
+
+
+def _resolve_call_name(call_name: str, aliases: dict[str, str]) -> str:
+    if not call_name:
+        return call_name
+    head, separator, tail = call_name.partition(".")
+    resolved_head = aliases.get(head, head)
+    return f"{resolved_head}{separator}{tail}" if separator else resolved_head
+
+
+def _forbidden_call_violations(
+    *,
+    rule: str,
+    source_root: Path,
+    forbidden_calls: frozenset[str],
+) -> tuple[Violation, ...]:
+    violations: list[Violation] = []
+    for source_file in _datalab_python_files(source_root):
+        aliases = _import_aliases(source_file)
+        tree = _parse_python(source_file)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            call_name = _resolve_call_name(_expr_name(node.func), aliases)
+            if any(
+                call_name == forbidden or call_name.startswith(f"{forbidden}.")
+                for forbidden in forbidden_calls
+            ):
+                violations.append(
+                    Violation(
+                        rule=rule,
+                        file=source_file,
+                        dependency=call_name,
+                        lineno=node.lineno,
+                        detail="forbidden call",
+                    )
+                )
+    return tuple(violations)
+
+
+def _datalab_forbidden_import_violations(
+    *,
+    rule: str,
+    source_root: Path,
+    forbidden_imports: frozenset[str],
+) -> tuple[Violation, ...]:
+    temp_root_files = _datalab_python_files(source_root)
+    violations: list[Violation] = []
+    for import_use in _imports(temp_root_files):
+        for forbidden in forbidden_imports:
+            if _module_matches(import_use.module, forbidden):
+                violations.append(
+                    Violation(
+                        rule=rule,
+                        file=import_use.file,
+                        dependency=forbidden,
+                        lineno=import_use.lineno,
+                        detail=f"imports {import_use.module!r}",
+                    )
+                )
+    return tuple(violations)
+
+
 def test_curios_contracts_source_and_metadata_have_no_outward_dependencies() -> None:
     violations = (
         *_forbidden_import_violations(
@@ -722,6 +879,151 @@ def test_m1_inward_dependency_detector_rejects_representative_metadata_dependenc
     )
 
     assert violations
+
+
+def test_m2_datalab_contract_and_runtime_semantics_remain_planned_until_owner_tasks() -> None:
+    contract_violations = _declared_class_locations(
+        CONTRACTS_SOURCE,
+        M2_DATALAB_CANONICAL_CONTRACT_NAMES | M2_FORBIDDEN_DUPLICATE_REFERENCE_NAMES,
+    )
+    runtime_violations = _declared_class_locations(
+        RUNTIME_SOURCE,
+        M2_DATALAB_RUNTIME_RECORD_NAMES,
+    )
+    persistence_violations = _declared_class_locations(
+        PERSISTENCE_SOURCE,
+        M2_DATALAB_RUNTIME_RECORD_NAMES,
+    )
+
+    _assert_no_violations(
+        tuple(
+            Violation(
+                rule=M2_DATALAB_CONTRACT_RULE,
+                file=violation.file,
+                dependency=violation.dependency,
+                lineno=violation.lineno,
+                detail="TASK-M2-001 records topology only; downstream owner task must add it",
+            )
+            for violation in (*contract_violations, *runtime_violations)
+        )
+    )
+    _assert_no_violations(
+        tuple(
+            Violation(
+                rule=M2_DATALAB_RUNTIME_RULE,
+                file=violation.file,
+                dependency=violation.dependency,
+                lineno=violation.lineno,
+                detail="curios_persistence must not define DataLab runtime semantics",
+            )
+            for violation in persistence_violations
+        )
+    )
+
+
+def test_m2_datalab_persistence_ownership_detector_rejects_runtime_record_definitions(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src" / "curios_persistence"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_records.py").write_text(
+        "class DataLabRunState: pass\nclass DataLabRunRecord: pass\n",
+        encoding="utf-8",
+    )
+
+    violations = _declared_class_locations(source_root, M2_DATALAB_RUNTIME_RECORD_NAMES)
+
+    assert {violation.dependency for violation in violations} == {
+        "DataLabRunRecord",
+        "DataLabRunState",
+    }
+
+
+def test_m2_datalab_contract_detector_rejects_duplicate_dataset_reference(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src" / "curios_contracts"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab.py").write_text(
+        "class DatasetReference: pass\n",
+        encoding="utf-8",
+    )
+
+    violations = _declared_class_locations(source_root, M2_FORBIDDEN_DUPLICATE_REFERENCE_NAMES)
+
+    assert len(violations) == 1
+    assert violations[0].dependency == "DatasetReference"
+
+
+def test_m2_datalab_authority_detectors_reject_forbidden_imports_and_calls(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src" / "curios_runtime"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_profiler.py").write_text(
+        "\n".join(
+            (
+                "import importlib",
+                "import os",
+                "import requests",
+                "import subprocess",
+                "from openai import OpenAI",
+                "def execute() -> None:",
+                "    subprocess.run(['python', '--version'])",
+                "    os.system('echo nope')",
+                "    importlib.import_module('plugins.dynamic')",
+                "    eval('1 + 1')",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    import_violations = _datalab_forbidden_import_violations(
+        rule=M2_DATALAB_AUTHORITY_RULE,
+        source_root=source_root,
+        forbidden_imports=M2_DATALAB_FORBIDDEN_IMPORTS,
+    )
+    call_violations = _forbidden_call_violations(
+        rule=M2_DATALAB_AUTHORITY_RULE,
+        source_root=source_root,
+        forbidden_calls=M2_DATALAB_FORBIDDEN_CALLS,
+    )
+
+    assert {"importlib", "openai", "requests", "subprocess"}.issubset(
+        {violation.dependency for violation in import_violations}
+    )
+    assert {"eval", "importlib.import_module", "os.system", "subprocess.run"}.issubset(
+        {violation.dependency for violation in call_violations}
+    )
+
+
+def test_m2_current_datalab_surfaces_have_no_forbidden_execution_model_or_network_authority() -> (
+    None
+):
+    violations = (
+        *_datalab_forbidden_import_violations(
+            rule=M2_DATALAB_AUTHORITY_RULE,
+            source_root=RUNTIME_SOURCE,
+            forbidden_imports=M2_DATALAB_FORBIDDEN_IMPORTS,
+        ),
+        *_datalab_forbidden_import_violations(
+            rule=M2_DATALAB_AUTHORITY_RULE,
+            source_root=API_SOURCE,
+            forbidden_imports=M2_DATALAB_FORBIDDEN_IMPORTS,
+        ),
+        *_forbidden_call_violations(
+            rule=M2_DATALAB_AUTHORITY_RULE,
+            source_root=RUNTIME_SOURCE,
+            forbidden_calls=M2_DATALAB_FORBIDDEN_CALLS,
+        ),
+        *_forbidden_call_violations(
+            rule=M2_DATALAB_AUTHORITY_RULE,
+            source_root=API_SOURCE,
+            forbidden_calls=M2_DATALAB_FORBIDDEN_CALLS,
+        ),
+    )
+
+    _assert_no_violations(violations)
 
 
 def test_minimal_policy_evaluator_remains_outer_and_contract_backed() -> None:

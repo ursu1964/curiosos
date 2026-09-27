@@ -2110,6 +2110,102 @@ M1_EXISTING_FROZEN_CONTRACT_AUTHORITY_USED_BY_FUTURE_TASKS = frozenset(
         "WorkItem",
     }
 )
+M2_PLANNED_SURFACES_BY_TASK = {
+    "TASK-M2-001": frozenset(
+        {
+            "docs",
+            "tests/architecture/test_architecture_conformance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M2-002": frozenset({"packages/python/curios_contracts"}),
+    "TASK-M2-003": frozenset({"DataLab intake module"}),
+    "TASK-M2-004": frozenset({"DataLab deterministic decomposition module"}),
+    "TASK-M2-005": frozenset(
+        {"packages/python/curios_persistence", "packages/python/curios_runtime"}
+    ),
+    "TASK-M2-006": frozenset({"DataLab profiler seam module"}),
+    "TASK-M2-007": frozenset({"DataLab in-process profiler implementation"}),
+    "TASK-M2-008": frozenset({"DataLab capability/agent integration"}),
+    "TASK-M2-009": frozenset({"DataLab runner/verification binding"}),
+    "TASK-M2-010": frozenset({"apps/api"}),
+    "TASK-M2-011": frozenset({"apps/web"}),
+    "TASK-M2-012": frozenset({"tests/integration"}),
+    "TASK-M2-013": frozenset({".github/workflows/quality-gates.yml"}),
+    "TASK-M2-014": frozenset({"tests/acceptance"}),
+    "TASK-M2-015": frozenset({"docs/tasks", "docs/program/status-ledger"}),
+    "TASK-M2-016": frozenset(
+        {"docs/program/milestones", "docs/program/status-ledger", "docs/tasks"}
+    ),
+}
+M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
+    "TASK-M2-001": frozenset(
+        {
+            "docs/program/status-ledger/M2-status-ledger.md",
+            "docs/tasks/TASK-M2-001-evidence.md",
+            "tests/architecture/test_architecture_conformance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    )
+}
+M2_PLANNED_SURFACE_TASKS = frozenset(M2_PLANNED_SURFACES_BY_TASK)
+M2_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
+M2_CANONICAL_CONTRACT_NAMES = frozenset(
+    {
+        "DataLabAnalysisRequest",
+        "DatasetProfile",
+        "DataLabFinding",
+        "DataLabAnalysisResult",
+    }
+)
+M2_RUNTIME_RECORD_NAMES = frozenset({"DataLabRunState", "DataLabRunRecord"})
+M2_FORBIDDEN_REFERENCE_NAMES = frozenset({"DatasetReference"})
+M2_WORK_TYPES = frozenset({"dataset_profile"})
+M2_CAPABILITIES = frozenset({"dataset_profiling"})
+M2_API_PATHS = frozenset(
+    {
+        "/m2/datalab/datasets",
+        "/m2/datalab/analyses",
+        "/m2/datalab/runs/{run_id}/run-once",
+        "/m2/datalab/runs/{run_id}",
+        "/m2/datalab/runs/{run_id}/verification/complete",
+    }
+)
+M2_FRONTEND_BOUNDARY_FUNCTIONS = frozenset(
+    {
+        "uploadDataLabDataset",
+        "createDataLabAnalysis",
+        "runDataLabAnalysisOnce",
+        "readDataLabRun",
+        "completeDataLabVerification",
+    }
+)
+M2_FORBIDDEN_PRODUCT_ROOTS = frozenset(
+    {
+        "packages/python/curios_datalab",
+        "packages/python/curios_agent_runtime",
+        "packages/python/curios_knowledge",
+        "packages/python/curios_model_router",
+        "packages/python/curios_scheduler",
+        "packages/python/curios_tools",
+    }
+)
+M2_FORBIDDEN_AUTHORITY_IMPORT_ROOTS = frozenset(
+    {
+        "anthropic",
+        "boto3",
+        "google.genai",
+        "httpx",
+        "langchain",
+        "llama_index",
+        "ollama",
+        "openai",
+        "requests",
+        "socket",
+        "subprocess",
+        "urllib",
+    }
+)
 M0_INTEGRATION_GATE_COMMAND = (
     "uv run pytest tests/integration/test_m0_vertical_slice_integration.py -q"
 )
@@ -3509,6 +3605,27 @@ def _function_names(source_root: Path) -> set[str]:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
         )
     return names
+
+
+def _source_texts(root: Path) -> tuple[str, ...]:
+    if not root.exists():
+        return ()
+    return tuple(
+        path.read_text(encoding="utf-8")
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+        and path.suffix in {".py", ".ts", ".tsx"}
+        and "__pycache__" not in path.parts
+    )
+
+
+def _source_token_hits(root: Path, tokens: frozenset[str]) -> frozenset[str]:
+    hits: set[str] = set()
+    for source in _source_texts(root):
+        for token in tokens:
+            if token in source:
+                hits.add(token)
+    return frozenset(hits)
 
 
 def _tracked_files() -> tuple[Path, ...]:
@@ -6238,6 +6355,145 @@ def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contr
     assert M1_AUTHORIZED_CANONICAL_AUTHORITY_BY_TASK["TASK-M1-004"].isdisjoint(
         FROZEN_CONTRACT_PACKAGE_EXPORTS
     )
+
+
+def test_m2_planned_surface_registry_authorizes_only_task_m2_001_initially() -> None:
+    assert {
+        "TASK-M2-001",
+        "TASK-M2-002",
+        "TASK-M2-003",
+        "TASK-M2-004",
+        "TASK-M2-005",
+        "TASK-M2-006",
+        "TASK-M2-007",
+        "TASK-M2-008",
+        "TASK-M2-009",
+        "TASK-M2-010",
+        "TASK-M2-011",
+        "TASK-M2-012",
+        "TASK-M2-013",
+        "TASK-M2-014",
+        "TASK-M2-015",
+        "TASK-M2-016",
+    } == M2_PLANNED_SURFACE_TASKS
+    assert {"TASK-M2-001"} == M2_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-001"] == {
+        "docs",
+        "tests/architecture/test_architecture_conformance.py",
+        "tests/security/test_security_baseline.py",
+    }
+    assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-002"] == {"packages/python/curios_contracts"}
+    assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-010"] == {"apps/api"}
+    assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-011"] == {"apps/web"}
+    assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-013"] == {".github/workflows/quality-gates.yml"}
+    assert M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK["TASK-M2-001"] == {
+        "docs/program/status-ledger/M2-status-ledger.md",
+        "docs/tasks/TASK-M2-001-evidence.md",
+        "tests/architecture/test_architecture_conformance.py",
+        "tests/security/test_security_baseline.py",
+    }
+
+
+def test_m2_frozen_tokens_are_planned_but_not_product_implemented_by_task_m2_001() -> None:
+    contracts_classes = _declared_class_names(CONTRACTS_SOURCE)
+    runtime_classes = _declared_class_names(RUNTIME_SOURCE)
+    persistence_classes = _declared_class_names(
+        REPO_ROOT / "packages/python/curios_persistence/src/curios_persistence"
+    )
+    source_hits = frozenset().union(
+        *(
+            _source_token_hits(REPO_ROOT / root, M2_WORK_TYPES | M2_CAPABILITIES)
+            for root in SECURITY_SCAN_ROOTS
+            if root.startswith(("apps/", "packages/"))
+        )
+    )
+
+    _assert_no_security_failure(
+        contracts_classes.isdisjoint(M2_CANONICAL_CONTRACT_NAMES | M2_FORBIDDEN_REFERENCE_NAMES),
+        "M2 canonical contracts or DatasetReference appeared before TASK-M2-002",
+    )
+    _assert_no_security_failure(
+        runtime_classes.isdisjoint(M2_RUNTIME_RECORD_NAMES),
+        "M2 runtime records appeared before their owner tasks",
+    )
+    _assert_no_security_failure(
+        persistence_classes.isdisjoint(M2_RUNTIME_RECORD_NAMES),
+        "curios_persistence must not own DataLabRunState/DataLabRunRecord semantics",
+    )
+    _assert_no_security_failure(
+        not source_hits,
+        f"M2 executable work/capability token(s) appeared in product source: {sorted(source_hits)}",
+    )
+
+
+def test_m2_scope_registry_blocks_m3_plus_and_broad_product_roots() -> None:
+    simulated_roots = ALLOWED_PACKAGE_ROOTS | M2_FORBIDDEN_PRODUCT_ROOTS
+
+    _assert_no_security_failure(
+        _unauthorized_package_roots(simulated_roots) == M2_FORBIDDEN_PRODUCT_ROOTS,
+        "M2 topology must not authorize M3+ or broad product package roots",
+    )
+
+
+def test_m2_frozen_api_and_web_authority_are_planned_but_not_prematurely_exposed() -> None:
+    _assert_no_security_failure(
+        set(FROZEN_WEB_API_BOUNDARY_PATHS).isdisjoint(M2_API_PATHS),
+        "M2 API paths must not be exposed before TASK-M2-010/TASK-M2-011",
+    )
+    _assert_no_security_failure(
+        set(FROZEN_WEB_API_BOUNDARY_EXPORTS).isdisjoint(M2_FRONTEND_BOUNDARY_FUNCTIONS),
+        "M2 web boundary functions must not be exported before TASK-M2-011",
+    )
+
+
+@pytest.mark.parametrize("path", tuple(sorted(M2_API_PATHS)))
+def test_m2_fastapi_route_authority_rejects_premature_datalab_routes(path: str) -> None:
+    from curios_api import create_api_composition, create_application
+
+    app = create_application(create_api_composition())
+
+    async def handler() -> dict[str, object]:
+        return {"ok": True}
+
+    if path == "/m2/datalab/runs/{run_id}":
+        app.get(path)(handler)
+    else:
+        app.post(path)(handler)
+
+    assert _fastapi_route_authority_violations(app)
+
+
+def test_m2_web_api_boundary_rejects_premature_datalab_capabilities() -> None:
+    source = (WEB_SOURCE / "apiBoundary.ts").read_text(encoding="utf-8")
+    mutated_source = source + textwrap.dedent(
+        """
+
+        export async function uploadDataLabDataset(): Promise<ApiResult<unknown>> {
+          return requestJson("/m2/datalab/datasets" as ApiBoundaryPath, {
+            method: "POST",
+          });
+        }
+        """
+    )
+
+    assert _web_api_boundary_authority_violations(mutated_source)
+
+
+@pytest.mark.parametrize(
+    "import_root",
+    tuple(sorted(M2_FORBIDDEN_AUTHORITY_IMPORT_ROOTS)),
+)
+def test_m2_forbidden_authority_import_inventory_tracks_representative_roots(
+    tmp_path: Path,
+    import_root: str,
+) -> None:
+    source_root = tmp_path / "src"
+    source_root.mkdir()
+    module_name = "datalab_probe.py"
+    root_name = import_root.split(".", maxsplit=1)[0]
+    (source_root / module_name).write_text(f"import {root_name}\n", encoding="utf-8")
+
+    assert root_name in _import_roots(source_root)
 
 
 def test_fastapi_application_route_authority_matches_frozen_boot_m0_inventory() -> None:

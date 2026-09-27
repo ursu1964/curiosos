@@ -14,7 +14,7 @@ date: 2026-09-27
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M2 | PLANNING VALIDATED / FROZEN | POST-M1-003 final independent validation accepted the corrected M2 DataLab planning package. TASK-M2-001 is the first ready implementation unit; TASK-M2-002 through TASK-M2-016 remain blocked on DAG prerequisites. |
+| M2 | IMPLEMENTING | POST-M1-003 final independent validation accepted the corrected M2 DataLab planning package. TASK-M2-001 has implementation/test evidence for the topology and guardrail transition; TASK-M2-002 through TASK-M2-016 remain blocked on DAG prerequisites. |
 
 ## Task Status
 
@@ -22,8 +22,8 @@ date: 2026-09-27
 | --- | --- | --- | --- | --- | --- |
 | M2-000A | M2 Planning Package | M1 final freeze | PG-M2-00 | VALIDATED, FROZEN | Corrected planning artifacts define DataLab Analysis Vertical Slice scope, DAG, task pack, vertical slices, traceability, and readiness gate. |
 | M2-READINESS | Independent M2 Readiness Validation | M2-000A | PG-M2-00 | VALIDATED, FROZEN | POST-M1-003 final independent validation passed after Corrections 1 and 2. |
-| TASK-M2-001 | M2 Topology and Guardrail Transition | M2-READINESS | PG-M2-01 | READY | First authorized implementation task from the frozen M2 planning baseline. |
-| TASK-M2-002 | DataLab Dataset and Analysis Contracts | TASK-M2-001 | PG-M2-02 | BLOCKED | Requires topology transition. |
+| TASK-M2-001 | M2 Topology and Guardrail Transition | M2-READINESS | PG-M2-01 | IMPLEMENTED, TESTED | TASK-M2-001 evidence records additive architecture/security guardrails, topology registry updates, prohibited-scope audit, and local verification. |
+| TASK-M2-002 | DataLab Dataset and Analysis Contracts | TASK-M2-001 | PG-M2-02 | BLOCKED | Requires TASK-M2-001 independent validation/freeze and integration. |
 | TASK-M2-003 | Bounded Dataset Intake Boundary | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-004 | Deterministic DataLab Decomposition | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-005 | DataLab Persistence Records | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
