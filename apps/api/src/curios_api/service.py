@@ -311,6 +311,8 @@ def _require_body(payload: JsonBody) -> dict[str, object]:
 
 
 async def _require_m1_body(request: Request) -> dict[str, object]:
+    if not _is_m1_json_media_type(request.headers.get("content-type")):
+        _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
     try:
         payload = await request.json()
     except ValueError:
@@ -318,6 +320,13 @@ async def _require_m1_body(request: Request) -> dict[str, object]:
     if not isinstance(payload, dict):
         _raise_m1_bad_request("M1_API_MALFORMED_REQUEST")
     return payload
+
+
+def _is_m1_json_media_type(content_type: str | None) -> bool:
+    if content_type is None:
+        return False
+    media_type = content_type.split(";", maxsplit=1)[0].strip().lower()
+    return media_type == "application/json"
 
 
 def _m1_intent_from_body(data: dict[str, object]) -> Intent:

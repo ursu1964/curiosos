@@ -171,6 +171,37 @@ M1-012 verification semantics, persistence, provider/model authority, outbound
 network authority, dependencies, lockfiles, schema, migrations, web behavior, or
 M1-014 scope.
 
+## Correction 2
+
+Independent re-validation found that Correction 1's use of FastAPI
+`Request.json()` accepted JSON object payloads even when the HTTP media type was
+not the declared M1 JSON media contract. That allowed a valid JSON object sent
+with an unsupported or missing media type to reach domain execution.
+
+Correction 2 adds a shared M1 media-type gate before JSON parsing. The three M1
+endpoints accept `application/json` with legal parameters and reject missing,
+empty, malformed, or unsupported media types before reading or parsing the
+request body. Rejections return HTTP 400 `M1_API_MALFORMED_REQUEST` using the
+same fixed bounded message and do not echo raw body or header text.
+
+Correction 2 validation coverage proves:
+
+- accepted JSON media reaches normal domain behavior for all three M1
+  endpoints;
+- unsupported, missing, empty, malformed, octet-stream, form, multipart, and
+  non-authorized structured-suffix media types are rejected for all three M1
+  endpoints;
+- unsupported media with secret-shaped header parameters or secret-shaped body
+  text does not echo raw input;
+- rejected media stops before intent decomposition, `BoundedM1DagRunner`, and
+  `BoundedM1VerificationLoop` are invoked;
+- Correction 1 scalar/body-shape/malformed-JSON behavior remains intact.
+
+Correction 2 does not change M0 endpoint behavior, M1-011 runner semantics,
+M1-012 verification semantics, OpenAPI route inventory, persistence,
+provider/model authority, outbound network authority, dependencies, lockfiles,
+schema, migrations, web behavior, or M1-014 scope.
+
 ## Dependencies And Schema
 
 `apps/api` now declares workspace-local dependencies on `curios-capability`,
@@ -196,7 +227,8 @@ Implementation verification:
 - apps/web production build: PASS;
 - contract/schema/architecture tests: PASS, `52 passed`;
 - API tests including M1-013 endpoints: PASS, `23 passed`;
-- TASK-M1-013 Correction 1 validator regression: PASS, `48 passed`;
+- TASK-M1-013 Correction 1 and Correction 2 validator regressions: PASS,
+  `94 passed`;
 - package/provider/runtime/persistence non-Docker suites: PASS, `107 passed`;
 - security baseline: PASS, `353 passed`;
 - API and M0 vertical-slice integration: PASS, `8 passed`;
