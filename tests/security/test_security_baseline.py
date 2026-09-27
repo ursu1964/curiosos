@@ -2162,6 +2162,20 @@ M2_RUNTIME_RECORD_NAMES = frozenset({"DataLabRunState", "DataLabRunRecord"})
 M2_FORBIDDEN_REFERENCE_NAMES = frozenset({"DatasetReference"})
 M2_WORK_TYPES = frozenset({"dataset_profile"})
 M2_CAPABILITIES = frozenset({"dataset_profiling"})
+M2_FORBIDDEN_WORK_TYPE_ALIASES = frozenset(
+    {
+        "datalab_dataset_profile",
+        "dataset_profiles",
+        "profile_dataset",
+    }
+)
+M2_FORBIDDEN_CAPABILITY_ALIASES = frozenset(
+    {
+        "data_profiling",
+        "datalab_profiling",
+        "dataset-profile",
+    }
+)
 M2_API_PATHS = frozenset(
     {
         "/m2/datalab/datasets",
@@ -2178,6 +2192,28 @@ M2_FRONTEND_BOUNDARY_FUNCTIONS = frozenset(
         "runDataLabAnalysisOnce",
         "readDataLabRun",
         "completeDataLabVerification",
+    }
+)
+M2_API_ROUTE_METHODS = frozenset(
+    {
+        ("/m2/datalab/datasets", ("POST",)),
+        ("/m2/datalab/analyses", ("POST",)),
+        ("/m2/datalab/runs/{run_id}/run-once", ("POST",)),
+        ("/m2/datalab/runs/{run_id}", ("GET",)),
+        ("/m2/datalab/runs/{run_id}/verification/complete", ("POST",)),
+    }
+)
+M2_WEB_BOUNDARY_REQUESTS = frozenset(
+    {
+        ("uploadDataLabDataset", "/m2/datalab/datasets", "POST"),
+        ("createDataLabAnalysis", "/m2/datalab/analyses", "POST"),
+        ("runDataLabAnalysisOnce", "/m2/datalab/runs/{run_id}/run-once", "POST"),
+        ("readDataLabRun", "/m2/datalab/runs/{run_id}", "GET"),
+        (
+            "completeDataLabVerification",
+            "/m2/datalab/runs/{run_id}/verification/complete",
+            "POST",
+        ),
     }
 )
 M2_FORBIDDEN_PRODUCT_ROOTS = frozenset(
@@ -2951,6 +2987,24 @@ def _fastapi_route_authority_violations(
     return tuple(violations)
 
 
+def _m2_api_route_inventory_violations(
+    application_routes: tuple[tuple[str, tuple[str, ...], str, str, str, bool], ...],
+) -> tuple[str, ...]:
+    datalab_routes = frozenset(
+        (path, methods)
+        for path, methods, _name, _module, _qualname, include_in_schema in application_routes
+        if path.startswith("/m2/datalab") and include_in_schema
+    )
+    if not datalab_routes:
+        return ()
+    if datalab_routes == M2_API_ROUTE_METHODS:
+        return ()
+    return (
+        "M2 DataLab API route inventory must be absent before TASK-M2-010 "
+        f"or exactly frozen when introduced; got {tuple(sorted(datalab_routes))!r}",
+    )
+
+
 def _typescript_string_literals(source: str) -> tuple[str, ...]:
     return tuple(
         match.group(2) for match in re.finditer(r"([\"'`])((?:\\.|(?!\1).)*?)\1", source, re.DOTALL)
@@ -3395,6 +3449,31 @@ def _web_api_boundary_authority_violations(source: str) -> tuple[str, ...]:
     future_hits = _future_backend_path_hits(source)
     if future_hits:
         violations.append(f"web API boundary future backend path literal(s): {future_hits!r}")
+    return tuple(violations)
+
+
+def _m2_web_boundary_inventory_violations(source: str) -> tuple[str, ...]:
+    violations: list[str] = []
+    exports = frozenset(_typescript_exports(source))
+    datalab_exports = frozenset(export for export in exports if "DataLab" in export)
+    unexpected_exports = datalab_exports - M2_FRONTEND_BOUNDARY_FUNCTIONS
+    if unexpected_exports:
+        violations.append(
+            f"unexpected M2 DataLab web boundary export(s): {tuple(sorted(unexpected_exports))!r}"
+        )
+
+    requests = frozenset(
+        request
+        for request in _exported_api_boundary_request_authority(source)
+        if request[0] in datalab_exports or request[1].strip("'\"").startswith("/m2/datalab")
+    )
+    if not requests:
+        return tuple(violations)
+    if requests != M2_WEB_BOUNDARY_REQUESTS:
+        violations.append(
+            "M2 DataLab web boundary requests must match the frozen endpoint inventory; "
+            f"got {tuple(sorted(requests))!r}"
+        )
     return tuple(violations)
 
 
@@ -6394,35 +6473,68 @@ def test_m2_planned_surface_registry_authorizes_only_task_m2_001_initially() -> 
     }
 
 
-def test_m2_frozen_tokens_are_planned_but_not_product_implemented_by_task_m2_001() -> None:
+def test_m2_frozen_semantic_names_have_exact_owner_and_token_registries() -> None:
     contracts_classes = _declared_class_names(CONTRACTS_SOURCE)
-    runtime_classes = _declared_class_names(RUNTIME_SOURCE)
     persistence_classes = _declared_class_names(
         REPO_ROOT / "packages/python/curios_persistence/src/curios_persistence"
     )
-    source_hits = frozenset().union(
-        *(
-            _source_token_hits(REPO_ROOT / root, M2_WORK_TYPES | M2_CAPABILITIES)
-            for root in SECURITY_SCAN_ROOTS
-            if root.startswith(("apps/", "packages/"))
-        )
-    )
 
+    assert {"dataset_profile"} == M2_WORK_TYPES
+    assert {"dataset_profiling"} == M2_CAPABILITIES
     _assert_no_security_failure(
-        contracts_classes.isdisjoint(M2_CANONICAL_CONTRACT_NAMES | M2_FORBIDDEN_REFERENCE_NAMES),
-        "M2 canonical contracts or DatasetReference appeared before TASK-M2-002",
-    )
-    _assert_no_security_failure(
-        runtime_classes.isdisjoint(M2_RUNTIME_RECORD_NAMES),
-        "M2 runtime records appeared before their owner tasks",
+        contracts_classes.isdisjoint(M2_FORBIDDEN_REFERENCE_NAMES),
+        "DatasetReference appeared even though M2 reuses ArtifactReference(kind=dataset)",
     )
     _assert_no_security_failure(
         persistence_classes.isdisjoint(M2_RUNTIME_RECORD_NAMES),
         "curios_persistence must not own DataLabRunState/DataLabRunRecord semantics",
     )
+
+
+def test_m2_exact_future_work_and_capability_tokens_are_allowed_in_authorized_surfaces(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "packages/python/curios_runtime/src/curios_runtime"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_work.py").write_text(
+        "WORK_TYPE = 'dataset_profile'\nCAPABILITY = 'dataset_profiling'\n",
+        encoding="utf-8",
+    )
+
     _assert_no_security_failure(
-        not source_hits,
-        f"M2 executable work/capability token(s) appeared in product source: {sorted(source_hits)}",
+        not _source_token_hits(
+            source_root,
+            M2_FORBIDDEN_WORK_TYPE_ALIASES | M2_FORBIDDEN_CAPABILITY_ALIASES,
+        ),
+        "exact frozen M2 work/capability tokens must remain future-compatible",
+    )
+
+
+def test_m2_alternate_work_and_capability_token_aliases_are_rejected(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "packages/python/curios_runtime/src/curios_runtime"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_work.py").write_text(
+        "\n".join(
+            (
+                "WORK_TYPE = 'profile_dataset'",
+                "OTHER_WORK_TYPE = 'dataset_profiles'",
+                "CAPABILITY = 'datalab_profiling'",
+                "OTHER_CAPABILITY = 'dataset-profile'",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    hits = _source_token_hits(
+        source_root,
+        M2_FORBIDDEN_WORK_TYPE_ALIASES | M2_FORBIDDEN_CAPABILITY_ALIASES,
+    )
+
+    _assert_no_security_failure(
+        hits == {"datalab_profiling", "dataset-profile", "dataset_profiles", "profile_dataset"},
+        f"M2 alternate work/capability token aliases were not detected: {sorted(hits)}",
     )
 
 
@@ -6436,47 +6548,116 @@ def test_m2_scope_registry_blocks_m3_plus_and_broad_product_roots() -> None:
 
 
 def test_m2_frozen_api_and_web_authority_are_planned_but_not_prematurely_exposed() -> None:
-    _assert_no_security_failure(
-        set(FROZEN_WEB_API_BOUNDARY_PATHS).isdisjoint(M2_API_PATHS),
-        "M2 API paths must not be exposed before TASK-M2-010/TASK-M2-011",
-    )
-    _assert_no_security_failure(
-        set(FROZEN_WEB_API_BOUNDARY_EXPORTS).isdisjoint(M2_FRONTEND_BOUNDARY_FUNCTIONS),
-        "M2 web boundary functions must not be exported before TASK-M2-011",
-    )
-
-
-@pytest.mark.parametrize("path", tuple(sorted(M2_API_PATHS)))
-def test_m2_fastapi_route_authority_rejects_premature_datalab_routes(path: str) -> None:
     from curios_api import create_api_composition, create_application
 
     app = create_application(create_api_composition())
 
-    async def handler() -> dict[str, object]:
-        return {"ok": True}
+    _assert_no_security_failure(
+        not _m2_api_route_inventory_violations(_fastapi_application_route_authority(app)),
+        "current TASK-M2-001 application must not expose partial or extra M2 routes",
+    )
+    _assert_no_security_failure(
+        not _m2_web_boundary_inventory_violations(
+            (WEB_SOURCE / "apiBoundary.ts").read_text(encoding="utf-8")
+        ),
+        "current TASK-M2-001 web boundary must not expose partial or extra M2 functions",
+    )
 
-    if path == "/m2/datalab/runs/{run_id}":
-        app.get(path)(handler)
-    else:
-        app.post(path)(handler)
 
-    assert _fastapi_route_authority_violations(app)
+def test_m2_api_route_inventory_allows_exact_future_endpoint_set() -> None:
+    future_routes = tuple(
+        (
+            path,
+            methods,
+            f"m2_{index}",
+            "curios_api.datalab",
+            f"handler_{index}",
+            True,
+        )
+        for index, (path, methods) in enumerate(sorted(M2_API_ROUTE_METHODS))
+    )
+
+    _assert_no_security_failure(
+        not _m2_api_route_inventory_violations(
+            (*FROZEN_FASTAPI_APPLICATION_ROUTES, *future_routes)
+        ),
+        "exact frozen M2 API endpoint inventory must remain future-compatible",
+    )
 
 
-def test_m2_web_api_boundary_rejects_premature_datalab_capabilities() -> None:
-    source = (WEB_SOURCE / "apiBoundary.ts").read_text(encoding="utf-8")
-    mutated_source = source + textwrap.dedent(
+def test_m2_api_route_inventory_rejects_extra_or_wrong_future_endpoint() -> None:
+    invalid_routes = (
+        *FROZEN_FASTAPI_APPLICATION_ROUTES,
+        *tuple(
+            (
+                path,
+                methods,
+                f"m2_{index}",
+                "curios_api.datalab",
+                f"handler_{index}",
+                True,
+            )
+            for index, (path, methods) in enumerate(sorted(M2_API_ROUTE_METHODS))
+        ),
+        (
+            "/m2/datalab/tools",
+            ("POST",),
+            "m2_tools",
+            "curios_api.datalab",
+            "tools",
+            True,
+        ),
+    )
+
+    assert _m2_api_route_inventory_violations(invalid_routes)
+
+
+def test_m2_web_boundary_inventory_allows_exact_future_capabilities() -> None:
+    source = textwrap.dedent(
         """
-
         export async function uploadDataLabDataset(): Promise<ApiResult<unknown>> {
-          return requestJson("/m2/datalab/datasets" as ApiBoundaryPath, {
+          return requestJson("/m2/datalab/datasets", { method: "POST" });
+        }
+
+        export async function createDataLabAnalysis(): Promise<ApiResult<unknown>> {
+          return requestJson("/m2/datalab/analyses", { method: "POST" });
+        }
+
+        export async function runDataLabAnalysisOnce(): Promise<ApiResult<unknown>> {
+          return requestJson("/m2/datalab/runs/{run_id}/run-once", { method: "POST" });
+        }
+
+        export async function readDataLabRun(): Promise<ApiResult<unknown>> {
+          return requestJson("/m2/datalab/runs/{run_id}");
+        }
+
+        export async function completeDataLabVerification(): Promise<ApiResult<unknown>> {
+          return requestJson("/m2/datalab/runs/{run_id}/verification/complete", {
             method: "POST",
           });
         }
         """
     )
 
-    assert _web_api_boundary_authority_violations(mutated_source)
+    _assert_no_security_failure(
+        not _m2_web_boundary_inventory_violations(source),
+        "exact frozen M2 web boundary capabilities must remain future-compatible",
+    )
+
+
+def test_m2_web_boundary_inventory_rejects_generic_future_escape_hatch() -> None:
+    source = textwrap.dedent(
+        """
+        export async function requestDataLab(
+          path: string,
+          method: string,
+        ): Promise<ApiResult<unknown>> {
+          return requestJson(path, { method });
+        }
+        """
+    )
+
+    assert _m2_web_boundary_inventory_violations(source)
 
 
 @pytest.mark.parametrize(

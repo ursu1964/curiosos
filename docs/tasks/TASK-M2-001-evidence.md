@@ -52,6 +52,29 @@ implementation unit.
 | Preserve M3+ boundary | PASS | Security topology rejects broad future package roots for agent runtime, knowledge, model routing, scheduler, tools, and general DataLab package expansion. |
 | Dependency/schema hygiene | PASS | No dependency manifests, lockfiles, schemas, migrations, app code, package code, infrastructure, or CI workflow files changed. |
 
+## Correction 1
+
+Independent validation of implementation
+`b3a755a6365d33aac8cee7ad5445228e72578dd2` failed the future-surface
+compatibility criterion. The original guard design incorrectly converted
+TASK-M2-001's temporal "not implemented yet" fact into permanent repository
+absence rules.
+
+Correction 1 changes the guard model to ownership/authority invariants:
+
+- valid future DataLab contracts are allowed in `curios_contracts`;
+- valid future DataLab run state/record semantics are allowed in
+  `curios_runtime`;
+- valid future persistence storage representation is allowed in
+  `curios_persistence` while canonical run state/record ownership remains
+  forbidden there;
+- exact future M2 work type and capability identifiers remain allowed;
+- exact future M2 API endpoints and explicit web boundary functions remain
+  allowed when introduced by their frozen owner tasks;
+- wrong-owner definitions, duplicate `DatasetReference`, alternate M2 tokens,
+  extra M2 endpoints, generic DataLab web request escapes, forbidden
+  execution/model/network authority, and M3+ roots remain rejected.
+
 ## Files Changed
 
 - `docs/program/status-ledger/M2-status-ledger.md`
@@ -119,7 +142,7 @@ Final verification was performed after implementation:
 - `pnpm --dir apps/web typecheck`: PASS.
 - `pnpm --dir apps/web build`: PASS.
 - `uv run pytest tests/contract tests/schema -q`: PASS, 16 tests.
-- `uv run pytest tests/architecture -q`: PASS, 41 tests.
+- `uv run pytest tests/architecture -q`: PASS, 43 tests.
 - `uv run pytest tests/security -q`: PASS, 382 tests, 2 existing
   FastAPI/Starlette deprecation warnings.
 - M1 package/API gate: PASS, 618 tests, 9 intentional deselections, 2 existing
@@ -127,11 +150,12 @@ Final verification was performed after implementation:
 - M1 PostgreSQL gate: PASS, 4 tests.
 - VS-M1 integration: PASS, 6 tests, 2 existing FastAPI/Starlette deprecation
   warnings.
-- M1 acceptance: initial run exposed a local PostgreSQL lifecycle transient
-  (`database system is shutting down`); after restarting the local compose
-  PostgreSQL service and waiting for healthy state, the serial rerun passed
-  with 14 tests and 2 existing FastAPI/Starlette deprecation warnings.
-- Full pytest: PASS, 1202 tests, 2 existing FastAPI/Starlette deprecation
+- M1 acceptance: initial correction-run attempt exposed a local PostgreSQL
+  lifecycle transient (`Connection refused` during a DB-backed acceptance
+  operation); after restarting the local compose PostgreSQL service and
+  waiting for healthy state, the serial rerun passed with 14 tests and 2
+  existing FastAPI/Starlette deprecation warnings.
+- Full pytest: PASS, 1204 tests, 2 existing FastAPI/Starlette deprecation
   warnings.
 - `git diff --check`: PASS.
 - `git diff --cached --check`: PASS.

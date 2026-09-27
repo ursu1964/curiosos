@@ -127,6 +127,21 @@ M2_DATALAB_CANONICAL_CONTRACT_NAMES = frozenset(
 )
 M2_DATALAB_RUNTIME_RECORD_NAMES = frozenset({"DataLabRunState", "DataLabRunRecord"})
 M2_FORBIDDEN_DUPLICATE_REFERENCE_NAMES = frozenset({"DatasetReference"})
+M2_DATALAB_SEMANTIC_SEARCH_ROOTS = (
+    CONTRACTS_SOURCE,
+    CORE_SOURCE,
+    API_SOURCE,
+    POLICY_SOURCE,
+    RUNTIME_SOURCE,
+    PERSISTENCE_SOURCE,
+    COGNITIVE_SOURCE,
+    DAG_SOURCE,
+    CAPABILITY_SOURCE,
+)
+M2_DATALAB_CLASS_OWNERS = {
+    **dict.fromkeys(M2_DATALAB_CANONICAL_CONTRACT_NAMES, CONTRACTS_SOURCE),
+    **dict.fromkeys(M2_DATALAB_RUNTIME_RECORD_NAMES, RUNTIME_SOURCE),
+}
 M0_IMPLEMENTATION_IMPORTS = frozenset(
     {
         "curios_persistence",
@@ -631,6 +646,46 @@ def _declared_class_locations(
     return tuple(violations)
 
 
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def _m2_datalab_wrong_owner_class_violations(
+    *,
+    search_roots: tuple[Path, ...],
+    class_owners: dict[str, Path],
+) -> tuple[Violation, ...]:
+    violations: list[Violation] = []
+    for source_root in search_roots:
+        for source_file in _python_files(source_root):
+            tree = _parse_python(source_file)
+            for class_def in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)):
+                owner = class_owners.get(class_def.name)
+                if owner is None or _is_relative_to(source_file, owner):
+                    continue
+                violations.append(
+                    Violation(
+                        rule=M2_DATALAB_CONTRACT_RULE,
+                        file=source_file,
+                        dependency=class_def.name,
+                        lineno=class_def.lineno,
+                        detail=f"canonical owner is {_display_path(owner)}",
+                    )
+                )
+    return tuple(violations)
+
+
 def _datalab_python_files(source_root: Path) -> tuple[Path, ...]:
     return tuple(
         path
@@ -881,18 +936,18 @@ def test_m1_inward_dependency_detector_rejects_representative_metadata_dependenc
     assert violations
 
 
-def test_m2_datalab_contract_and_runtime_semantics_remain_planned_until_owner_tasks() -> None:
-    contract_violations = _declared_class_locations(
-        CONTRACTS_SOURCE,
-        M2_DATALAB_CANONICAL_CONTRACT_NAMES | M2_FORBIDDEN_DUPLICATE_REFERENCE_NAMES,
+def test_m2_datalab_semantics_are_declared_only_by_frozen_owner_packages() -> None:
+    owner_violations = _m2_datalab_wrong_owner_class_violations(
+        search_roots=M2_DATALAB_SEMANTIC_SEARCH_ROOTS,
+        class_owners=M2_DATALAB_CLASS_OWNERS,
     )
-    runtime_violations = _declared_class_locations(
-        RUNTIME_SOURCE,
-        M2_DATALAB_RUNTIME_RECORD_NAMES,
-    )
-    persistence_violations = _declared_class_locations(
-        PERSISTENCE_SOURCE,
-        M2_DATALAB_RUNTIME_RECORD_NAMES,
+    duplicate_reference_violations = tuple(
+        violation
+        for source_root in M2_DATALAB_SEMANTIC_SEARCH_ROOTS
+        for violation in _declared_class_locations(
+            source_root,
+            M2_FORBIDDEN_DUPLICATE_REFERENCE_NAMES,
+        )
     )
 
     _assert_no_violations(
@@ -902,23 +957,96 @@ def test_m2_datalab_contract_and_runtime_semantics_remain_planned_until_owner_ta
                 file=violation.file,
                 dependency=violation.dependency,
                 lineno=violation.lineno,
-                detail="TASK-M2-001 records topology only; downstream owner task must add it",
+                detail="DataLab semantic class declared outside its frozen owner",
             )
-            for violation in (*contract_violations, *runtime_violations)
+            for violation in owner_violations
         )
     )
     _assert_no_violations(
         tuple(
             Violation(
-                rule=M2_DATALAB_RUNTIME_RULE,
+                rule=M2_DATALAB_CONTRACT_RULE,
                 file=violation.file,
                 dependency=violation.dependency,
                 lineno=violation.lineno,
-                detail="curios_persistence must not define DataLab runtime semantics",
+                detail="M2 reuses ArtifactReference(kind=dataset); DatasetReference is forbidden",
             )
-            for violation in persistence_violations
+            for violation in duplicate_reference_violations
         )
     )
+
+
+def test_m2_datalab_owner_detector_allows_valid_future_owner_definitions(
+    tmp_path: Path,
+) -> None:
+    contracts_root = tmp_path / "packages/python/curios_contracts/src/curios_contracts"
+    runtime_root = tmp_path / "packages/python/curios_runtime/src/curios_runtime"
+    persistence_root = tmp_path / "packages/python/curios_persistence/src/curios_persistence"
+    contracts_root.mkdir(parents=True)
+    runtime_root.mkdir(parents=True)
+    persistence_root.mkdir(parents=True)
+    (contracts_root / "datalab.py").write_text(
+        "\n".join(
+            (
+                "class DataLabAnalysisRequest: pass",
+                "class DatasetProfile: pass",
+                "class DataLabFinding: pass",
+                "class DataLabAnalysisResult: pass",
+            )
+        ),
+        encoding="utf-8",
+    )
+    (runtime_root / "datalab_run.py").write_text(
+        "class DataLabRunState: pass\nclass DataLabRunRecord: pass\n",
+        encoding="utf-8",
+    )
+    (persistence_root / "datalab_storage.py").write_text(
+        "class DataLabRunStorageRecord: pass\n",
+        encoding="utf-8",
+    )
+    class_owners = {
+        **dict.fromkeys(M2_DATALAB_CANONICAL_CONTRACT_NAMES, contracts_root),
+        **dict.fromkeys(M2_DATALAB_RUNTIME_RECORD_NAMES, runtime_root),
+    }
+
+    violations = _m2_datalab_wrong_owner_class_violations(
+        search_roots=(contracts_root, runtime_root, persistence_root),
+        class_owners=class_owners,
+    )
+
+    assert not violations
+
+
+def test_m2_datalab_owner_detector_rejects_wrong_owner_contract_definitions(
+    tmp_path: Path,
+) -> None:
+    contracts_root = tmp_path / "packages/python/curios_contracts/src/curios_contracts"
+    runtime_root = tmp_path / "packages/python/curios_runtime/src/curios_runtime"
+    api_root = tmp_path / "apps/api/src/curios_api"
+    for source_root in (contracts_root, runtime_root, api_root):
+        source_root.mkdir(parents=True)
+    (runtime_root / "datalab_contracts.py").write_text(
+        "class DataLabAnalysisRequest: pass\n",
+        encoding="utf-8",
+    )
+    (api_root / "datalab_contracts.py").write_text(
+        "class DatasetProfile: pass\n",
+        encoding="utf-8",
+    )
+    class_owners = {
+        **dict.fromkeys(M2_DATALAB_CANONICAL_CONTRACT_NAMES, contracts_root),
+        **dict.fromkeys(M2_DATALAB_RUNTIME_RECORD_NAMES, runtime_root),
+    }
+
+    violations = _m2_datalab_wrong_owner_class_violations(
+        search_roots=(contracts_root, runtime_root, api_root),
+        class_owners=class_owners,
+    )
+
+    assert {violation.dependency for violation in violations} == {
+        "DataLabAnalysisRequest",
+        "DatasetProfile",
+    }
 
 
 def test_m2_datalab_persistence_ownership_detector_rejects_runtime_record_definitions(
