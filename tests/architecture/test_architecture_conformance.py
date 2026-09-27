@@ -58,6 +58,9 @@ M2_DATALAB_RUNTIME_RULE = (
 M2_DATALAB_AUTHORITY_RULE = (
     "M2 DataLab surfaces must not gain forbidden execution/model/network authority"
 )
+M2_DATALAB_API_ADAPTER_RULE = (
+    "M2 DataLab API adapters must delegate without owning implementation authority"
+)
 
 FASTAPI_IMPORTS = frozenset({"fastapi", "starlette"})
 SQLALCHEMY_IMPORTS = frozenset({"alembic", "sqlalchemy", "sqlmodel"})
@@ -115,6 +118,41 @@ M2_DATALAB_FORBIDDEN_CALLS = frozenset(
         "subprocess.check_call",
         "subprocess.check_output",
         "subprocess.run",
+    }
+)
+M2_DATALAB_API_FORBIDDEN_IMPORTS = frozenset(
+    {
+        "curios_persistence",
+        "curios_runtime.datalab_profiler",
+        "curios_runtime.datalab_repository",
+        "curios_runtime.datalab_storage",
+        "pathlib",
+        "shutil",
+        "tempfile",
+    }
+)
+M2_DATALAB_API_FORBIDDEN_CALLS = frozenset(
+    {
+        "open",
+        "os.open",
+        "os.path.abspath",
+        "os.path.join",
+        "os.path.realpath",
+        "pathlib.Path",
+        "Path",
+        "Path.open",
+        "Path.read_bytes",
+        "Path.read_text",
+        "Path.write_bytes",
+        "Path.write_text",
+        "shutil.copy",
+        "shutil.copy2",
+        "shutil.copyfile",
+        "shutil.move",
+        "tempfile.NamedTemporaryFile",
+        "tempfile.TemporaryDirectory",
+        "tempfile.mkstemp",
+        "tempfile.mkdtemp",
     }
 )
 M2_DATALAB_CANONICAL_CONTRACT_NAMES = frozenset(
@@ -707,12 +745,43 @@ def _import_aliases(source_file: Path) -> dict[str, str]:
     return aliases
 
 
+def _forbidden_import_aliases(
+    source_file: Path, forbidden_imports: frozenset[str]
+) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    tree = _parse_python(source_file)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                for forbidden in forbidden_imports:
+                    if _module_matches(alias.name, forbidden):
+                        aliases[alias.asname or alias.name.split(".", maxsplit=1)[0]] = forbidden
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module is not None:
+            for forbidden in forbidden_imports:
+                if _module_matches(node.module, forbidden):
+                    for alias in node.names:
+                        aliases[alias.asname or alias.name] = forbidden
+    return aliases
+
+
 def _resolve_call_name(call_name: str, aliases: dict[str, str]) -> str:
     if not call_name:
         return call_name
     head, separator, tail = call_name.partition(".")
     resolved_head = aliases.get(head, head)
     return f"{resolved_head}{separator}{tail}" if separator else resolved_head
+
+
+def _path_constructor_method_call_name(node: ast.Call, aliases: dict[str, str]) -> str:
+    if not isinstance(node.func, ast.Attribute):
+        return ""
+    owner = node.func.value
+    if not isinstance(owner, ast.Call):
+        return ""
+    constructor = _resolve_call_name(_expr_name(owner.func), aliases)
+    if constructor in {"Path", "pathlib.Path"}:
+        return f"Path.{node.func.attr}"
+    return ""
 
 
 def _forbidden_call_violations(
@@ -729,15 +798,18 @@ def _forbidden_call_violations(
             if not isinstance(node, ast.Call):
                 continue
             call_name = _resolve_call_name(_expr_name(node.func), aliases)
+            chained_path_call_name = _path_constructor_method_call_name(node, aliases)
             if any(
-                call_name == forbidden or call_name.startswith(f"{forbidden}.")
+                call_name == forbidden
+                or call_name.startswith(f"{forbidden}.")
+                or chained_path_call_name == forbidden
                 for forbidden in forbidden_calls
             ):
                 violations.append(
                     Violation(
                         rule=rule,
                         file=source_file,
-                        dependency=call_name,
+                        dependency=chained_path_call_name or call_name,
                         lineno=node.lineno,
                         detail="forbidden call",
                     )
@@ -763,6 +835,45 @@ def _datalab_forbidden_import_violations(
                         dependency=forbidden,
                         lineno=import_use.lineno,
                         detail=f"imports {import_use.module!r}",
+                    )
+                )
+    return tuple(violations)
+
+
+def _m2_datalab_api_adapter_authority_violations(source_root: Path) -> tuple[Violation, ...]:
+    violations: list[Violation] = []
+    for source_file in _datalab_python_files(source_root):
+        import_aliases = _forbidden_import_aliases(source_file, M2_DATALAB_API_FORBIDDEN_IMPORTS)
+        for alias, forbidden in import_aliases.items():
+            violations.append(
+                Violation(
+                    rule=M2_DATALAB_API_ADAPTER_RULE,
+                    file=source_file,
+                    dependency=forbidden,
+                    lineno=1,
+                    detail=f"imports forbidden DataLab API adapter authority via {alias!r}",
+                )
+            )
+        call_aliases = _import_aliases(source_file)
+        tree = _parse_python(source_file)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            call_name = _resolve_call_name(_expr_name(node.func), call_aliases)
+            chained_path_call_name = _path_constructor_method_call_name(node, call_aliases)
+            if any(
+                call_name == forbidden
+                or call_name.startswith(f"{forbidden}.")
+                or chained_path_call_name == forbidden
+                for forbidden in M2_DATALAB_API_FORBIDDEN_CALLS
+            ):
+                violations.append(
+                    Violation(
+                        rule=M2_DATALAB_API_ADAPTER_RULE,
+                        file=source_file,
+                        dependency=chained_path_call_name or call_name,
+                        lineno=node.lineno,
+                        detail="DataLab API adapter must not own filesystem/staging authority",
                     )
                 )
     return tuple(violations)
@@ -1125,6 +1236,103 @@ def test_m2_datalab_authority_detectors_reject_forbidden_imports_and_calls(
     )
 
 
+def test_m2_datalab_api_adapter_guard_allows_public_runtime_seam_and_composition_root(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "apps/api/src/curios_api"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_routes.py").write_text(
+        "\n".join(
+            (
+                "from curios_contracts import DataLabAnalysisRequest, to_json_compatible",
+                "from curios_runtime import DataLabApplicationService",
+                "def create_analysis(",
+                "    service: DataLabApplicationService,",
+                "    body: dict[str, object],",
+                ") -> dict[str, object]:",
+                "    request = DataLabAnalysisRequest.from_json_compatible(body)",
+                "    result = service.create_analysis(request)",
+                "    return to_json_compatible(result)",
+            )
+        ),
+        encoding="utf-8",
+    )
+    (source_root / "composition.py").write_text(
+        "\n".join(
+            (
+                "from curios_persistence import PersistenceStore",
+                "from curios_runtime import DataLabApplicationService",
+                "def create_datalab_service(store: PersistenceStore) -> DataLabApplicationService:",
+                "    return DataLabApplicationService.from_store(store)",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    assert not _m2_datalab_api_adapter_authority_violations(source_root)
+
+
+def test_m2_datalab_api_adapter_guard_rejects_implementation_bypass_authority(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "apps/api/src/curios_api"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_routes.py").write_text(
+        "\n".join(
+            (
+                "import curios_persistence",
+                "import os",
+                "import requests",
+                "import tempfile",
+                "from builtins import open as open_file",
+                "from curios_runtime.datalab_profiler import DeterministicProfiler",
+                "from openai import OpenAI",
+                "from pathlib import Path",
+                "import shutil",
+                "def upload(filename: str) -> bytes:",
+                "    Path(filename)",
+                "    Path(filename).read_text()",
+                "    Path('/tmp/raw.csv').read_bytes()",
+                "    open(filename)",
+                "    open_file(filename)",
+                "    os.open(filename, os.O_RDONLY)",
+                "    os.path.join('/tmp', filename)",
+                "    tempfile.NamedTemporaryFile()",
+                "    shutil.copy(filename, '/tmp/copy')",
+                "    return DeterministicProfiler().profile(OpenAI(), requests.get('https://example.test'))",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    api_violations = _m2_datalab_api_adapter_authority_violations(source_root)
+    generic_import_violations = _datalab_forbidden_import_violations(
+        rule=M2_DATALAB_AUTHORITY_RULE,
+        source_root=source_root,
+        forbidden_imports=M2_DATALAB_FORBIDDEN_IMPORTS,
+    )
+
+    dependencies = {
+        violation.dependency for violation in (*api_violations, *generic_import_violations)
+    }
+    assert {
+        "Path.read_bytes",
+        "Path.read_text",
+        "curios_persistence",
+        "curios_runtime.datalab_profiler",
+        "open",
+        "os.open",
+        "os.path.join",
+        "pathlib",
+        "pathlib.Path",
+        "requests",
+        "shutil",
+        "tempfile",
+        "tempfile.NamedTemporaryFile",
+    }.issubset(dependencies)
+    assert "openai" in dependencies
+
+
 def test_m2_current_datalab_surfaces_have_no_forbidden_execution_model_or_network_authority() -> (
     None
 ):
@@ -1149,6 +1357,7 @@ def test_m2_current_datalab_surfaces_have_no_forbidden_execution_model_or_networ
             source_root=API_SOURCE,
             forbidden_calls=M2_DATALAB_FORBIDDEN_CALLS,
         ),
+        *_m2_datalab_api_adapter_authority_violations(API_SOURCE),
     )
 
     _assert_no_violations(violations)

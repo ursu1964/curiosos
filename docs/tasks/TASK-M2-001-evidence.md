@@ -75,6 +75,20 @@ Correction 1 changes the guard model to ownership/authority invariants:
   extra M2 endpoints, generic DataLab web request escapes, forbidden
   execution/model/network authority, and M3+ roots remain rejected.
 
+Independent re-validation after Correction 1 failed because API adapter
+authority guards detected provider/model authority but did not reject synthetic
+DataLab API adapter fixtures with arbitrary filesystem reads, direct
+`curios_persistence` usage, or direct profiler/runtime implementation imports.
+
+Correction 2 freezes the DataLab API adapter rule: future M2 API routes may
+perform transport/adaptation, construct canonical requests, call explicit
+public DataLab runtime/application seams, serialize canonical results, and
+translate bounded errors. DataLab API adapter modules must not own raw
+filesystem/staging authority, persistence implementation, profiler
+implementation, provider/model authority, or network authority. The guard
+allows composition-root dependency wiring while rejecting those bypasses in
+DataLab route/adapter modules.
+
 ## Files Changed
 
 - `docs/program/status-ledger/M2-status-ledger.md`
@@ -119,8 +133,14 @@ Synthetic probes were added for:
 - fake duplicate `DatasetReference`;
 - fake DataLab subprocess, `os.system`, dynamic import, network/client import,
   and model-provider import;
-- fake `/m2/datalab/*` FastAPI routes;
-- fake `uploadDataLabDataset` web boundary function;
+- exact future `/m2/datalab/*` FastAPI route inventory accepted and
+  partial/extra inventory rejected;
+- exact future DataLab web API-boundary function inventory accepted and
+  generic/extra DataLab web request escapes rejected;
+- fake DataLab API adapter filesystem, client-filename path, tempfile/staging,
+  persistence bypass, profiler bypass, network, and provider/model authority;
+- valid future DataLab API adapter delegation to an explicit public runtime
+  seam and valid composition-root dependency wiring;
 - fake M3+ package roots.
 
 The probes are temporary/synthetic test inputs only and do not remain as
@@ -142,7 +162,7 @@ Final verification was performed after implementation:
 - `pnpm --dir apps/web typecheck`: PASS.
 - `pnpm --dir apps/web build`: PASS.
 - `uv run pytest tests/contract tests/schema -q`: PASS, 16 tests.
-- `uv run pytest tests/architecture -q`: PASS, 43 tests.
+- `uv run pytest tests/architecture -q`: PASS, 45 tests.
 - `uv run pytest tests/security -q`: PASS, 382 tests, 2 existing
   FastAPI/Starlette deprecation warnings.
 - M1 package/API gate: PASS, 618 tests, 9 intentional deselections, 2 existing
@@ -155,7 +175,7 @@ Final verification was performed after implementation:
   operation); after restarting the local compose PostgreSQL service and
   waiting for healthy state, the serial rerun passed with 14 tests and 2
   existing FastAPI/Starlette deprecation warnings.
-- Full pytest: PASS, 1204 tests, 2 existing FastAPI/Starlette deprecation
+- Full pytest: PASS, 1206 tests, 2 existing FastAPI/Starlette deprecation
   warnings.
 - `git diff --check`: PASS.
 - `git diff --cached --check`: PASS.
