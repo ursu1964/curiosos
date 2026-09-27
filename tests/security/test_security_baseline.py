@@ -195,7 +195,11 @@ M0_AUTHORIZED_API_SOURCE_FILES_BY_TASK = {
 M0_AUTHORIZED_API_TEST_FILES_BY_TASK = {
     "TASK-M0-008": frozenset({"test_fastapi_service_composition.py", "test_m0_work_endpoints.py"}),
     "TASK-M1-013": frozenset(
-        {"test_m1_cognitive_loop_endpoints.py", "test_task_m1_013_validation_regressions.py"}
+        {
+            "test_m1_cognitive_loop_endpoints.py",
+            "test_task_m1_013_revalidation_regressions.py",
+            "test_task_m1_013_validation_regressions.py",
+        }
     ),
 }
 M0_AUTHORIZED_API_SOURCE_FILES = frozenset(
@@ -1141,6 +1145,7 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "apps/api",
             "docs/program/status-ledger/M1-status-ledger.md",
             "docs/tasks/TASK-M1-013-evidence.md",
+            "docs/tasks/TASK-M1-013-validation-evidence.md",
             "tests/security/test_security_baseline.py",
         }
     ),
