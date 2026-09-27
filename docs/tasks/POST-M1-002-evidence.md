@@ -107,7 +107,7 @@ Correction 1 freezes:
 - resource bounds for objective, profiler timeout, findings, warnings,
   evidence references, messages, event payload, upload body, and API response;
 - one executable WorkItem work type: `dataset_profile`;
-- one capability token: `dataset_profiling`;
+- sole M2 capability identifier `dataset_profiling`;
 - DataLab agent semantics as bounded capability declaration, not autonomy;
 - deterministic in-process profiler seam and profiler inference rules;
 - exact durable persistence model and run states;
@@ -222,3 +222,37 @@ Planning lifecycle after POST-M1-004 freeze:
 
 M2 implementation did not start during POST-M1-002, either correction, or
 POST-M1-003 validation.
+
+## Publication Correction 1
+
+M2 planning publication succeeded at:
+
+`911819612cfc44d1dfc4b0270f64a99ea83aebe5`
+
+Exact-SHA Quality Gates run `36344923985` failed in the security step
+`test_tracked_security_surfaces_do_not_contain_secret_shaped_literals`.
+
+The scanner flagged this evidence file because the Correction 1 history used
+ordinary planning prose that resembled sensitive key/value syntax. The flagged
+text described the canonical M2 capability identifier `dataset_profiling`;
+it was not product source, not a credential, not generated secret material, not
+an environment value, not `1.txt`, and not unrelated historical content.
+
+Classification:
+
+`PLANNING-DOCUMENT / SECURITY-HYGIENE DEFECT`
+
+Correction:
+
+- preserve the frozen semantic requirement that `dataset_profiling` is the
+  sole M2 capability identifier;
+- replace the scanner-shaped wording with ordinary domain prose;
+- leave M2 objective, dataset bounds, contract ownership, API inventory,
+  profiler authority, verification mapping, web provenance, vertical slices,
+  task DAG, readiness, and all product/test/CI/schema/dependency surfaces
+  unchanged.
+
+M2 planning remains `VALIDATED / FROZEN / PUBLISHED` and awaits correction
+validation/publication before it may be treated as remote-CI-verified.
+
+TASK-M2-001 did not start.
