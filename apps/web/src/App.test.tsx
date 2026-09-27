@@ -416,7 +416,10 @@ describe("TASK-M1-014 web cognitive loop console", () => {
     installFetchMock(calls, [
       ["/m1/intents/decompose", created(m1DecompositionResponse())],
       ["/m1/dag/run-once", ok(m1RunnerResponse())],
-      ["/m1/intents/decompose", created(m1DecompositionResponse(2))],
+      [
+        "/m1/intents/decompose",
+        created(m1DecompositionResponse(2, "Implement another bounded change")),
+      ],
     ]);
     const container = render(<App />);
 
@@ -426,7 +429,76 @@ describe("TASK-M1-014 web cognitive loop console", () => {
     await click(button(container, "Decompose Intent"));
 
     expect(text(container)).toContain("int_00000000000000000000000002");
+    expect(panelText(container, "Intent")).toContain(
+      "Implement another bounded change",
+    );
     expect(text(container)).not.toContain("DAG run COMPLETED");
+  });
+
+  it("does not combine selected intent identity with unsubmitted objective text", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    changeInput(container, "Implement another bounded change");
+
+    const intentPanel = panelText(container, "Intent");
+    expect(intentPanel).toContain("int_00000000000000000000000001");
+    expect(intentPanel).toContain("Implement a bounded change");
+    expect(intentPanel).not.toContain("Implement another bounded change");
+  });
+
+  it("keeps canonical A visible when draft B decomposition fails", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      [
+        "/m1/intents/decompose",
+        boundedFailure(400, {
+          error_code: "M1_API_MALFORMED_REQUEST",
+          message: "M1 API request is malformed.",
+        }),
+      ],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    changeInput(container, "Implement another bounded change");
+    await click(button(container, "Decompose Intent"));
+
+    const intentPanel = panelText(container, "Intent");
+    expect(intentPanel).toContain("int_00000000000000000000000001");
+    expect(intentPanel).toContain("Implement a bounded change");
+    expect(intentPanel).not.toContain("Implement another bounded change");
+    expect(text(container)).toContain("M1_API_MALFORMED_REQUEST");
+  });
+
+  it("does not leak unsubmitted draft text into run or verification requests", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", ok(m1RunnerResponse())],
+      ["/m1/verification/complete", ok(m1VerificationResponse("APPROVED"))],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    changeInput(container, "Implement another bounded change");
+    await click(button(container, "Run DAG Once"));
+    await click(button(container, "Complete Verification"));
+
+    expect(calls[1]?.path).toBe("/m1/dag/run-once");
+    expect(calls[1]?.body).not.toContain("Implement another bounded change");
+    expect(calls[2]?.path).toBe("/m1/verification/complete");
+    expect(calls[2]?.body).not.toContain("Implement another bounded change");
+    expect(panelText(container, "Runner")).toContain("EXECUTED");
+    expect(panelText(container, "Verification")).toContain("APPROVED");
+    expect(panelText(container, "M1 Events")).not.toContain(
+      "Implement another bounded change",
+    );
   });
 });
 
@@ -513,7 +585,15 @@ function changeInput(container: HTMLElement, value: string): void {
     throw new Error("M1 intent input not found");
   }
   act(() => {
-    input.value = value;
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    );
+    if (descriptor?.set === undefined) {
+      throw new Error("HTML input value setter not found");
+    }
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    Reflect.apply(descriptor.set, input, [value]);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
@@ -535,6 +615,16 @@ function button(container: HTMLElement, label: string): HTMLButtonElement {
 
 function text(container: HTMLElement): string {
   return container.textContent;
+}
+
+function panelText(container: HTMLElement, title: string): string {
+  const headings = [...container.querySelectorAll("h2")];
+  const heading = headings.find((item) => item.textContent === title);
+  const panel = heading?.closest("section");
+  if (panel === null || panel === undefined) {
+    throw new Error(`panel not found: ${title}`);
+  }
+  return panel.textContent;
 }
 
 function workResponse(work: ReturnType<typeof workA>): unknown {
@@ -657,7 +747,10 @@ function evidenceA(summary: string): {
   };
 }
 
-function m1DecompositionResponse(ordinal = 1): {
+function m1DecompositionResponse(
+  ordinal = 1,
+  objective = "Implement a bounded change",
+): {
   dag: {
     created_at: string;
     dag_id: string;
@@ -703,7 +796,7 @@ function m1DecompositionResponse(ordinal = 1): {
       problem: {
         intent_ref: { kind: "intent", ref_id: fixedId("int", ordinal) },
         problem_id: fixedId("prb", ordinal),
-        statement: "Implement a bounded change.",
+        statement: objective,
       },
       status: "SUPPORTED",
       work_items: work,
@@ -711,7 +804,7 @@ function m1DecompositionResponse(ordinal = 1): {
     intent: {
       context_refs: [],
       intent_id: fixedId("int", ordinal),
-      objective: "Implement a bounded change",
+      objective,
       source_ref: null,
       submitted_at: "2026-09-27T00:00:00Z",
     },

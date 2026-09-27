@@ -116,6 +116,35 @@ displays the returned verification result.
 M1-015 remains owner of M1 vertical-slice integration tests. TASK-M1-014 adds
 focused web tests with fake API responses and no live backend/model dependency.
 
+## Correction 1
+
+Independent validation found a cross-flow state consistency defect in the M1
+Intent panel. After a successful decomposition of canonical intent A, editing
+the objective input to draft B without submitting B caused the panel to display
+IntentId A combined with draft objective B. That hybrid did not exist as
+accepted API truth.
+
+Correction 1 separates draft input from accepted canonical API truth in the
+Intent panel. The editable objective input remains draft state. The selected
+Intent panel now renders canonical intent fields from
+`m1State.decomposition.intent`, so IntentId and objective share the same
+accepted decomposition response provenance.
+
+Additional focused coverage proves:
+
+- draft edits after decomposition do not alter displayed canonical intent A;
+- successful decomposition B replaces canonical A and clears downstream
+  runner/verification state;
+- failed decomposition B leaves canonical A visible with a bounded error and
+  does not display IntentId A plus objective B;
+- draft edits do not leak into run-once or verification request bodies;
+- runner, verification, and M1 event panels remain tied to accepted canonical
+  runner/verification responses.
+
+Correction 1 adds no dependency, lockfile, backend/API, schema, migration,
+provider/model, persistence, direct network, browser durable state, or M1-015
+integration-test scope.
+
 ## Security And Guardrail Evidence
 
 The TASK-M1-001 frontend authority invariant is preserved:
@@ -140,7 +169,8 @@ Implementation verification:
 - `ruff check .`: PASS;
 - `mypy apps/api/src packages/python/*/src`: PASS;
 - `pnpm check`: PASS;
-- apps/web tests: PASS, 1 file / 15 tests;
+- apps/web tests: PASS, 1 file / 18 tests, including Correction 1 draft vs
+  accepted canonical truth regressions;
 - apps/web typecheck: PASS;
 - apps/web production build: PASS;
 - contract/schema/architecture tests: PASS, `52 passed`;
@@ -156,6 +186,15 @@ Implementation verification:
 - acceptance: PASS, `8 passed`;
 - `git diff --check`: PASS;
 - `git diff --cached --check`: PASS.
+
+Docker/PostgreSQL note: a broad full pytest run initially failed in
+`test_postgres_routing_decision_repository_integration.py` with
+`psycopg.errors.AdminShutdown` while dropping a temporary routing schema after
+the local PostgreSQL container exited unhealthy during service lifecycle
+activity. Container state/logs were inspected, PostgreSQL was restarted and
+waited to healthy, the affected routing repository slice passed in isolation,
+all Docker-backed slices passed serially, and the final standalone full pytest
+passed.
 
 Known warnings: the existing FastAPI/Starlette TestClient deprecation warnings
 and the known `VIRTUAL_ENV` mismatch notice from the surrounding shell

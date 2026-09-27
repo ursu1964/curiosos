@@ -508,7 +508,7 @@ export function App(): JSX.Element {
           <DefinitionList
             values={{
               ID: m1State.decomposition?.intent.intent_id ?? "none",
-              Objective: m1State.intentObjective,
+              Objective: m1State.decomposition?.intent.objective ?? "none",
               Status: m1State.decomposition?.decomposition.status ?? "none",
             }}
           />
