@@ -1222,6 +1222,14 @@ M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "tests/security/test_security_baseline.py",
         }
     ),
+    "TASK-M1-017": frozenset(
+        {
+            "docs/program/status-ledger/M1-status-ledger.md",
+            "docs/tasks/TASK-M1-017-evidence.md",
+            "tests/acceptance/test_m1_acceptance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
 }
 M1_PLANNED_SURFACE_TASKS = frozenset(M1_PLANNED_SURFACES_BY_TASK)
 M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS = frozenset(M1_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK)
@@ -1286,6 +1294,14 @@ AUTHORIZED_M0_ACCEPTANCE_TESTS_BY_TASK = {
     ),
 }
 AUTHORIZED_M0_ACCEPTANCE_TESTS = frozenset().union(*AUTHORIZED_M0_ACCEPTANCE_TESTS_BY_TASK.values())
+AUTHORIZED_M1_ACCEPTANCE_TESTS_BY_TASK = {
+    "TASK-M1-017": frozenset(
+        {
+            "tests/acceptance/test_m1_acceptance.py",
+        }
+    ),
+}
+AUTHORIZED_M1_ACCEPTANCE_TESTS = frozenset().union(*AUTHORIZED_M1_ACCEPTANCE_TESTS_BY_TASK.values())
 AUTHORIZED_GITHUB_PATHS = frozenset(
     {
         ".github/workflows/quality-gates.yml",
@@ -3997,7 +4013,12 @@ def _unauthorized_integration_tests(paths: frozenset[str]) -> frozenset[str]:
 
 
 def _unauthorized_acceptance_tests(paths: frozenset[str]) -> frozenset[str]:
-    return paths - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS - AUTHORIZED_M0_ACCEPTANCE_TESTS
+    return (
+        paths
+        - AUTHORIZED_BOOT026_ACCEPTANCE_TESTS
+        - AUTHORIZED_M0_ACCEPTANCE_TESTS
+        - AUTHORIZED_M1_ACCEPTANCE_TESTS
+    )
 
 
 def _unauthorized_package_roots(paths: frozenset[str]) -> frozenset[str]:
@@ -6161,6 +6182,7 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
         "TASK-M1-014",
         "TASK-M1-015",
         "TASK-M1-016",
+        "TASK-M1-017",
     } == (M1_CURRENTLY_AUTHORIZED_SURFACE_TASKS)
     assert M1_PLANNED_BUT_UNAUTHORIZED_PACKAGE_ROOTS.isdisjoint(ALLOWED_PACKAGE_ROOTS)
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-002"] == {
@@ -6175,6 +6197,9 @@ def test_m1_planned_surface_registry_does_not_authorize_future_surfaces() -> Non
     }
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-016"] == {".github/workflows/quality-gates.yml"}
     assert M1_PLANNED_SURFACES_BY_TASK["TASK-M1-017"] == {"tests/acceptance"}
+    assert AUTHORIZED_M1_ACCEPTANCE_TESTS_BY_TASK["TASK-M1-017"] == {
+        "tests/acceptance/test_m1_acceptance.py"
+    }
 
 
 def test_m1_planned_canonical_authority_registry_does_not_authorize_future_contracts() -> None:
