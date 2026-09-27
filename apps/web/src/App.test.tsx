@@ -435,6 +435,47 @@ describe("TASK-M1-014 web cognitive loop console", () => {
     expect(text(container)).not.toContain("DAG run COMPLETED");
   });
 
+  it("clears downstream M1 truth when a new unsupported intent is accepted", async () => {
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", ok(m1RunnerResponse())],
+      ["/m1/verification/complete", ok(m1VerificationResponse("APPROVED"))],
+      [
+        "/m1/intents/decompose",
+        created(
+          unsupportedM1DecompositionResponse(
+            2,
+            "Address a philosophical question.",
+          ),
+        ),
+      ],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+    await click(button(container, "Complete Verification"));
+    changeInput(container, "Address a philosophical question.");
+    await click(button(container, "Decompose Intent"));
+
+    expect(panelText(container, "Intent")).toContain(
+      "int_00000000000000000000000002",
+    );
+    expect(panelText(container, "Intent")).toContain(
+      "Address a philosophical question.",
+    );
+    expect(panelText(container, "Intent")).toContain("UNSUPPORTED");
+    expect(panelText(container, "Runner")).not.toContain("EXECUTED");
+    expect(panelText(container, "Verification")).not.toContain("APPROVED");
+    expect(panelText(container, "M1 Events")).not.toContain(
+      "verification.completed",
+    );
+    expect(panelText(container, "M1 Events")).not.toContain(
+      "execution.completed",
+    );
+  });
+
   it("does not combine selected intent identity with unsubmitted objective text", async () => {
     const calls: FetchCall[] = [];
     installFetchMock(calls, [
@@ -499,6 +540,101 @@ describe("TASK-M1-014 web cognitive loop console", () => {
     expect(panelText(container, "M1 Events")).not.toContain(
       "Implement another bounded change",
     );
+  });
+
+  it.each([
+    ["WAITING", "UPSTREAM_NOT_READY"],
+    ["BLOCKED", "NO_ROUTE"],
+    ["TERMINAL", "ALREADY_TERMINAL"],
+    ["DEFERRED", "MAX_CONCURRENCY_REACHED"],
+  ])(
+    "renders %s runner outcomes as M1 domain truth",
+    async (status, reason) => {
+      const calls: FetchCall[] = [];
+      installFetchMock(calls, [
+        ["/m1/intents/decompose", created(m1DecompositionResponse())],
+        ["/m1/dag/run-once", ok(m1RunnerResponse(status, reason))],
+      ]);
+      const container = render(<App />);
+
+      await click(button(container, "Decompose Intent"));
+      await click(button(container, "Run DAG Once"));
+
+      expect(panelText(container, "Runner")).toContain(status);
+      expect(panelText(container, "Runner")).toContain(reason);
+      expect(text(container)).toContain(
+        "DAG run BLOCKED with 0 executed node(s).",
+      );
+      expect(text(container)).not.toContain("HTTP_");
+    },
+  );
+
+  it("prevents run-once and verification double-submit while in flight", async () => {
+    const pendingRun = deferredResponse();
+    const pendingVerification = deferredResponse();
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", pendingRun.promise],
+      ["/m1/verification/complete", pendingVerification.promise],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+    await click(button(container, "Running..."));
+    pendingRun.resolve({ body: m1RunnerResponse() });
+    await flush();
+    await click(button(container, "Complete Verification"));
+    await click(button(container, "Verifying..."));
+    pendingVerification.resolve({ body: m1VerificationResponse("APPROVED") });
+    await flush();
+
+    expect(calls.map((call) => call.path)).toEqual([
+      "/m1/intents/decompose",
+      "/m1/dag/run-once",
+      "/m1/verification/complete",
+    ]);
+  });
+
+  it("prevents cross-action overlap from mixing draft and canonical M1 state", async () => {
+    const pendingRun = deferredResponse();
+    const calls: FetchCall[] = [];
+    installFetchMock(calls, [
+      ["/m1/intents/decompose", created(m1DecompositionResponse())],
+      ["/m1/dag/run-once", pendingRun.promise],
+    ]);
+    const container = render(<App />);
+
+    await click(button(container, "Decompose Intent"));
+    await click(button(container, "Run DAG Once"));
+
+    expect(button(container, "Decompose Intent").disabled).toBe(true);
+    const input = container.querySelector("#m1-intent-objective");
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect((input as HTMLInputElement).disabled).toBe(true);
+
+    pendingRun.resolve({ body: m1RunnerResponse() });
+    await flush();
+
+    expect(panelText(container, "Intent")).toContain(
+      "Implement a bounded change",
+    );
+    expect(panelText(container, "Runner")).toContain("EXECUTED");
+  });
+
+  it("keeps M1 controls and status regions accessible", () => {
+    const container = render(<App />);
+    const input = container.querySelector("#m1-intent-objective");
+
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect(
+      container.querySelector('label[for="m1-intent-objective"]')?.textContent,
+    ).toBe("Intent objective");
+    expect(button(container, "Decompose Intent").type).toBe("button");
+    expect(button(container, "Run DAG Once").disabled).toBe(true);
+    expect(button(container, "Complete Verification").disabled).toBe(true);
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(2);
   });
 });
 
@@ -807,6 +943,22 @@ function m1DecompositionResponse(
       objective,
       source_ref: null,
       submitted_at: "2026-09-27T00:00:00Z",
+    },
+  };
+}
+
+function unsupportedM1DecompositionResponse(
+  ordinal: number,
+  objective: string,
+): unknown {
+  const response = m1DecompositionResponse(ordinal, objective);
+  return {
+    ...response,
+    dag: null,
+    decomposition: {
+      ...response.decomposition,
+      status: "UNSUPPORTED",
+      work_items: [],
     },
   };
 }
