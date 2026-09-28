@@ -176,12 +176,16 @@ M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M1-011": frozenset({"m1_bounded_dag_runner.py"}),
     "TASK-M1-012": frozenset({"m1_verification_loop.py"}),
 }
+M2_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
+    "TASK-M2-003": frozenset({"datalab_dataset_intake.py"}),
+}
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
         "__init__.py",
         "py.typed",
         *frozenset().union(*M0_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK.values()),
         *frozenset().union(*M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK.values()),
+        *frozenset().union(*M2_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK.values()),
     }
 )
 M0_PLANNED_APP_ROOTS_BY_TASK = {
@@ -577,6 +581,19 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("StoredAgentInstance", "class"),
         ("M1AgentRepository", "class"),
     ),
+    "datalab_dataset_intake.py": (
+        ("DATALAB_DATASET_MEDIA_TYPE", "annotation"),
+        ("DATALAB_MAX_UPLOAD_BYTES", "annotation"),
+        ("DATALAB_MAX_DATA_ROWS", "annotation"),
+        ("DATALAB_MAX_COLUMNS", "annotation"),
+        ("DATALAB_MAX_CELL_BYTES", "annotation"),
+        ("DATALAB_MAX_FILENAME_CHARS", "annotation"),
+        ("DataLabDatasetIntakeErrorCode", "class"),
+        ("DataLabDatasetIntakeError", "class"),
+        ("DataLabDatasetIntakeResult", "class"),
+        ("LocalDataLabDatasetStagingStore", "class"),
+        ("normalize_datalab_dataset_filename", "function"),
+    ),
     "executor_seam.py": (
         ("M1_EXECUTOR_EVENT_TYPE", "assignment"),
         ("ExecutorOutcomeStatus", "class"),
@@ -685,6 +702,41 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("create_instance", "method"),
             ("read_instance", "method"),
             ("list_instances", "method"),
+        ),
+    },
+    "datalab_dataset_intake.py": {
+        "DataLabDatasetIntakeErrorCode": (
+            ("UNSUPPORTED_MEDIA", "assignment"),
+            ("INVALID_FILENAME", "assignment"),
+            ("EMPTY_DATASET", "assignment"),
+            ("UPLOAD_TOO_LARGE", "assignment"),
+            ("INVALID_ENCODING", "assignment"),
+            ("MALFORMED_CSV", "assignment"),
+            ("DUPLICATE_COLUMNS", "assignment"),
+            ("TOO_MANY_COLUMNS", "assignment"),
+            ("TOO_MANY_ROWS", "assignment"),
+            ("CELL_TOO_LARGE", "assignment"),
+            ("INTEGRITY_FAILURE", "assignment"),
+            ("STAGING_FAILURE", "assignment"),
+            ("DATASET_UNAVAILABLE", "assignment"),
+        ),
+        "DataLabDatasetIntakeError": (
+            ("retryable", "method"),
+            ("to_json_compatible", "method"),
+        ),
+        "DataLabDatasetIntakeResult": (
+            ("artifact_ref", "annotation"),
+            ("normalized_filename", "annotation"),
+            ("size_bytes", "annotation"),
+            ("data_row_count", "annotation"),
+            ("column_count", "annotation"),
+            ("dataset_integrity_sha256", "annotation"),
+            ("staged_locator", "method"),
+        ),
+        "LocalDataLabDatasetStagingStore": (
+            ("accept_dataset", "method"),
+            ("read_staged_bytes", "method"),
+            ("cleanup_staged_bytes", "method"),
         ),
     },
     "executor_seam.py": {
@@ -2317,6 +2369,17 @@ M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "packages/python/curios_contracts/src/curios_contracts/identifiers.py",
             "packages/python/curios_contracts/tests/test_task_m2_002_datalab_contracts.py",
             "packages/python/curios_contracts/tests/test_task_m2_002_validation_regressions.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M2-003": frozenset(
+        {
+            "docs/program/status-ledger/M2-status-ledger.md",
+            "docs/tasks/TASK-M2-003-evidence.md",
+            "packages/python/curios_runtime/src/curios_runtime/__init__.py",
+            "packages/python/curios_runtime/src/curios_runtime/datalab_dataset_intake.py",
+            "packages/python/curios_runtime/tests/test_task_m2_003_dataset_intake.py",
+            "tests/architecture/test_architecture_conformance.py",
             "tests/security/test_security_baseline.py",
         }
     ),
@@ -6628,13 +6691,14 @@ def test_m2_planned_surface_registry_authorizes_only_integrated_m2_tasks() -> No
         "TASK-M2-015",
         "TASK-M2-016",
     } == M2_PLANNED_SURFACE_TASKS
-    assert {"TASK-M2-001", "TASK-M2-002"} == M2_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    assert {"TASK-M2-001", "TASK-M2-002", "TASK-M2-003"} == M2_CURRENTLY_AUTHORIZED_SURFACE_TASKS
     assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-001"] == {
         "docs",
         "tests/architecture/test_architecture_conformance.py",
         "tests/security/test_security_baseline.py",
     }
     assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-002"] == {"packages/python/curios_contracts"}
+    assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-003"] == {"DataLab intake module"}
     assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-010"] == {"apps/api"}
     assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-011"] == {"apps/web"}
     assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-013"] == {".github/workflows/quality-gates.yml"}
@@ -6654,6 +6718,15 @@ def test_m2_planned_surface_registry_authorizes_only_integrated_m2_tasks() -> No
         "packages/python/curios_contracts/src/curios_contracts/identifiers.py",
         "packages/python/curios_contracts/tests/test_task_m2_002_datalab_contracts.py",
         "packages/python/curios_contracts/tests/test_task_m2_002_validation_regressions.py",
+        "tests/security/test_security_baseline.py",
+    }
+    assert M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK["TASK-M2-003"] == {
+        "docs/program/status-ledger/M2-status-ledger.md",
+        "docs/tasks/TASK-M2-003-evidence.md",
+        "packages/python/curios_runtime/src/curios_runtime/__init__.py",
+        "packages/python/curios_runtime/src/curios_runtime/datalab_dataset_intake.py",
+        "packages/python/curios_runtime/tests/test_task_m2_003_dataset_intake.py",
+        "tests/architecture/test_architecture_conformance.py",
         "tests/security/test_security_baseline.py",
     }
 

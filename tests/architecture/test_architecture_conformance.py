@@ -61,6 +61,9 @@ M2_DATALAB_AUTHORITY_RULE = (
 M2_DATALAB_API_ADAPTER_RULE = (
     "M2 DataLab API adapters must delegate without owning implementation authority"
 )
+M2_DATALAB_INTAKE_RULE = (
+    "M2 DataLab intake must keep client filename metadata out of filesystem authority"
+)
 
 FASTAPI_IMPORTS = frozenset({"fastapi", "starlette"})
 SQLALCHEMY_IMPORTS = frozenset({"alembic", "sqlalchemy", "sqlmodel"})
@@ -879,6 +882,57 @@ def _m2_datalab_api_adapter_authority_violations(source_root: Path) -> tuple[Vio
     return tuple(violations)
 
 
+def _expr_contains_any_name(node: ast.AST, names: frozenset[str]) -> bool:
+    return any(isinstance(child, ast.Name) and child.id in names for child in ast.walk(node))
+
+
+def _m2_datalab_intake_client_filename_path_violations(
+    source_root: Path,
+) -> tuple[Violation, ...]:
+    client_filename_names = frozenset(
+        {"client_filename", "dataset_filename", "filename", "normalized_filename"}
+    )
+    authority_calls = frozenset({"Path", "pathlib.Path", "open", "os.open", "os.path.join"})
+    violations: list[Violation] = []
+    for source_file in _datalab_python_files(source_root):
+        aliases = _import_aliases(source_file)
+        tree = _parse_python(source_file)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                call_name = _resolve_call_name(_expr_name(node.func), aliases)
+                if call_name in authority_calls and any(
+                    _expr_contains_any_name(argument, client_filename_names)
+                    for argument in node.args
+                ):
+                    violations.append(
+                        Violation(
+                            rule=M2_DATALAB_INTAKE_RULE,
+                            file=source_file,
+                            dependency=call_name,
+                            lineno=node.lineno,
+                            detail="client filename metadata used as filesystem authority",
+                        )
+                    )
+            elif (
+                isinstance(node, ast.BinOp)
+                and isinstance(node.op, ast.Div)
+                and (
+                    _expr_contains_any_name(node.left, client_filename_names)
+                    or _expr_contains_any_name(node.right, client_filename_names)
+                )
+            ):
+                violations.append(
+                    Violation(
+                        rule=M2_DATALAB_INTAKE_RULE,
+                        file=source_file,
+                        dependency="/",
+                        lineno=node.lineno,
+                        detail="client filename metadata used in path composition",
+                    )
+                )
+    return tuple(violations)
+
+
 def test_curios_contracts_source_and_metadata_have_no_outward_dependencies() -> None:
     violations = (
         *_forbidden_import_violations(
@@ -1333,6 +1387,55 @@ def test_m2_datalab_api_adapter_guard_rejects_implementation_bypass_authority(
     assert "openai" in dependencies
 
 
+def test_m2_datalab_intake_guard_allows_generated_staging_locator(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src" / "curios_runtime"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_dataset_intake.py").write_text(
+        "\n".join(
+            (
+                "from pathlib import Path",
+                "def stage(root: Path, artifact_id: str, client_filename: str) -> Path:",
+                "    normalized_filename = client_filename",
+                "    return root / f'{artifact_id}.csv'",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    assert not _m2_datalab_intake_client_filename_path_violations(source_root)
+
+
+def test_m2_datalab_intake_guard_rejects_client_filename_path_authority(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src" / "curios_runtime"
+    source_root.mkdir(parents=True)
+    (source_root / "datalab_dataset_intake.py").write_text(
+        "\n".join(
+            (
+                "import os",
+                "from pathlib import Path",
+                "def stage(root: Path, client_filename: str) -> bytes:",
+                "    Path(client_filename)",
+                "    open(client_filename)",
+                "    os.open(client_filename, os.O_RDONLY)",
+                "    os.path.join(str(root), client_filename)",
+                "    root / client_filename",
+                "    return b''",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    violations = _m2_datalab_intake_client_filename_path_violations(source_root)
+
+    assert {"pathlib.Path", "open", "os.open", "os.path.join", "/"}.issubset(
+        {violation.dependency for violation in violations}
+    )
+
+
 def test_m2_current_datalab_surfaces_have_no_forbidden_execution_model_or_network_authority() -> (
     None
 ):
@@ -1358,6 +1461,7 @@ def test_m2_current_datalab_surfaces_have_no_forbidden_execution_model_or_networ
             forbidden_calls=M2_DATALAB_FORBIDDEN_CALLS,
         ),
         *_m2_datalab_api_adapter_authority_violations(API_SOURCE),
+        *_m2_datalab_intake_client_filename_path_violations(RUNTIME_SOURCE),
     )
 
     _assert_no_violations(violations)

@@ -14,7 +14,7 @@ date: 2026-09-27
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M2 | IMPLEMENTING | POST-M1-003 final independent validation accepted the corrected M2 DataLab planning package. TASK-M2-001 is published/remote-CI-verified. TASK-M2-002 is validated/frozen on its task branch and awaits integration, publication, and exact-SHA remote-CI verification. TASK-M2-003 through TASK-M2-016 remain blocked on DAG prerequisites and lifecycle integration. |
+| M2 | IMPLEMENTING | POST-M1-003 final independent validation accepted the corrected M2 DataLab planning package. TASK-M2-001 and TASK-M2-002 are published/remote-CI-verified. TASK-M2-003 is implemented/tested locally and awaits independent validation/freeze. Downstream TASK-M2-004 through TASK-M2-016 remain blocked on DAG prerequisites and lifecycle integration. |
 
 ## Task Status
 
@@ -23,8 +23,8 @@ date: 2026-09-27
 | M2-000A | M2 Planning Package | M1 final freeze | PG-M2-00 | VALIDATED, FROZEN | Corrected planning artifacts define DataLab Analysis Vertical Slice scope, DAG, task pack, vertical slices, traceability, and readiness gate. |
 | M2-READINESS | Independent M2 Readiness Validation | M2-000A | PG-M2-00 | VALIDATED, FROZEN | POST-M1-003 final independent validation passed after Corrections 1 and 2. |
 | TASK-M2-001 | M2 Topology and Guardrail Transition | M2-READINESS | PG-M2-01 | VALIDATED, FROZEN | TASK-M2-001 implementation evidence and independent validation evidence record additive architecture/security guardrails, future-surface compatibility, prohibited-scope audit, and verification. |
-| TASK-M2-002 | DataLab Dataset and Analysis Contracts | TASK-M2-001 | PG-M2-02 | VALIDATED, FROZEN | Canonical DataLab analysis request/profile/finding/result contracts and DataLab `ObjectReference` mappings are independently validated and frozen on the task branch; awaiting integration, publication, and exact-SHA remote-CI verification. |
-| TASK-M2-003 | Bounded Dataset Intake Boundary | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
+| TASK-M2-002 | DataLab Dataset and Analysis Contracts | TASK-M2-001 | PG-M2-02 | VALIDATED, FROZEN | Canonical DataLab analysis request/profile/finding/result contracts and DataLab `ObjectReference` mappings are integrated, published, and remote-CI-verified. |
+| TASK-M2-003 | Bounded Dataset Intake Boundary | TASK-M2-002 | PG-M2-03A | IMPLEMENTED, TESTED | Bounded CSV intake, filename metadata validation, SHA-256 integrity, generated staged locator, ephemeral staging, cleanup, safe errors, and guard compatibility are implemented and locally tested; awaiting independent validation/freeze. |
 | TASK-M2-004 | Deterministic DataLab Decomposition | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-005 | DataLab Persistence Records | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-006 | Deterministic Profiler Seam | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
@@ -62,8 +62,8 @@ date: 2026-09-27
 ## Readiness Rule
 
 M2 implementation started with TASK-M2-001 after the planning baseline and
-TASK-M2-001 publication gates passed. TASK-M2-002 is now validated/frozen on
-the task branch and awaits integration, publication, and exact-SHA remote-CI
-verification. TASK-M2-003 through TASK-M2-016 remain blocked until their
-frozen DAG prerequisites are completed, validated, frozen, integrated,
-published, and remote-CI-verified.
+TASK-M2-001 and TASK-M2-002 publication gates passed. TASK-M2-003 is
+implemented/tested locally after its frozen DAG prerequisites were completed,
+validated, frozen, integrated, published, and remote-CI-verified.
+TASK-M2-004 through TASK-M2-016 remain blocked until their frozen DAG
+prerequisites satisfy the required lifecycle state.
