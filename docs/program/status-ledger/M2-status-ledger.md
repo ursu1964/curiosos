@@ -28,7 +28,7 @@ date: 2026-09-27
 | TASK-M2-004 | Deterministic DataLab Decomposition | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-005 | DataLab Persistence Records | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-006 | Deterministic Profiler Seam | TASK-M2-002 | PG-M2-03A | VALIDATED, FROZEN | Deterministic in-process profiler seam request/outcome, explicit `DataLabProfilerStagedInput` authority, SHA-256 integrity gate, canonical DatasetProfile/DataLabFinding/DataLabAnalysisResult output, bounded events/evidence, safe errors, and authority inventory are independently validated and frozen on the task branch. |
-| TASK-M2-007 | In-Process Dataset Profiler | TASK-M2-003, TASK-M2-006 | PG-M2-03B | BLOCKED | Requires intake boundary and profiler seam. |
+| TASK-M2-007 | In-Process Dataset Profiler | TASK-M2-003, TASK-M2-006 | PG-M2-03B | IMPLEMENTED, TESTED | M2-007 bridges the published M2-003 staged dataset boundary into the published M2-006 deterministic profiler seam, preserves SHA/provenance/work identity, propagates canonical profile/result/evidence/events, performs bounded cleanup, and remains awaiting independent validation/freeze. |
 | TASK-M2-008 | DataLab Capability and Agent Integration | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-009 | DataLab Runner and Verification Binding | TASK-M2-004, TASK-M2-005, TASK-M2-007, TASK-M2-008 | PG-M2-04 | BLOCKED | Requires decomposition, persistence, profiler, and agent integration. |
 | TASK-M2-010 | DataLab API Endpoints | TASK-M2-009 | PG-M2-05 | BLOCKED | Requires runtime binding. |

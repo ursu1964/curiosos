@@ -179,6 +179,7 @@ M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
 M2_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M2-003": frozenset({"datalab_dataset_intake.py"}),
     "TASK-M2-006": frozenset({"datalab_profiler.py"}),
+    "TASK-M2-007": frozenset({"datalab_dataset_profiler.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -613,6 +614,16 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("DataLabProfilerOutcome", "class"),
         ("DeterministicDataLabProfiler", "class"),
     ),
+    "datalab_dataset_profiler.py": (
+        ("DATALAB_DATASET_PROFILE_WORK_TYPE", "annotation"),
+        ("DataLabDatasetProfilerStatus", "class"),
+        ("DataLabDatasetProfilerCleanupStatus", "class"),
+        ("DataLabDatasetProfilerErrorCode", "class"),
+        ("DataLabDatasetProfilerError", "class"),
+        ("DataLabDatasetProfilerRequest", "class"),
+        ("DataLabDatasetProfilerOutcome", "class"),
+        ("InProcessDataLabDatasetProfiler", "class"),
+    ),
     "executor_seam.py": (
         ("M1_EXECUTOR_EVENT_TYPE", "assignment"),
         ("ExecutorOutcomeStatus", "class"),
@@ -815,6 +826,52 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("to_json_compatible", "method"),
         ),
         "DeterministicDataLabProfiler": (("profile", "method"),),
+    },
+    "datalab_dataset_profiler.py": {
+        "DataLabDatasetProfilerStatus": (
+            ("COMPLETED", "assignment"),
+            ("FAILED", "assignment"),
+        ),
+        "DataLabDatasetProfilerCleanupStatus": (
+            ("CLEANED", "assignment"),
+            ("FAILED", "assignment"),
+            ("NOT_ATTEMPTED", "assignment"),
+            ("SKIPPED", "assignment"),
+        ),
+        "DataLabDatasetProfilerErrorCode": (
+            ("INVALID_REQUEST", "assignment"),
+            ("DATASET_UNAVAILABLE", "assignment"),
+            ("DATASET_INTEGRITY_MISMATCH", "assignment"),
+            ("PROFILER_FAILURE", "assignment"),
+            ("CLEANUP_FAILURE", "assignment"),
+        ),
+        "DataLabDatasetProfilerError": (("to_json_compatible", "method"),),
+        "DataLabDatasetProfilerRequest": (
+            ("dataset", "annotation"),
+            ("work", "annotation"),
+            ("run_id", "annotation"),
+            ("analysis_id", "annotation"),
+            ("result_id", "annotation"),
+            ("producer_ref", "annotation"),
+            ("evidence_id", "annotation"),
+            ("started_event_id", "annotation"),
+            ("completed_event_id", "annotation"),
+            ("occurred_at", "annotation"),
+            ("observability_context", "annotation"),
+            ("resource_bounds", "annotation"),
+            ("constraints", "annotation"),
+            ("cleanup_staged_bytes", "annotation"),
+        ),
+        "DataLabDatasetProfilerOutcome": (
+            ("status", "annotation"),
+            ("cleanup_status", "annotation"),
+            ("profiler_outcome", "annotation"),
+            ("error_code", "annotation"),
+            ("profile", "method"),
+            ("events", "method"),
+            ("evidence_refs", "method"),
+        ),
+        "InProcessDataLabDatasetProfiler": (("profile", "method"),),
     },
     "executor_seam.py": {
         "ExecutorOutcomeStatus": (
