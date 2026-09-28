@@ -196,6 +196,74 @@ covers:
 No dependency, lockfile, database schema, migration, API, web, provider/model,
 or CI workflow changes were introduced.
 
+## Independent Validation Attempt 1
+
+Result: FAILED.
+
+Failed criterion: dataset identity / intake authenticity.
+
+Exact reproduction:
+
+- Stage dataset A through the M2-003 staging store.
+- Construct a hybrid `DataLabDatasetIntakeResult` with artifact identity B,
+  locator A, and SHA(A).
+- Execute the M2-007 bridge.
+
+Observed before Correction 1:
+
+- profiling completed;
+- a profile/result/evidence/events were emitted;
+- output was attributed to artifact B while the bytes came from locator A.
+
+Root cause: M2-007 validated staged-byte integrity but did not bind the
+M2-003 generated staged locator to the same `ArtifactId` carried by the
+`ArtifactReference`.
+
+Classification: TASK-M2-007 contract completeness defect.
+
+## Correction 1
+
+Correction 1 adds the bounded invariant:
+
+`DataLabDatasetIntakeResult.artifact_ref.locator` must be exactly the canonical
+M2-003 generated staged locator for
+`DataLabDatasetIntakeResult.artifact_ref.artifact_id`.
+
+Ownership:
+
+- M2-003 now exposes `datalab_staged_locator_for_artifact_id()` as the
+  canonical generated-locator helper.
+- M2-007 validates the artifact/locator relationship before consuming the
+  staged dataset.
+- M2-003 remains the owner of staging, locator generation, staged read, and
+  cleanup.
+- M2-007 remains the bridge owner and does not redesign staging.
+
+Pre-effect ordering:
+
+- invalid artifact/locator identity fails before staged read;
+- no staged bytes are retrieved;
+- no SHA is computed over staged bytes;
+- no `DataLabProfilerStagedInput` is constructed;
+- no profiler invocation occurs;
+- no cleanup occurs;
+- no profile/result/evidence/event is emitted.
+
+Regression coverage proves:
+
+- the original B artifact + A locator + SHA(A) hybrid is rejected;
+- staged read count is zero;
+- profiler invocation count is zero;
+- cleanup count is zero;
+- profile/result/evidence/events are absent;
+- A and B staged datasets remain readable after rejected hybrid requests;
+- valid A artifact + A locator + SHA(A) still profiles successfully;
+- B artifact + A locator, A artifact + B locator, unknown artifact + foreign
+  locator, and crafted locator lookalikes are rejected;
+- A artifact + A locator + wrong SHA passes the identity gate and then fails
+  the existing SHA second-defense gate;
+- output provenance for valid inputs remains bound to the original dataset.
+
 ## Verification
 
 Completed verification:
@@ -214,11 +282,12 @@ Completed verification:
 - Contract/schema: 16 passed.
 - Architecture: 47 passed.
 - Security: 382 passed, 2 existing deprecation warnings.
-- Focused TASK-M2-007 dataset-profiler tests: 15 passed.
-- Combined M2-007/M2-006/M2-003 runtime focused/regression slice: 99 passed.
+- Focused TASK-M2-007 dataset-profiler tests after Correction 1: 26 passed.
+- Combined M2-007/M2-006/M2-003 runtime focused/regression slice after
+  Correction 1: 110 passed.
 - M2-002 contract/reference regressions: 24 passed.
-- Runtime package tests: 351 passed.
-- Package/API non-DB slice: 853 passed, 16 intentional deselections,
+- Runtime package tests: 362 passed.
+- Package/API non-DB slice: 864 passed, 16 intentional deselections,
   2 existing deprecation warnings.
 - PostgreSQL persistence integration: 2 passed.
 - Runtime/DAG PostgreSQL integration: 6 passed.
@@ -226,17 +295,20 @@ Completed verification:
 - API integration: 6 passed, 2 existing deprecation warnings.
 - VS-M1 integration: final rerun 6 passed, 2 existing deprecation warnings.
 - Acceptance: final rerun 14 passed, 2 existing deprecation warnings.
-- Full pytest: 1343 passed, 2 existing deprecation warnings.
+- Full pytest: 1354 passed, 2 existing deprecation warnings.
 
 Docker/transient result:
 
-- PostgreSQL was started from the repository Docker Compose file and reached a
-  healthy state before DB-backed slices.
-- An initial concurrent run of VS-M1 and acceptance observed PostgreSQL
-  connection-refused failures after the container was stopped during DB
-  lifecycle cleanup. The failure evidence was preserved.
-- The service was inspected, restarted, and verified healthy.
-- Affected DB-backed slices were rerun serially and passed cleanly.
+- Initial implementation verification observed PostgreSQL connection-refused
+  failures during a concurrent VS-M1/acceptance run after the container was
+  stopped during DB lifecycle cleanup. That failure evidence was preserved and
+  affected slices were rerun serially to a clean pass.
+- Correction 1 verification started PostgreSQL from the repository Docker
+  Compose file, waited for healthy state before DB-backed slices, and reran
+  lifecycle-sensitive groups serially.
+- No PostgreSQL failure occurred during the Correction 1 verification. The
+  container was restarted between DB-backed groups when prior groups stopped it
+  as part of their normal lifecycle.
 
 ## Downstream Status
 

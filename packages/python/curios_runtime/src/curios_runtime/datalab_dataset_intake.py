@@ -154,7 +154,7 @@ class LocalDataLabDatasetStagingStore:
         digest = _sha256_hexdigest(content)
         selected_artifact_id = artifact_id or ArtifactId.generate()
         selected_created_at = created_at or UtcTimestamp.now()
-        locator = _locator_for_artifact_id(selected_artifact_id)
+        locator = datalab_staged_locator_for_artifact_id(selected_artifact_id)
         artifact_ref = ArtifactReference(
             artifact_id=selected_artifact_id,
             kind=ArtifactKind.DATASET,
@@ -247,6 +247,14 @@ def normalize_datalab_dataset_filename(client_filename: str) -> str:
     return filename
 
 
+def datalab_staged_locator_for_artifact_id(artifact_id: ArtifactId) -> str:
+    """Return the canonical generated M2 DataLab staged locator for an artifact."""
+
+    if not isinstance(artifact_id, ArtifactId):
+        raise DataLabDatasetIntakeError(DataLabDatasetIntakeErrorCode.STAGING_FAILURE)
+    return f"{_STAGED_LOCATOR_PREFIX}{artifact_id}"
+
+
 def _is_control_character(character: str) -> bool:
     codepoint = ord(character)
     return codepoint == 0 or codepoint < 32 or 127 <= codepoint <= 159
@@ -313,9 +321,7 @@ def _sha256_hexdigest(content: bytes) -> str:
 
 
 def _locator_for_artifact_id(artifact_id: ArtifactId) -> str:
-    if not isinstance(artifact_id, ArtifactId):
-        raise DataLabDatasetIntakeError(DataLabDatasetIntakeErrorCode.STAGING_FAILURE)
-    return f"{_STAGED_LOCATOR_PREFIX}{artifact_id}"
+    return datalab_staged_locator_for_artifact_id(artifact_id)
 
 
 def _artifact_id_from_locator(locator: str) -> ArtifactId:

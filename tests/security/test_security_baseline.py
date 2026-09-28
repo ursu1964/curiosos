@@ -595,6 +595,7 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("DataLabDatasetIntakeResult", "class"),
         ("LocalDataLabDatasetStagingStore", "class"),
         ("normalize_datalab_dataset_filename", "function"),
+        ("datalab_staged_locator_for_artifact_id", "function"),
     ),
     "datalab_profiler.py": (
         ("DATALAB_PROFILER_TIMEOUT_SECONDS", "annotation"),

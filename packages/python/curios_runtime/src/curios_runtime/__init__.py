@@ -28,6 +28,7 @@ from curios_runtime.datalab_dataset_intake import (
     DataLabDatasetIntakeErrorCode,
     DataLabDatasetIntakeResult,
     LocalDataLabDatasetStagingStore,
+    datalab_staged_locator_for_artifact_id,
     normalize_datalab_dataset_filename,
 )
 from curios_runtime.datalab_dataset_profiler import (
@@ -236,6 +237,7 @@ __all__ = (
     "StoredWorkItem",
     "__version__",
     "agent_lifecycle_event",
+    "datalab_staged_locator_for_artifact_id",
     "normalize_datalab_dataset_filename",
     "transition_agent_instance",
     "transition_execution_record",

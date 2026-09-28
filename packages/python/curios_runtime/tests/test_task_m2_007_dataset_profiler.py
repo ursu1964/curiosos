@@ -8,11 +8,15 @@ from pathlib import Path
 import pytest
 from curios_contracts import (
     ArtifactId,
+    ArtifactKind,
+    ArtifactReference,
     DataLabAnalysisId,
     DataLabResultId,
     DataLabRunId,
     EventId,
     EvidenceId,
+    IntegrityAlgorithm,
+    IntegrityDescriptor,
     ObjectReference,
     ObservabilityContext,
     ProjectId,
@@ -39,6 +43,7 @@ from curios_runtime import (
     DeterministicDataLabProfiler,
     InProcessDataLabDatasetProfiler,
     LocalDataLabDatasetStagingStore,
+    datalab_staged_locator_for_artifact_id,
 )
 
 UTC_NOW = UtcTimestamp.parse("2026-09-28T10:00:00Z")
@@ -68,12 +73,31 @@ class _ExplodingAuthority:
         return b"name\nsecret-token=do-not-print\n"
 
 
+class _SpyStagingStore(LocalDataLabDatasetStagingStore):
+    def __init__(self, root: Path) -> None:
+        super().__init__(root)
+        self.read_count = 0
+        self.cleanup_count = 0
+
+    def read_staged_bytes(self, locator: str) -> bytes:
+        self.read_count += 1
+        return super().read_staged_bytes(locator)
+
+    def cleanup_staged_bytes(self, locator: str) -> None:
+        self.cleanup_count += 1
+        return super().cleanup_staged_bytes(locator)
+
+
 def _producer_ref() -> ObjectReference:
     return ObjectReference.from_id(ProjectId("prj_0123456789ABCDEFGHJKMNPQRS"))
 
 
 def _store(tmp_path: Path) -> LocalDataLabDatasetStagingStore:
     return LocalDataLabDatasetStagingStore(tmp_path / "stage")
+
+
+def _spy_store(tmp_path: Path) -> _SpyStagingStore:
+    return _SpyStagingStore(tmp_path / "stage")
 
 
 def _accept(
@@ -89,6 +113,35 @@ def _accept(
         producer_ref=_producer_ref(),
         artifact_id=artifact_id,
         created_at=UTC_NOW,
+    )
+
+
+def _hybrid_dataset(
+    source: DataLabDatasetIntakeResult,
+    *,
+    artifact_id: ArtifactId,
+    locator: str,
+    digest: str | None = None,
+) -> DataLabDatasetIntakeResult:
+    selected_digest = digest or source.dataset_integrity_sha256
+    return DataLabDatasetIntakeResult(
+        artifact_ref=ArtifactReference(
+            artifact_id=artifact_id,
+            kind=ArtifactKind.DATASET,
+            locator=locator,
+            media_type=DATALAB_DATASET_MEDIA_TYPE,
+            integrity=IntegrityDescriptor(
+                algorithm=IntegrityAlgorithm.SHA256,
+                value=selected_digest,
+            ),
+            producer_ref=_producer_ref(),
+            created_at=UTC_NOW,
+        ),
+        normalized_filename="forged.csv",
+        size_bytes=source.size_bytes,
+        data_row_count=source.data_row_count,
+        column_count=source.column_count,
+        dataset_integrity_sha256=selected_digest,
     )
 
 
@@ -255,6 +308,151 @@ def test_staged_integrity_mismatch_fails_boundedly_before_profiler_success(
     assert outcome.error_code is DataLabDatasetProfilerErrorCode.DATASET_INTEGRITY_MISMATCH
     assert profiler.calls == 0
     assert not staged_path.exists()
+
+
+def test_rejects_original_artifact_locator_hybrid_before_any_effect(tmp_path: Path) -> None:
+    store = _spy_store(tmp_path)
+    artifact_a = _accept(store, b"name\nalice\n", artifact_id=ARTIFACT_ID)
+    forged_b = _hybrid_dataset(
+        artifact_a,
+        artifact_id=ARTIFACT_ID_B,
+        locator=artifact_a.staged_locator,
+    )
+    profiler = _CountingProfiler()
+
+    outcome = InProcessDataLabDatasetProfiler(
+        staging_store=store,
+        profiler=profiler,
+    ).profile(_request(forged_b))
+
+    assert outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert outcome.error_code is DataLabDatasetProfilerErrorCode.INVALID_REQUEST
+    assert outcome.cleanup_status is DataLabDatasetProfilerCleanupStatus.NOT_ATTEMPTED
+    assert store.read_count == 0
+    assert store.cleanup_count == 0
+    assert profiler.calls == 0
+    assert outcome.profiler_outcome is None
+    assert outcome.profile is None
+    assert outcome.events == ()
+    assert outcome.evidence_refs == ()
+    assert store.read_staged_bytes(artifact_a.staged_locator) == b"name\nalice\n"
+
+
+def test_artifact_locator_matrix_preserves_identity_and_sha_second_defense(
+    tmp_path: Path,
+) -> None:
+    store = _spy_store(tmp_path)
+    artifact_a = _accept(store, b"name\nalice\n", artifact_id=ARTIFACT_ID)
+    artifact_b = _accept(store, b"name\nbob\n", artifact_id=ARTIFACT_ID_B)
+    service = InProcessDataLabDatasetProfiler(staging_store=store)
+
+    valid = service.profile(_request(artifact_a, cleanup_staged_bytes=False))
+    assert valid.status is DataLabDatasetProfilerStatus.COMPLETED
+
+    b_identity_a_locator = _hybrid_dataset(
+        artifact_a,
+        artifact_id=ARTIFACT_ID_B,
+        locator=artifact_a.staged_locator,
+    )
+    b_identity_a_locator_outcome = service.profile(_request(b_identity_a_locator))
+    assert b_identity_a_locator_outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert (
+        b_identity_a_locator_outcome.error_code is DataLabDatasetProfilerErrorCode.INVALID_REQUEST
+    )
+
+    a_identity_b_locator = _hybrid_dataset(
+        artifact_b,
+        artifact_id=ARTIFACT_ID,
+        locator=artifact_b.staged_locator,
+    )
+    a_identity_b_locator_outcome = service.profile(_request(a_identity_b_locator))
+    assert a_identity_b_locator_outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert (
+        a_identity_b_locator_outcome.error_code is DataLabDatasetProfilerErrorCode.INVALID_REQUEST
+    )
+
+    b_digest = artifact_b.dataset_integrity_sha256
+    a_locator_b_digest = _hybrid_dataset(
+        artifact_a,
+        artifact_id=ARTIFACT_ID,
+        locator=artifact_a.staged_locator,
+        digest=b_digest,
+    )
+    sha_mismatch_outcome = service.profile(_request(a_locator_b_digest))
+    assert sha_mismatch_outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert (
+        sha_mismatch_outcome.error_code
+        is DataLabDatasetProfilerErrorCode.DATASET_INTEGRITY_MISMATCH
+    )
+
+    unknown_with_foreign_locator = _hybrid_dataset(
+        artifact_b,
+        artifact_id=ArtifactId("art_2123456789ABCDEFGHJKMNPQRS"),
+        locator=artifact_b.staged_locator,
+    )
+    unknown_outcome = service.profile(_request(unknown_with_foreign_locator))
+    assert unknown_outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert unknown_outcome.error_code is DataLabDatasetProfilerErrorCode.INVALID_REQUEST
+
+
+@pytest.mark.parametrize(
+    "locator",
+    (
+        "x-curios-datalab-staged:art_0123456789ABCDEFGHJKMNPQRS",
+        "curios-datalab-staged:art_0123456789ABCDEFGHJKMNPQRS-extra",
+        "prefix-art_0123456789ABCDEFGHJKMNPQRS",
+        "curios-datalab-staged/art_0123456789ABCDEFGHJKMNPQRS",
+        "curios-datalab-staged:art_0123456789ABCDEFGHJKMNPQRS:art_0123456789ABCDEFGHJKMNPQRS",
+        "curios-datalab-staged:ART_0123456789ABCDEFGHJKMNPQRS",
+        "curios-datalab-staged:%2Fart_0123456789ABCDEFGHJKMNPQRS",
+    ),
+)
+def test_rejects_locator_lookalikes_before_read_cleanup_or_profile(
+    tmp_path: Path,
+    locator: str,
+) -> None:
+    store = _spy_store(tmp_path)
+    artifact_a = _accept(store, b"name\nalice\n", artifact_id=ARTIFACT_ID)
+    forged = _hybrid_dataset(artifact_a, artifact_id=ARTIFACT_ID, locator=locator)
+    profiler = _CountingProfiler()
+
+    outcome = InProcessDataLabDatasetProfiler(
+        staging_store=store,
+        profiler=profiler,
+    ).profile(_request(forged))
+
+    assert outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert outcome.error_code is DataLabDatasetProfilerErrorCode.INVALID_REQUEST
+    assert store.read_count == 0
+    assert store.cleanup_count == 0
+    assert profiler.calls == 0
+
+
+def test_invalid_hybrid_does_not_cleanup_either_staged_dataset(tmp_path: Path) -> None:
+    store = _spy_store(tmp_path)
+    artifact_a = _accept(store, b"name\nalice\n", artifact_id=ARTIFACT_ID)
+    artifact_b = _accept(store, b"name\nbob\n", artifact_id=ARTIFACT_ID_B)
+    forged = _hybrid_dataset(
+        artifact_a,
+        artifact_id=ARTIFACT_ID_B,
+        locator=artifact_a.staged_locator,
+    )
+
+    outcome = InProcessDataLabDatasetProfiler(staging_store=store).profile(_request(forged))
+
+    assert outcome.status is DataLabDatasetProfilerStatus.FAILED
+    assert outcome.error_code is DataLabDatasetProfilerErrorCode.INVALID_REQUEST
+    assert store.cleanup_count == 0
+    assert store.read_count == 0
+    assert store.read_staged_bytes(artifact_a.staged_locator) == b"name\nalice\n"
+    assert store.read_staged_bytes(artifact_b.staged_locator) == b"name\nbob\n"
+
+
+def test_canonical_locator_helper_matches_m2_003_generated_locator(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    artifact_a = _accept(store, b"name\nalice\n", artifact_id=ARTIFACT_ID)
+
+    assert artifact_a.staged_locator == datalab_staged_locator_for_artifact_id(ARTIFACT_ID)
 
 
 def test_wrong_work_type_rejected_before_byte_access(tmp_path: Path) -> None:

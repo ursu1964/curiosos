@@ -24,6 +24,7 @@ from curios_runtime.datalab_dataset_intake import (
     DataLabDatasetIntakeErrorCode,
     DataLabDatasetIntakeResult,
     LocalDataLabDatasetStagingStore,
+    datalab_staged_locator_for_artifact_id,
 )
 from curios_runtime.datalab_profiler import (
     DataLabProfilerOutcome,
@@ -216,6 +217,12 @@ class InProcessDataLabDatasetProfiler:
         """Read one authorized staged dataset, profile it once, and clean it up if requested."""
 
         _require_type(request, DataLabDatasetProfilerRequest, "request")
+        if not _has_canonical_staged_locator(request.dataset):
+            return DataLabDatasetProfilerOutcome(
+                status=DataLabDatasetProfilerStatus.FAILED,
+                cleanup_status=DataLabDatasetProfilerCleanupStatus.NOT_ATTEMPTED,
+                error_code=DataLabDatasetProfilerErrorCode.INVALID_REQUEST,
+            )
         content = self._read_authorized_staged_bytes(request)
         if content is None:
             return DataLabDatasetProfilerOutcome(
@@ -307,6 +314,12 @@ class InProcessDataLabDatasetProfiler:
 def _handle_id_for_dataset(dataset: DataLabDatasetIntakeResult) -> str:
     digest_prefix = dataset.dataset_integrity_sha256[:24]
     return f"dataset_{digest_prefix}"
+
+
+def _has_canonical_staged_locator(dataset: DataLabDatasetIntakeResult) -> bool:
+    return dataset.staged_locator == datalab_staged_locator_for_artifact_id(
+        dataset.artifact_ref.artifact_id
+    )
 
 
 def _normalize_constraints(constraints: tuple[tuple[str, str], ...]) -> tuple[tuple[str, str], ...]:
