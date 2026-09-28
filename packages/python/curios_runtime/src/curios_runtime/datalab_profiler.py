@@ -12,7 +12,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
-from typing import Final, Protocol
+from typing import Final, final
 
 from curios_contracts import (
     ArtifactKind,
@@ -95,20 +95,10 @@ class DataLabProfilerErrorCode(StrEnum):
     INTERNAL_FAILURE = "DATALAB_PROFILER_FAILURE"
 
 
-class DataLabStagedInput(Protocol):
-    """Bounded authority to bytes that were staged by a Curios-owned boundary."""
-
-    @property
-    def handle_id(self) -> str:
-        """Return an opaque staged-input handle identifier, not a path."""
-
-    def read_authorized_bytes(self) -> bytes:
-        """Return authorized staged bytes for deterministic profiling."""
-
-
+@final
 @dataclass(frozen=True, slots=True)
-class InMemoryDataLabStagedInput:
-    """Synthetic staged-input seam for contract tests and in-process composition."""
+class DataLabProfilerStagedInput:
+    """Concrete profiler authority for already-authorized bounded staged bytes."""
 
     handle_id: str
     content: bytes
@@ -122,7 +112,7 @@ class InMemoryDataLabStagedInput:
             raise TypeError(msg)
 
     def read_authorized_bytes(self) -> bytes:
-        """Return an immutable copy of the supplied staged bytes."""
+        """Return an immutable copy of already-authorized staged bytes."""
 
         return bytes(self.content)
 
@@ -190,7 +180,7 @@ class DataLabProfilerRequest:
     """Canonical profiler seam request for already-authorized staged dataset bytes."""
 
     dataset_ref: ArtifactReference
-    staged_input: DataLabStagedInput
+    staged_input: DataLabProfilerStagedInput
     expected_sha256: str
     run_id: DataLabRunId
     analysis_id: DataLabAnalysisId
@@ -872,14 +862,9 @@ def _require_dataset_artifact(dataset_ref: ArtifactReference, sha256: str) -> No
         raise ValueError(msg)
 
 
-def _require_staged_input(staged_input: DataLabStagedInput) -> None:
-    if isinstance(staged_input, str | bytes | bytearray):
-        msg = "staged_input must be an authorized staged-input seam"
-        raise TypeError(msg)
-    read = getattr(staged_input, "read_authorized_bytes", None)
-    handle_id = getattr(staged_input, "handle_id", None)
-    if not callable(read) or not isinstance(handle_id, str):
-        msg = "staged_input must be an authorized staged-input seam"
+def _require_staged_input(staged_input: object) -> None:
+    if type(staged_input) is not DataLabProfilerStagedInput:
+        msg = "staged_input must be a DataLabProfilerStagedInput"
         raise TypeError(msg)
 
 

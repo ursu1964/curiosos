@@ -45,9 +45,8 @@ from curios_runtime.datalab_profiler import (
     DataLabProfilerOutcomeStatus,
     DataLabProfilerRequest,
     DataLabProfilerResourceBounds,
-    DataLabStagedInput,
+    DataLabProfilerStagedInput,
     DeterministicDataLabProfiler,
-    InMemoryDataLabStagedInput,
 )
 from curios_runtime.event_evidence_store import (
     EventEvidenceRuntimeStore,
@@ -156,7 +155,7 @@ __all__ = (
     "DataLabProfilerOutcomeStatus",
     "DataLabProfilerRequest",
     "DataLabProfilerResourceBounds",
-    "DataLabStagedInput",
+    "DataLabProfilerStagedInput",
     "EventEvidenceRuntimeStore",
     "M1_EXECUTOR_EVENT_TYPE",
     "BoundedM1DagRunner",
@@ -186,7 +185,6 @@ __all__ = (
     "M1Executor",
     "LocalDataLabDatasetStagingStore",
     "DeterministicDataLabProfiler",
-    "InMemoryDataLabStagedInput",
     "ProviderInventoryExecutor",
     "RepositoryError",
     "RepositoryErrorCode",

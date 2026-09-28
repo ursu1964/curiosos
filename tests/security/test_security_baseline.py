@@ -607,8 +607,7 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("DATALAB_PROFILER_TIMEOUT_EVENT_TYPE", "annotation"),
         ("DataLabProfilerOutcomeStatus", "class"),
         ("DataLabProfilerErrorCode", "class"),
-        ("DataLabStagedInput", "class"),
-        ("InMemoryDataLabStagedInput", "class"),
+        ("DataLabProfilerStagedInput", "class"),
         ("DataLabProfilerResourceBounds", "class"),
         ("DataLabProfilerRequest", "class"),
         ("DataLabProfilerOutcome", "class"),
@@ -774,11 +773,7 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("PROFILER_TIMEOUT", "assignment"),
             ("INTERNAL_FAILURE", "assignment"),
         ),
-        "DataLabStagedInput": (
-            ("handle_id", "method"),
-            ("read_authorized_bytes", "method"),
-        ),
-        "InMemoryDataLabStagedInput": (
+        "DataLabProfilerStagedInput": (
             ("handle_id", "annotation"),
             ("content", "annotation"),
             ("read_authorized_bytes", "method"),

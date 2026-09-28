@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 from curios_contracts import (
@@ -37,8 +41,8 @@ from curios_runtime import (
     DataLabProfilerOutcomeStatus,
     DataLabProfilerRequest,
     DataLabProfilerResourceBounds,
+    DataLabProfilerStagedInput,
     DeterministicDataLabProfiler,
-    InMemoryDataLabStagedInput,
 )
 
 UTC_NOW = UtcTimestamp.parse("2026-09-28T10:00:00Z")
@@ -79,7 +83,7 @@ def _request(
     selected_ref = dataset_ref or _dataset_ref(content)
     return DataLabProfilerRequest(
         dataset_ref=selected_ref,
-        staged_input=InMemoryDataLabStagedInput(
+        staged_input=DataLabProfilerStagedInput(
             handle_id="staged_dataset",
             content=content if staged_content is None else staged_content,
         ),
@@ -188,7 +192,7 @@ def test_profiler_rejects_wrong_dataset_kind_and_non_seam_staged_input() -> None
     with pytest.raises(ValueError, match="kind=dataset"):
         _request(content, dataset_ref=_dataset_ref(content, kind=ArtifactKind.DOCUMENT))
 
-    with pytest.raises(TypeError, match="authorized staged-input seam"):
+    with pytest.raises(TypeError, match="DataLabProfilerStagedInput"):
         DataLabProfilerRequest(
             dataset_ref=_dataset_ref(content),
             staged_input="curios-datalab-staged:art_0123456789ABCDEFGHJKMNPQRS",  # type: ignore[arg-type]
@@ -204,6 +208,134 @@ def test_profiler_rejects_wrong_dataset_kind_and_non_seam_staged_input() -> None
             occurred_at=UTC_NOW,
             observability_context=ObservabilityContext(),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class _CallbackBackedInput:
+    handle_id: str
+    callback: Callable[[], bytes]
+
+    def read_authorized_bytes(self) -> bytes:
+        return self.callback()
+
+
+class _SubclassedInput(DataLabProfilerStagedInput):  # type: ignore[misc]
+    pass
+
+
+@pytest.mark.parametrize(
+    "staged_input",
+    (
+        "dataset.csv",
+        "file:///tmp/dataset.csv",
+        "https://example.test/dataset.csv",
+        Path("dataset.csv"),
+        io.BytesIO(b"name\nalice\n"),
+        lambda: b"name\nalice\n",
+        object(),
+    ),
+)
+def test_profiler_rejects_non_explicit_staged_authority_without_byte_access(
+    staged_input: object,
+) -> None:
+    content = b"name\nalice\n"
+    with pytest.raises(TypeError, match="DataLabProfilerStagedInput"):
+        DataLabProfilerRequest(
+            dataset_ref=_dataset_ref(content),
+            staged_input=staged_input,  # type: ignore[arg-type]
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+            run_id=DataLabRunId("dlr_0123456789ABCDEFGHJKMNPQRS"),
+            analysis_id=DataLabAnalysisId("dla_0123456789ABCDEFGHJKMNPQRS"),
+            result_id=DataLabResultId("dlt_0123456789ABCDEFGHJKMNPQRS"),
+            work_ref=_work_ref(),
+            producer_ref=_producer_ref(),
+            evidence_id=EvidenceId("evd_0123456789ABCDEFGHJKMNPQRS"),
+            started_event_id=EventId("evt_0123456789ABCDEFGHJKMNPQRS"),
+            completed_event_id=EventId("evt_1123456789ABCDEFGHJKMNPQRS"),
+            occurred_at=UTC_NOW,
+            observability_context=ObservabilityContext(),
+        )
+
+
+def test_profiler_rejects_duck_typed_callback_authority_without_invocation() -> None:
+    content = b"name\nalice\n"
+    callback_invoked = False
+
+    def callback() -> bytes:
+        nonlocal callback_invoked
+        callback_invoked = True
+        return content
+
+    with pytest.raises(TypeError, match="DataLabProfilerStagedInput"):
+        DataLabProfilerRequest(
+            dataset_ref=_dataset_ref(content),
+            staged_input=_CallbackBackedInput("callback_handle", callback),  # type: ignore[arg-type]
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+            run_id=DataLabRunId("dlr_0123456789ABCDEFGHJKMNPQRS"),
+            analysis_id=DataLabAnalysisId("dla_0123456789ABCDEFGHJKMNPQRS"),
+            result_id=DataLabResultId("dlt_0123456789ABCDEFGHJKMNPQRS"),
+            work_ref=_work_ref(),
+            producer_ref=_producer_ref(),
+            evidence_id=EvidenceId("evd_0123456789ABCDEFGHJKMNPQRS"),
+            started_event_id=EventId("evt_0123456789ABCDEFGHJKMNPQRS"),
+            completed_event_id=EventId("evt_1123456789ABCDEFGHJKMNPQRS"),
+            occurred_at=UTC_NOW,
+            observability_context=ObservabilityContext(),
+        )
+
+    assert callback_invoked is False
+
+
+def test_profiler_rejects_subclass_impersonation_before_byte_access() -> None:
+    content = b"name\nalice\n"
+    subclassed = _SubclassedInput(handle_id="subclassed_input", content=content)
+
+    with pytest.raises(TypeError, match="DataLabProfilerStagedInput"):
+        DataLabProfilerRequest(
+            dataset_ref=_dataset_ref(content),
+            staged_input=subclassed,
+            expected_sha256=hashlib.sha256(content).hexdigest(),
+            run_id=DataLabRunId("dlr_0123456789ABCDEFGHJKMNPQRS"),
+            analysis_id=DataLabAnalysisId("dla_0123456789ABCDEFGHJKMNPQRS"),
+            result_id=DataLabResultId("dlt_0123456789ABCDEFGHJKMNPQRS"),
+            work_ref=_work_ref(),
+            producer_ref=_producer_ref(),
+            evidence_id=EvidenceId("evd_0123456789ABCDEFGHJKMNPQRS"),
+            started_event_id=EventId("evt_0123456789ABCDEFGHJKMNPQRS"),
+            completed_event_id=EventId("evt_1123456789ABCDEFGHJKMNPQRS"),
+            occurred_at=UTC_NOW,
+            observability_context=ObservabilityContext(),
+        )
+
+
+def test_profiler_authority_type_supports_future_m2_007_with_already_authorized_bytes() -> None:
+    content = b"name,amount\nalice,2\n"
+    authority = DataLabProfilerStagedInput(
+        handle_id="m2_007_authorized_bytes",
+        content=content,
+    )
+    request = _request(content)
+    bridged = DataLabProfilerRequest(
+        dataset_ref=request.dataset_ref,
+        staged_input=authority,
+        expected_sha256=request.expected_sha256,
+        run_id=request.run_id,
+        analysis_id=request.analysis_id,
+        result_id=request.result_id,
+        work_ref=request.work_ref,
+        producer_ref=request.producer_ref,
+        evidence_id=request.evidence_id,
+        started_event_id=request.started_event_id,
+        completed_event_id=request.completed_event_id,
+        occurred_at=request.occurred_at,
+        observability_context=request.observability_context,
+    )
+
+    outcome = DeterministicDataLabProfiler().profile(bridged)
+
+    assert outcome.status is DataLabProfilerOutcomeStatus.COMPLETED
+    assert outcome.profile is not None
+    assert outcome.profile.row_count == 1
 
 
 def test_profiler_integrity_gate_fails_before_successful_profile() -> None:
@@ -289,7 +421,7 @@ def test_profiler_output_does_not_depend_on_staged_handle_metadata() -> None:
     base = _request(content)
     alternate = DataLabProfilerRequest(
         dataset_ref=base.dataset_ref,
-        staged_input=InMemoryDataLabStagedInput(handle_id="other_handle", content=content),
+        staged_input=DataLabProfilerStagedInput(handle_id="other_handle", content=content),
         expected_sha256=base.expected_sha256,
         run_id=base.run_id,
         analysis_id=base.analysis_id,

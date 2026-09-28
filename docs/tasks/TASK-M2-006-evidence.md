@@ -23,8 +23,7 @@ Implemented:
 
 - `DataLabProfilerRequest`
 - `DataLabProfilerResourceBounds`
-- `DataLabStagedInput`
-- `InMemoryDataLabStagedInput`
+- `DataLabProfilerStagedInput`
 - `DeterministicDataLabProfiler`
 - `DataLabProfilerOutcome`
 - `DataLabProfilerOutcomeStatus`
@@ -36,7 +35,7 @@ The seam accepts a dataset `ArtifactReference(kind=dataset)`, an authorized stag
 
 Authorized:
 
-- supplied staged bytes through `DataLabStagedInput.read_authorized_bytes`
+- supplied staged bytes through exact `DataLabProfilerStagedInput`
 - UTF-8/BOM decoding
 - standard-library CSV parsing
 - SHA-256 integrity verification
@@ -129,6 +128,48 @@ Failures use bounded `ContractError` values with fixed messages. Error paths do 
 
 No dependency, lockfile, database schema, migration, API, or web changes were introduced.
 
+## Independent Validation Attempt 1
+
+Result: FAILED.
+
+Failed criterion: staged-input authority.
+
+Exact reproduction:
+
+- an arbitrary duck-typed object exposing `handle_id` and
+  `read_authorized_bytes()` was accepted as profiler input;
+- the object's callback was invoked;
+- the profiler completed and emitted a profile.
+
+Root cause: `_require_staged_input()` trusted behavioral shape rather than an
+explicit repository-owned authority type.
+
+## Correction 1
+
+Correction 1 replaces the structural protocol trust boundary with exact
+`DataLabProfilerStagedInput` authority. The authority stores bounded bytes
+directly and does not accept arbitrary callbacks, paths, files, URLs, generic
+readers, or filesystem/network-capable wrappers.
+
+M2-003 compatibility is preserved by ownership:
+
+- M2-003 continues to own staged locator storage/read/cleanup.
+- Future M2-007 may read already-authorized staged bytes through M2-003 and
+  construct `DataLabProfilerStagedInput`.
+- M2-006 still does not resolve locators, open paths, trigger cleanup, or
+  orchestrate intake-to-profiler execution.
+
+Correction 1 regression coverage proves:
+
+- the original arbitrary duck-typed callback-backed object is rejected;
+- rejected authority methods/callbacks are not invoked;
+- strings, filesystem-like strings, URLs, `Path`, file-like objects,
+  `BytesIO`, callables, generic objects, and subclass impersonation are
+  rejected before byte access;
+- valid repository-owned `DataLabProfilerStagedInput` still profiles
+  deterministic authorized bytes;
+- integrity gate and profiler semantics are unchanged.
+
 ## Verification
 
 Completed verification:
@@ -146,20 +187,18 @@ Completed verification:
 - Contract/schema: 16 passed.
 - Architecture: 47 passed.
 - Security: 382 passed, 2 existing deprecation warnings.
-- Focused TASK-M2-006 profiler tests: 15 passed.
-- Runtime package tests: 303 passed.
+- Focused TASK-M2-006 profiler tests: 25 passed.
+- Runtime package tests: 313 passed.
 - M2-003 intake regressions: 36 passed.
 - M2-002 contract/reference regressions: 24 passed.
 - API integration: 6 passed, 2 existing deprecation warnings.
 - Acceptance: 14 passed, 2 existing deprecation warnings.
-- Package/API slice excluding the externally managed PostgreSQL persistence file: 782 passed, 2 existing deprecation warnings.
+- Package/API slice excluding the externally managed PostgreSQL persistence file: 792 passed, 2 existing deprecation warnings.
 - PostgreSQL persistence integration rerun: 2 passed.
 - PostgreSQL provider integration: 1 passed.
 - VS-M1 integration: 6 passed, 2 existing deprecation warnings.
-- Full pytest: 1295 passed, 2 existing deprecation warnings.
+- Full pytest: 1305 passed, 2 existing deprecation warnings.
 
-Transient note: one broad package/API run initially failed in
-`packages/python/curios_persistence/tests/test_postgres_persistence_integration.py`
-because PostgreSQL had been stopped by another DB-backed slice. Docker state
-showed no running service. PostgreSQL was restarted, reached healthy state, and
-the affected persistence slice reran cleanly.
+Correction 1 transient result: no PostgreSQL lifecycle failure occurred during
+the correction verification. PostgreSQL was started and reached healthy state
+before DB-backed slices, which then ran cleanly.
