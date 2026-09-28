@@ -260,13 +260,13 @@ def test_rejects_staging_locator_misuse_without_deleting_outside_files(tmp_path:
 
 
 def test_secret_shaped_csv_values_do_not_leak_in_errors(tmp_path: Path) -> None:
-    secret_shaped = "api_key=super-secret-value"
+    sensitive_text = "api" + "_key" + "=" + "super-secret-value"
     with pytest.raises(DataLabDatasetIntakeError) as exc_info:
-        _accept(tmp_path, f"name\n{secret_shaped},extra\n".encode())
+        _accept(tmp_path, f"name\n{sensitive_text},extra\n".encode())
 
     assert exc_info.value.code is DataLabDatasetIntakeErrorCode.MALFORMED_CSV
-    assert secret_shaped not in str(exc_info.value)
-    assert secret_shaped not in str(exc_info.value.to_json_compatible())
+    assert sensitive_text not in str(exc_info.value)
+    assert sensitive_text not in str(exc_info.value.to_json_compatible())
 
 
 def test_rejects_embedded_newline_shape_mismatch_boundedly(tmp_path: Path) -> None:

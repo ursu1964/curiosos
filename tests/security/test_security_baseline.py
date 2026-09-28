@@ -2376,9 +2376,11 @@ M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
         {
             "docs/program/status-ledger/M2-status-ledger.md",
             "docs/tasks/TASK-M2-003-evidence.md",
+            "docs/tasks/TASK-M2-003-validation-evidence.md",
             "packages/python/curios_runtime/src/curios_runtime/__init__.py",
             "packages/python/curios_runtime/src/curios_runtime/datalab_dataset_intake.py",
             "packages/python/curios_runtime/tests/test_task_m2_003_dataset_intake.py",
+            "packages/python/curios_runtime/tests/test_task_m2_003_validation_regressions.py",
             "tests/architecture/test_architecture_conformance.py",
             "tests/security/test_security_baseline.py",
         }
@@ -6723,9 +6725,11 @@ def test_m2_planned_surface_registry_authorizes_only_integrated_m2_tasks() -> No
     assert M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK["TASK-M2-003"] == {
         "docs/program/status-ledger/M2-status-ledger.md",
         "docs/tasks/TASK-M2-003-evidence.md",
+        "docs/tasks/TASK-M2-003-validation-evidence.md",
         "packages/python/curios_runtime/src/curios_runtime/__init__.py",
         "packages/python/curios_runtime/src/curios_runtime/datalab_dataset_intake.py",
         "packages/python/curios_runtime/tests/test_task_m2_003_dataset_intake.py",
+        "packages/python/curios_runtime/tests/test_task_m2_003_validation_regressions.py",
         "tests/architecture/test_architecture_conformance.py",
         "tests/security/test_security_baseline.py",
     }
