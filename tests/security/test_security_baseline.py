@@ -178,6 +178,7 @@ M1_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
 }
 M2_AUTHORIZED_RUNTIME_SOURCE_FILES_BY_TASK = {
     "TASK-M2-003": frozenset({"datalab_dataset_intake.py"}),
+    "TASK-M2-006": frozenset({"datalab_profiler.py"}),
 }
 M0_AUTHORIZED_RUNTIME_SOURCE_FILES = frozenset(
     {
@@ -594,6 +595,25 @@ FROZEN_RUNTIME_DECLARATIONS_BY_MODULE = {
         ("LocalDataLabDatasetStagingStore", "class"),
         ("normalize_datalab_dataset_filename", "function"),
     ),
+    "datalab_profiler.py": (
+        ("DATALAB_PROFILER_TIMEOUT_SECONDS", "annotation"),
+        ("DATALAB_PROFILER_MAX_EVENT_PAYLOAD_BYTES", "annotation"),
+        ("DATALAB_PROFILER_MAX_WARNINGS", "annotation"),
+        ("DATALAB_PROFILER_MAX_FINDINGS", "annotation"),
+        ("DATALAB_PROFILER_SCHEMA_VERSION", "annotation"),
+        ("DATALAB_PROFILER_STARTED_EVENT_TYPE", "annotation"),
+        ("DATALAB_PROFILER_COMPLETED_EVENT_TYPE", "annotation"),
+        ("DATALAB_PROFILER_FAILED_EVENT_TYPE", "annotation"),
+        ("DATALAB_PROFILER_TIMEOUT_EVENT_TYPE", "annotation"),
+        ("DataLabProfilerOutcomeStatus", "class"),
+        ("DataLabProfilerErrorCode", "class"),
+        ("DataLabStagedInput", "class"),
+        ("InMemoryDataLabStagedInput", "class"),
+        ("DataLabProfilerResourceBounds", "class"),
+        ("DataLabProfilerRequest", "class"),
+        ("DataLabProfilerOutcome", "class"),
+        ("DeterministicDataLabProfiler", "class"),
+    ),
     "executor_seam.py": (
         ("M1_EXECUTOR_EVENT_TYPE", "assignment"),
         ("ExecutorOutcomeStatus", "class"),
@@ -738,6 +758,68 @@ FROZEN_RUNTIME_CLASS_MEMBERS_BY_MODULE = {
             ("read_staged_bytes", "method"),
             ("cleanup_staged_bytes", "method"),
         ),
+    },
+    "datalab_profiler.py": {
+        "DataLabProfilerOutcomeStatus": (
+            ("COMPLETED", "assignment"),
+            ("FAILED", "assignment"),
+            ("TIMED_OUT", "assignment"),
+        ),
+        "DataLabProfilerErrorCode": (
+            ("INVALID_REQUEST", "assignment"),
+            ("DATASET_UNAVAILABLE", "assignment"),
+            ("DATASET_INTEGRITY_MISMATCH", "assignment"),
+            ("MALFORMED_CSV", "assignment"),
+            ("RESOURCE_LIMIT_EXCEEDED", "assignment"),
+            ("PROFILER_TIMEOUT", "assignment"),
+            ("INTERNAL_FAILURE", "assignment"),
+        ),
+        "DataLabStagedInput": (
+            ("handle_id", "method"),
+            ("read_authorized_bytes", "method"),
+        ),
+        "InMemoryDataLabStagedInput": (
+            ("handle_id", "annotation"),
+            ("content", "annotation"),
+            ("read_authorized_bytes", "method"),
+        ),
+        "DataLabProfilerResourceBounds": (
+            ("timeout_seconds", "annotation"),
+            ("max_rows", "annotation"),
+            ("max_columns", "annotation"),
+            ("max_cell_bytes", "annotation"),
+            ("max_upload_bytes", "annotation"),
+            ("max_warnings", "annotation"),
+            ("max_findings", "annotation"),
+            ("max_event_payload_bytes", "annotation"),
+        ),
+        "DataLabProfilerRequest": (
+            ("dataset_ref", "annotation"),
+            ("staged_input", "annotation"),
+            ("expected_sha256", "annotation"),
+            ("run_id", "annotation"),
+            ("analysis_id", "annotation"),
+            ("result_id", "annotation"),
+            ("work_ref", "annotation"),
+            ("producer_ref", "annotation"),
+            ("evidence_id", "annotation"),
+            ("started_event_id", "annotation"),
+            ("completed_event_id", "annotation"),
+            ("occurred_at", "annotation"),
+            ("observability_context", "annotation"),
+            ("resource_bounds", "annotation"),
+            ("constraints", "annotation"),
+        ),
+        "DataLabProfilerOutcome": (
+            ("status", "annotation"),
+            ("result", "annotation"),
+            ("events", "annotation"),
+            ("evidence_refs", "annotation"),
+            ("profile", "annotation"),
+            ("findings", "annotation"),
+            ("to_json_compatible", "method"),
+        ),
+        "DeterministicDataLabProfiler": (("profile", "method"),),
     },
     "executor_seam.py": {
         "ExecutorOutcomeStatus": (
@@ -2382,6 +2464,16 @@ M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
             "packages/python/curios_runtime/tests/test_task_m2_003_dataset_intake.py",
             "packages/python/curios_runtime/tests/test_task_m2_003_validation_regressions.py",
             "tests/architecture/test_architecture_conformance.py",
+            "tests/security/test_security_baseline.py",
+        }
+    ),
+    "TASK-M2-006": frozenset(
+        {
+            "docs/program/status-ledger/M2-status-ledger.md",
+            "docs/tasks/TASK-M2-006-evidence.md",
+            "packages/python/curios_runtime/src/curios_runtime/__init__.py",
+            "packages/python/curios_runtime/src/curios_runtime/datalab_profiler.py",
+            "packages/python/curios_runtime/tests/test_task_m2_006_datalab_profiler.py",
             "tests/security/test_security_baseline.py",
         }
     ),
@@ -6693,7 +6785,12 @@ def test_m2_planned_surface_registry_authorizes_only_integrated_m2_tasks() -> No
         "TASK-M2-015",
         "TASK-M2-016",
     } == M2_PLANNED_SURFACE_TASKS
-    assert {"TASK-M2-001", "TASK-M2-002", "TASK-M2-003"} == M2_CURRENTLY_AUTHORIZED_SURFACE_TASKS
+    assert {
+        "TASK-M2-001",
+        "TASK-M2-002",
+        "TASK-M2-003",
+        "TASK-M2-006",
+    } == M2_CURRENTLY_AUTHORIZED_SURFACE_TASKS
     assert M2_PLANNED_SURFACES_BY_TASK["TASK-M2-001"] == {
         "docs",
         "tests/architecture/test_architecture_conformance.py",
@@ -6731,6 +6828,14 @@ def test_m2_planned_surface_registry_authorizes_only_integrated_m2_tasks() -> No
         "packages/python/curios_runtime/tests/test_task_m2_003_dataset_intake.py",
         "packages/python/curios_runtime/tests/test_task_m2_003_validation_regressions.py",
         "tests/architecture/test_architecture_conformance.py",
+        "tests/security/test_security_baseline.py",
+    }
+    assert M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK["TASK-M2-006"] == {
+        "docs/program/status-ledger/M2-status-ledger.md",
+        "docs/tasks/TASK-M2-006-evidence.md",
+        "packages/python/curios_runtime/src/curios_runtime/__init__.py",
+        "packages/python/curios_runtime/src/curios_runtime/datalab_profiler.py",
+        "packages/python/curios_runtime/tests/test_task_m2_006_datalab_profiler.py",
         "tests/security/test_security_baseline.py",
     }
 

@@ -14,7 +14,7 @@ date: 2026-09-27
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| M2 | IMPLEMENTING | POST-M1-003 final independent validation accepted the corrected M2 DataLab planning package. TASK-M2-001 and TASK-M2-002 are published/remote-CI-verified. TASK-M2-003 is validated/frozen on its task branch and awaits integration, publication, and exact-SHA remote-CI verification. Downstream TASK-M2-004 through TASK-M2-016 remain blocked on DAG prerequisites and lifecycle integration. |
+| M2 | IMPLEMENTING | POST-M1-003 final independent validation accepted the corrected M2 DataLab planning package. TASK-M2-001 through TASK-M2-003 are published/remote-CI-verified. TASK-M2-006 is implemented/tested on its task branch and awaits independent validation/freeze. Downstream convergence tasks remain blocked on DAG prerequisites and lifecycle integration. |
 
 ## Task Status
 
@@ -24,10 +24,10 @@ date: 2026-09-27
 | M2-READINESS | Independent M2 Readiness Validation | M2-000A | PG-M2-00 | VALIDATED, FROZEN | POST-M1-003 final independent validation passed after Corrections 1 and 2. |
 | TASK-M2-001 | M2 Topology and Guardrail Transition | M2-READINESS | PG-M2-01 | VALIDATED, FROZEN | TASK-M2-001 implementation evidence and independent validation evidence record additive architecture/security guardrails, future-surface compatibility, prohibited-scope audit, and verification. |
 | TASK-M2-002 | DataLab Dataset and Analysis Contracts | TASK-M2-001 | PG-M2-02 | VALIDATED, FROZEN | Canonical DataLab analysis request/profile/finding/result contracts and DataLab `ObjectReference` mappings are integrated, published, and remote-CI-verified. |
-| TASK-M2-003 | Bounded Dataset Intake Boundary | TASK-M2-002 | PG-M2-03A | VALIDATED, FROZEN | Bounded CSV intake, filename metadata validation, SHA-256 integrity, generated staged locator, ephemeral staging, cleanup, safe errors, and guard compatibility are independently validated and frozen on the task branch; awaiting integration, publication, and exact-SHA remote-CI verification. |
+| TASK-M2-003 | Bounded Dataset Intake Boundary | TASK-M2-002 | PG-M2-03A | VALIDATED, FROZEN | Bounded CSV intake, filename metadata validation, SHA-256 integrity, generated staged locator, ephemeral staging, cleanup, safe errors, and guard compatibility are integrated, published, and remote-CI-verified. |
 | TASK-M2-004 | Deterministic DataLab Decomposition | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-005 | DataLab Persistence Records | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
-| TASK-M2-006 | Deterministic Profiler Seam | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
+| TASK-M2-006 | Deterministic Profiler Seam | TASK-M2-002 | PG-M2-03A | IMPLEMENTED, TESTED | Deterministic in-process profiler seam request/outcome, authorized staged-input handle, SHA-256 integrity gate, canonical DatasetProfile/DataLabFinding/DataLabAnalysisResult output, bounded events/evidence, safe errors, and authority inventory are implemented and tested on the task branch; awaiting independent validation/freeze. |
 | TASK-M2-007 | In-Process Dataset Profiler | TASK-M2-003, TASK-M2-006 | PG-M2-03B | BLOCKED | Requires intake boundary and profiler seam. |
 | TASK-M2-008 | DataLab Capability and Agent Integration | TASK-M2-002 | PG-M2-03A | BLOCKED | Requires contracts. |
 | TASK-M2-009 | DataLab Runner and Verification Binding | TASK-M2-004, TASK-M2-005, TASK-M2-007, TASK-M2-008 | PG-M2-04 | BLOCKED | Requires decomposition, persistence, profiler, and agent integration. |
@@ -62,8 +62,8 @@ date: 2026-09-27
 ## Readiness Rule
 
 M2 implementation started with TASK-M2-001 after the planning baseline and
-TASK-M2-001 and TASK-M2-002 publication gates passed. TASK-M2-003 is
-validated/frozen on the task branch and awaits integration, publication, and
-exact-SHA remote-CI verification. TASK-M2-004 through TASK-M2-016 remain
-blocked until their frozen DAG prerequisites satisfy the required lifecycle
-state.
+TASK-M2-001 through TASK-M2-003 publication gates passed. TASK-M2-006 is
+implemented/tested on the task branch and awaits independent validation/freeze,
+integration, publication, and exact-SHA remote-CI verification. TASK-M2-007
+remains blocked until both TASK-M2-003 and TASK-M2-006 satisfy the required
+lifecycle state.
