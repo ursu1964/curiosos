@@ -66,7 +66,7 @@ Independent scratch probes produced these results:
 - valid future owners: PASS.
 - invalid wrong owners: PASS.
 - duplicate `DatasetReference`: PASS.
-- exact `dataset_profile` and `dataset_profiling` tokens: PASS.
+- exact `dataset_profile` work type and `dataset_profiling` capability: PASS.
 - alternate work/capability identifiers: PASS.
 - exact future API inventory: PASS.
 - extra M2 API endpoint: PASS, rejected.
