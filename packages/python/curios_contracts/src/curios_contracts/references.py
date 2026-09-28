@@ -14,6 +14,9 @@ from curios_contracts.identifiers import (
     AssumptionId,
     CapabilityId,
     CuriosId,
+    DataLabAnalysisId,
+    DataLabResultId,
+    DataLabRunId,
     DecisionId,
     EventId,
     EvidenceId,
@@ -48,6 +51,9 @@ class ReferenceKind(StrEnum):
     EVIDENCE = "evidence"
     VERIFICATION = "verification"
     EVENT = "event"
+    DATALAB_ANALYSIS = "datalab_analysis"
+    DATALAB_RUN = "datalab_run"
+    DATALAB_RESULT = "datalab_result"
     TRACE = "trace"
     INTENT = "intent"
     PROBLEM = "problem"
@@ -71,6 +77,9 @@ _REFERENCE_ID_TYPES: dict[ReferenceKind, type[CuriosId]] = {
     ReferenceKind.EVIDENCE: EvidenceId,
     ReferenceKind.VERIFICATION: VerificationId,
     ReferenceKind.EVENT: EventId,
+    ReferenceKind.DATALAB_ANALYSIS: DataLabAnalysisId,
+    ReferenceKind.DATALAB_RUN: DataLabRunId,
+    ReferenceKind.DATALAB_RESULT: DataLabResultId,
     ReferenceKind.TRACE: TraceId,
     ReferenceKind.INTENT: IntentId,
     ReferenceKind.PROBLEM: ProblemId,

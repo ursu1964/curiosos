@@ -158,6 +158,55 @@ The guards still reject:
 - forbidden DataLab filesystem/network/model/execution authority
 - unauthorized API/web/M3+ surfaces
 
+## Correction 1
+
+Independent validation of implementation
+`f8a9ad6c76715fe410bcab89e3a1d2451294cc7e` failed the typed-reference /
+`ObjectReference` compatibility criterion.
+
+Minimal reproduction:
+
+```python
+from curios_contracts import DataLabAnalysisId, DataLabRunId, DataLabResultId, ObjectReference
+
+ObjectReference.from_id(DataLabAnalysisId.generate())
+ObjectReference.from_id(DataLabRunId.generate())
+ObjectReference.from_id(DataLabResultId.generate())
+```
+
+Each call raised `TypeError` because the new canonical DataLab typed IDs were
+not integrated into the existing `ReferenceKind` / `ObjectReference` mapping.
+
+Root cause: TASK-M2-002 introduced `DataLabAnalysisId`, `DataLabRunId`, and
+`DataLabResultId`, but did not add the corresponding canonical reference kinds
+or inverse kind-to-ID reconstruction mappings required by frozen M2 planning.
+
+Correction 1 adds the existing `ObjectReference` integration only:
+
+- `ReferenceKind.DATALAB_ANALYSIS` serializes as `datalab_analysis`.
+- `ReferenceKind.DATALAB_RUN` serializes as `datalab_run`.
+- `ReferenceKind.DATALAB_RESULT` serializes as `datalab_result`.
+- `ObjectReference.from_id(DataLabAnalysisId(...))` now yields
+  `datalab_analysis`.
+- `ObjectReference.from_id(DataLabRunId(...))` now yields `datalab_run`.
+- `ObjectReference.from_id(DataLabResultId(...))` now yields
+  `datalab_result`.
+- JSON-compatible `ObjectReference` payloads for these kinds reconstruct the
+  same typed ID class.
+
+Correction 1 does not introduce `DataLabAnalysisReference`,
+`DataLabRunReference`, `DataLabResultReference`, `DatasetReference`, or any
+other duplicate reference abstraction.
+
+Regression coverage proves:
+
+- typed-ID to `ObjectReference` construction succeeds for all three DataLab IDs;
+- JSON-compatible serialization/reconstruction preserves kind and typed ID;
+- wrong-kind DataLab combinations fail boundedly;
+- malformed DataLab reference JSON fails boundedly;
+- synthetic downstream `analysis_ref`, `run_ref`, and `result_ref` fixtures can
+  be represented without implementing `DataLabRunRecord`.
+
 ## Authority Inventory
 
 TASK-M2-002 adds pure contracts only.
@@ -223,6 +272,45 @@ Final verification was performed after implementation:
   PostgreSQL service and waiting for `pg_isready`, the serial rerun passed with
   14 tests and 2 existing FastAPI/Starlette deprecation warnings.
 - Full pytest: PASS, 1214 tests, 2 existing FastAPI/Starlette deprecation
+  warnings.
+
+Correction 1 focused verification:
+
+- DataLab reference and TASK-M2-002 contract tests: PASS, 24 tests.
+- Architecture suite: PASS, 45 tests.
+- Security contract inventory focus: PASS, 3 tests.
+- `mypy packages/python/curios_contracts/src`: PASS, 23 source files.
+
+Correction 1 complete verification:
+
+- `uv lock --check`: PASS.
+- `uv sync --locked --all-groups --all-packages`: PASS.
+- `pnpm install --frozen-lockfile`: PASS.
+- Docker Compose config: PASS.
+- `ruff format --check .`: PASS, 306 files already formatted.
+- `ruff check .`: PASS.
+- `mypy apps/api/src packages/python/*/src`: PASS, 71 source files.
+- `pnpm check`: PASS.
+- `pnpm --dir apps/web test`: PASS, 26 tests.
+- `pnpm --dir apps/web typecheck`: PASS.
+- `pnpm --dir apps/web build`: PASS.
+- `uv run pytest tests/contract tests/schema -q`: PASS, 16 tests.
+- `uv run pytest tests/architecture -q`: PASS, 45 tests.
+- `uv run pytest tests/security -q`: PASS, 382 tests, 2 existing
+  FastAPI/Starlette deprecation warnings.
+- DataLab reference and TASK-M2-002 contract tests: PASS, 24 tests.
+- `uv run pytest packages/python/curios_contracts/tests -q`: PASS, 141 tests.
+- M1 package/API gate: PASS, 638 tests, 9 intentional deselections, 2 existing
+  FastAPI/Starlette deprecation warnings.
+- M1 PostgreSQL gate: PASS, 4 tests.
+- VS-M1 integration: PASS, 6 tests, 2 existing FastAPI/Starlette deprecation
+  warnings.
+- Acceptance gate: initial Correction 1 attempt hit the same local PostgreSQL
+  lifecycle transient (`database system is shutting down`). After restarting
+  the local compose PostgreSQL service and waiting for `pg_isready`, the
+  serial rerun passed with 14 tests and 2 existing FastAPI/Starlette
+  deprecation warnings.
+- Full pytest: PASS, 1226 tests, 2 existing FastAPI/Starlette deprecation
   warnings.
 
 ## Dependency / Schema Result
