@@ -119,6 +119,18 @@ class EventId(CuriosId):
     prefix = "evt"
 
 
+class DataLabAnalysisId(CuriosId):
+    prefix = "dla"
+
+
+class DataLabRunId(CuriosId):
+    prefix = "dlr"
+
+
+class DataLabResultId(CuriosId):
+    prefix = "dlt"
+
+
 class TraceId(CuriosId):
     prefix = "trc"
 
@@ -170,6 +182,9 @@ ID_TYPES: tuple[type[CuriosId], ...] = (
     EvidenceId,
     VerificationId,
     EventId,
+    DataLabAnalysisId,
+    DataLabRunId,
+    DataLabResultId,
     TraceId,
     CorrelationId,
     IntentId,
