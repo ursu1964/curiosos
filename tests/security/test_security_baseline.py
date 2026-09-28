@@ -2311,10 +2311,12 @@ M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK = {
         {
             "docs/program/status-ledger/M2-status-ledger.md",
             "docs/tasks/TASK-M2-002-evidence.md",
+            "docs/tasks/TASK-M2-002-validation-evidence.md",
             "packages/python/curios_contracts/src/curios_contracts/__init__.py",
             "packages/python/curios_contracts/src/curios_contracts/datalab.py",
             "packages/python/curios_contracts/src/curios_contracts/identifiers.py",
             "packages/python/curios_contracts/tests/test_task_m2_002_datalab_contracts.py",
+            "packages/python/curios_contracts/tests/test_task_m2_002_validation_regressions.py",
             "tests/security/test_security_baseline.py",
         }
     ),
@@ -6646,10 +6648,12 @@ def test_m2_planned_surface_registry_authorizes_only_integrated_m2_tasks() -> No
     assert M2_CURRENTLY_AUTHORIZED_SURFACES_BY_TASK["TASK-M2-002"] == {
         "docs/program/status-ledger/M2-status-ledger.md",
         "docs/tasks/TASK-M2-002-evidence.md",
+        "docs/tasks/TASK-M2-002-validation-evidence.md",
         "packages/python/curios_contracts/src/curios_contracts/__init__.py",
         "packages/python/curios_contracts/src/curios_contracts/datalab.py",
         "packages/python/curios_contracts/src/curios_contracts/identifiers.py",
         "packages/python/curios_contracts/tests/test_task_m2_002_datalab_contracts.py",
+        "packages/python/curios_contracts/tests/test_task_m2_002_validation_regressions.py",
         "tests/security/test_security_baseline.py",
     }
 
